@@ -9,9 +9,9 @@ RGFW Embedded **is not** a direct implementation of RGFW. It's a reimagining of
 what RGFW could be like if it were on consoles.
 
 # Supported platforms
-| Platform             | Maintainer(s)                         | RGFW Version  | Description                           |
-|----------------------|:--------------------------------------|:-------------:|:-------------------------------------:|
-| Nintendo 3DS         | [EimaMei](https://github.com/EimaMei) | RGFW 1.7.5    | Homebrew port utilizing `libctru`.
+|     Platform     |             Maintainer(s)             | RGFW Version |              Description              |
+|:----------------:|:-------------------------------------:|:------------:|:-------------------------------------:|
+|  Nintendo 3DS    | [EimaMei](https://github.com/EimaMei) |  RGFW 1.7.5  | Homebrew port utilizing `libctru`.    |
 
 
 
