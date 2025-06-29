@@ -346,13 +346,24 @@ int main() {
 	#define RGFW_3DS 1
 	#endif
 
-	/* TODO(EimaMei): Circle Pad Pro support would require this to be 2 possibly.
-	 * Maybe. I'm not planning to add support for it anytime soon. */
-	#ifndef RGFW_MAX_INPUT_DEVICES
-	#define RGFW_MAX_INPUT_DEVICES 1
-	#endif
+	#define RGFW_MAX_CONTROLLER_DEVICES 1
+	#define RGFW_MAX_BUTTON_COUNT RGFW_controllerButtonCount
 
-	#define RGFW_HAS_KEYBOARD_SUPPORT 0
+	/* TODO(EimaMei): Circle Pad Pro support would require this to be 4, but as
+	 * of June 29th 2025 I'm not planning to add support for it anytime soon,
+	 * unless this PR gets merged: https://github.com/devkitPro/libctru/pull/568. */
+	#ifndef RGFW_MAX_AXIS_COUNT
+	#define RGFW_MAX_AXIS_COUNT 2
+	#endif
+	#define RGFW_MAX_MOTION_SENSORS 2
+
+
+	#define RGFW_HAS_POINTER_SUPPORT   1
+	#define RGFW_HAS_MOTION_SUPPORT    1
+	#define RGFW_HAS_KEYBOARD_SUPPORT  0
+	#define RGFW_HAS_MOUSE_SUPPORT     0
+
+	#include <3ds.h>
 #endif
 
 /*
@@ -364,35 +375,20 @@ int main() {
 typedef RGFW_ENUM(u8, RGFW_eventType) {
 	/*! event codes */
 	RGFW_eventNone = 0, /*!< no event has been sent */
- 	RGFW_keyPressed, /* a key has been pressed */
-	RGFW_keyReleased, /*!< a key has been released */
-	/*! key event note
-		the code of the key pressed is stored in
-		RGFW_event.key
-		!!Keycodes defined at the bottom of the RGFW_HEADER part of this file!!
 
-		while a string version is stored in
-		RGFW_event.KeyString
+	RGFW_controllerConnected, /*!< a controller was connected */
+	RGFW_controllerDisconnected, /*!< a controller was disconnected */
+	RGFW_buttonPressed, /*!< a controller button was pressed */
+	RGFW_buttonReleased, /*!< a controller button was released */
+	RGFW_controllerAxisMove, /*!< an axis of a controller was moved */
 
-		RGFW_event.keyMod holds the current keyMod
-		this means if CapsLock, NumLock are active or not
-	*/
-	RGFW_mouseButtonPressed, /*!< a mouse button has been pressed (left,middle,right) */
-	RGFW_mouseButtonReleased, /*!< a mouse button has been released (left,middle,right) */
-	RGFW_mousePosChanged, /*!< the position of the mouse has been changed */
-	/*! mouse event note
-		the x and y of the mouse can be found in the vector, RGFW_event.point
+	RGFW_pointerPressed, /* TODO(EimaMei): Do research on this. */
+	RGFW_pointerMove, /* TODO(EimaMei): NEW ENUM* */
 
-		RGFW_event.button holds which mouse button was pressed
-	*/
-	RGFW_inputConnected, /*!< a gamepad was connected */
-	RGFW_inputDisconnected, /*!< a gamepad was disconnected */
-	RGFW_inputButtonPressed, /*!< a gamepad button was pressed */
-	RGFW_inputButtonReleased, /*!< a gamepad button was released */
-	RGFW_inputAxisMove, /*!< an axis of a gamepad was moved */
-	/*! gamepad event note
-		RGFW_event.gamepad holds which gamepad was altered, if any
-		RGFW_event.button holds which gamepad button was pressed
+	RGFW_motionMove, /* TODO(EimaMei): NEW ENUM* */
+	/*! controller event note
+		RGFW_event.controller holds which controller was altered, if any
+		RGFW_event.button holds which controller button was pressed
 
 		RGFW_event.axis holds the data of all the axises
 		RGFW_event.axisesCount says how many axises there are
@@ -409,17 +405,6 @@ typedef RGFW_ENUM(u8, RGFW_eventType) {
 	RGFW_windowMinimized, /*!< the window was minimized */
 	RGFW_windowRestored, /*!< the window was restored */
 	RGFW_scaleUpdated /*!< content scale factor changed */
-};
-
-/*! mouse button codes (RGFW_event.button) */
-typedef RGFW_ENUM(u8, RGFW_mouseButton) {
-	RGFW_mouseLeft = 0, /*!< left mouse button is pressed */
-	RGFW_mouseMiddle, /*!< mouse-wheel-button is pressed */
-	RGFW_mouseRight, /*!< right mouse button is pressed */
-	RGFW_mouseScrollUp, /*!< mouse wheel is scrolling up */
-	RGFW_mouseScrollDown, /*!< mouse wheel is scrolling down */
-	RGFW_mouseMisc1, RGFW_mouseMisc2, RGFW_mouseMisc3, RGFW_mouseMisc4, RGFW_mouseMisc5,
-	RGFW_mouseFinal
 };
 
 #ifndef RGFW_MAX_PATH
@@ -446,19 +431,37 @@ typedef RGFW_ENUM(u8, RGFW_keymod) {
  * value will always be equal to zero, while the following types' values are
  * incremented linearly. */
 
-typedef RGFW_ENUM(u8, RGFW_inputType) {
-	/* NOTE(EimaMei): Value '0' indicates the 'Default'/'Standard' input method
-	 * for the system. Must be present on all implementations. */
-	RGFW_inputTypeStandard = 0,
+typedef RGFW_ENUM(i32, RGFW_controllerType) {
+	/* NOTE(EimaMei): Value '0' indicates the 'Default' controller used for
+	 * the system. Must be present on all implementations. */
+	RGFW_controllerTypeStandard = 0,
 
-	RGFW_inputTypeCount,
+	RGFW_controllerTypeCount,
 };
 
-typedef RGFW_ENUM(i32, RGFW_inputButton) {
-	RGFW_inputButtonInvalid = -1,
-	/* NOTE(EimaMei): The first input type's (aka the default type's) buttons
-	 * take precedence in the naming scheme, meaning they can be named as
-	 * 'RGFW_<button name>' instead of 'RGFW_<input type><Button name>'. */
+typedef RGFW_ENUM(i32, RGFW_pointerType) {
+#ifdef RGFW_3DS
+	RGFW_pointerTouchscreen,
+#endif
+
+	RGFW_pointerTypeCount,
+};
+
+typedef RGFW_ENUM(i32, RGFW_motionType) {
+#ifdef RGFW_3DS
+	RGFW_motionAccelerometer,
+	RGFW_motionGyroscope,
+#endif
+
+	RGFW_motionTypeCount,
+};
+
+typedef RGFW_ENUM(i32, RGFW_button) {
+	RGFW_buttonInvalid = -1,
+
+	/* NOTE(EimaMei): The first controller type's (aka the default controller type's)
+	 * buttons take precedence in the naming scheme, meaning they can be named as
+	 * 'RGFW_<button name>' instead of 'RGFW_<controller type><Button name>'. */
 #ifdef RGFW_3DS
 	RGFW_A = 0,
 	RGFW_B,
@@ -474,20 +477,24 @@ typedef RGFW_ENUM(i32, RGFW_inputButton) {
 	RGFW_Y,
 	RGFW_ZL,
 	RGFW_ZR,
-	RGFW_Touch,
-	RGFW_CpadRight,
-	RGFW_CpadLeft,
-	RGFW_CpadUp,
-	RGFW_CpadDown,
+	RGFW_CstickRight,
+	RGFW_CstickLeft,
+	RGFW_CstickUp,
+	RGFW_CstickDown,
 
 #endif
 
-	RGFW_inputButtonCount
+	RGFW_controllerButtonCount
 };
 
 /*! basic vector type, if there's not already a point/vector type of choice */
 #ifndef RGFW_point
 	typedef struct RGFW_point { i32 x, y; } RGFW_point;
+#endif
+
+/* TODO(EimaMei): New structure. */
+#ifndef RGFW_point3D
+	typedef struct RGFW_point3D { i32 x, y, z; } RGFW_point3D;
 #endif
 
 /*! basic rect type, if there's not already a rect type of choice */
@@ -555,23 +562,27 @@ RGFWDEF RGFW_mouse* RGFW_loadMouse(u8* icon, RGFW_area a, i32 channels);
 /*!< frees RGFW_mouse data */
 RGFWDEF void RGFW_freeMouse(RGFW_mouse* mouse);
 
+
+typedef struct RGFW_axis {
+	i16 value;
+	i16 deadzone;
+} RGFW_axis;
+
+
 /* NOTE: some parts of the data can represent different things based on the event (read comments in RGFW_event struct) */
 /*! Event structure for checking/getting events */
 typedef struct RGFW_event {
 	RGFW_eventType type; /*!< which event has been sent?*/
 	RGFW_point point; /*!< mouse x, y of event (or drop point) */
-	RGFW_point vector; /*!< raw mouse movement */
-	float scaleX, scaleY; /*!< DPI scaling */
+
+	/*! which controller this event applies to (if applicable to any) */
+	ssize_t input_index;
+
+	ssize_t whichAxis; /* which axis was effected */
+	RGFW_axis axis;
 
 	RGFW_bool repeat; /*!< key press event repeated (the key is being held) */
-	u8 button; /* !< which mouse (or gamepad) button was pressed */
-	double scroll; /*!< the raw mouse scroll value */
-
-	u16 gamepad; /*! which gamepad this event applies to (if applicable to any) */
-	u8 axisesCount; /*!< number of axises */
-
-	u8 whichAxis; /* which axis was effected */
-	RGFW_point axis[4]; /*!< x, y of axises */
+	RGFW_button button; /* !< which mouse (or controller) button was pressed */
 
 	void* _win; /*!< the window this event applies too (for event queue events) */
 } RGFW_event;
@@ -857,28 +868,29 @@ RGFWDEF RGFW_monitor RGFW_window_getMonitor(RGFW_window* win);
 /** * @defgroup Input
 * @{ */
 
-/* NOTE(EimaMei): The window is only needed to check inputs. There is no concept
- * of a window being "in" or "out" of focus for most of these. */
+RGFWDEF RGFW_bool RGFW_isPressed(u8 controller, RGFW_button button); /*!< if key is pressed (key code)*/
 
-RGFWDEF RGFW_bool RGFW_isPressed(u8 controller, RGFW_inputButton button); /*!< if key is pressed (key code)*/
+RGFWDEF RGFW_bool RGFW_wasPressed(u8 controller, RGFW_button button); /*!< if key was pressed (checks previous state only) (key code) */
 
-RGFWDEF RGFW_bool RGFW_wasPressed(u8 controller, RGFW_inputButton button); /*!< if key was pressed (checks previous state only) (key code) */
+RGFWDEF RGFW_bool RGFW_isHeld(u8 controller, RGFW_button button); /*!< if key is held (key code) */
+RGFWDEF RGFW_bool RGFW_isReleased(u8 controller, RGFW_button button); /*!< if key is released (key code) */
 
-RGFWDEF RGFW_bool RGFW_isHeld(u8 controller, RGFW_inputButton button); /*!< if key is held (key code) */
-RGFWDEF RGFW_bool RGFW_isReleased(u8 controller, RGFW_inputButton button); /*!< if key is released (key code) */
 
-/* if a key is pressed and then released, pretty much the same as RGFW_isReleased */
-RGFWDEF RGFW_bool RGFW_isClicked(u8 controller, RGFW_inputButton button);
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF ssize_t RGFW_controllerGetCount(void);
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF const char* RGFW_controllerName(RGFW_controllerType type);
 
-/*! if a mouse button is pressed */
-RGFWDEF RGFW_bool RGFW_isMousePressed(RGFW_window* win, RGFW_mouseButton button /*!< mouse button code */ );
-/*! if a mouse button is held */
-RGFWDEF RGFW_bool RGFW_isMouseHeld(RGFW_window* win, RGFW_mouseButton button /*!< mouse button code */ );
-/*! if a mouse button was released */
-RGFWDEF RGFW_bool RGFW_isMouseReleased(RGFW_window* win, RGFW_mouseButton button /*!< mouse button code */ );
-/*! if a mouse button was pressed (checks previous state only) */
-RGFWDEF RGFW_bool RGFW_wasMousePressed(RGFW_window* win, RGFW_mouseButton button /*!< mouse button code */ );
-/** @} */
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF const char* RGFW_buttonName(RGFW_button button);
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF const char* RGFW_axisName(i32 axis);
+
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF const char* RGFW_pointerName(RGFW_pointerType type);
+
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF const char* RGFW_motionName(RGFW_motionType type);
 
 
 /** * @defgroup error handling
@@ -926,79 +938,41 @@ RGFWDEF void RGFW_sendDebugInfo(RGFW_debugType type, RGFW_errorCode err, RGFW_de
 * @{
 */
 
-/*! RGFW_windowMoved, the window and its new rect value  */
-typedef void (* RGFW_windowMovedfunc)(RGFW_window* win, RGFW_rect r);
 /*! RGFW_windowResized, the window and its new rect value  */
 typedef void (* RGFW_windowResizedfunc)(RGFW_window* win, RGFW_rect r);
-/*! RGFW_windowRestored, the window and its new rect value  */
-typedef void (* RGFW_windowRestoredfunc)(RGFW_window* win, RGFW_rect r);
-/*! RGFW_windowMaximized, the window and its new rect value  */
-typedef void (* RGFW_windowMaximizedfunc)(RGFW_window* win, RGFW_rect r);
-/*! RGFW_windowMinimized, the window and its new rect value  */
-typedef void (* RGFW_windowMinimizedfunc)(RGFW_window* win, RGFW_rect r);
 /*! RGFW_quit, the window that was closed */
 typedef void (* RGFW_windowQuitfunc)(RGFW_window* win);
-/*! RGFW_focusIn / RGFW_focusOut, the window who's focus has changed and if its in focus */
-typedef void (* RGFW_focusfunc)(RGFW_window* win, RGFW_bool inFocus);
 /*! RGFW_mouseEnter / RGFW_mouseLeave, the window that changed, the point of the mouse (enter only) and if the mouse has entered */
 typedef void (* RGFW_mouseNotifyfunc)(RGFW_window* win, RGFW_point point, RGFW_bool status);
-/*! RGFW_mousePosChanged, the window that the move happened on, and the new point of the mouse  */
-typedef void (* RGFW_mousePosfunc)(RGFW_window* win, RGFW_point point, RGFW_point vector);
-/*! RGFW_DNDInit, the window, the point of the drop on the windows */
-typedef void (* RGFW_dndInitfunc)(RGFW_window* win, RGFW_point point);
-/*! RGFW_windowRefresh, the window that needs to be refreshed */
-typedef void (* RGFW_windowRefreshfunc)(RGFW_window* win);
-/*! RGFW_keyPressed / RGFW_keyReleased, the window that got the event, the mapped key, the physical key, the string version, the state of the mod keys, if it was a press (else it's a release) */
-typedef void (* RGFW_keyfunc)(RGFW_window* win, u8 key, u8 keyChar, RGFW_keymod keyMod, RGFW_bool pressed);
-/*! RGFW_mouseButtonPressed / RGFW_mouseButtonReleased, the window that got the event, the button that was pressed, the scroll value, if it was a press (else it's a release)  */
-typedef void (* RGFW_mouseButtonfunc)(RGFW_window* win, RGFW_mouseButton button, double scroll, RGFW_bool pressed);
-/*! RGFW_gamepadButtonPressed, the window that got the event, the button that was pressed, the scroll value, if it was a press (else it's a release) */
-typedef void (* RGFW_inputButtonfunc)(RGFW_window* win, u16 gamepad, u8 button, RGFW_bool pressed);
-/*! RGFW_gamepadAxisMove, the window that got the event, the gamepad in question, the axis values and the axis count */
-typedef void (* RGFW_gamepadAxisfunc)(RGFW_window* win, u16 gamepad, RGFW_point axis[2], u8 axisesCount, u8 whichAxis);
-/*! RGFW_gamepadConnected / RGFW_gamepadDisconnected, the window that got the event, the gamepad in question, if the controller was connected (else it was disconnected) */
-typedef void (* RGFW_gamepadfunc)(RGFW_window* win, u16 gamepad, RGFW_bool connected);
-/*! RGFW_dnd, the window that had the drop, the drop data and the number of files dropped */
-typedef void (* RGFW_dndfunc)(RGFW_window* win, char** droppedFiles, size_t droppedFilesCount);
-/*! RGFW_scaleUpdated, the window the event was sent to, content scaleX, content scaleY */
-typedef void (* RGFW_scaleUpdatedfunc)(RGFW_window* win, float scaleX, float scaleY);
+/*! RGFW_buttonPressed, the window that got the event, the button that was pressed, the scroll value, if it was a press (else it's a release) */
+typedef void (* RGFW_buttonfunc)(RGFW_window* win, ssize_t controller, RGFW_button button, RGFW_bool pressed);
+/*! RGFW_controllerAxisMove, the window that got the event, the controller in question, the axis values and the axis count */
+typedef void (* RGFW_controllerAxisfunc)(RGFW_window* win, ssize_t controller, ssize_t whichAxis);
+/* TODO(EimaMei): NEW FUNCTION. */
+typedef void (* RGFW_pointerMovefunc)(RGFW_window* win, ssize_t pointer, RGFW_point point);
+/*! RGFW_controllerConnected / RGFW_controllerDisconnected, the window that got the event, the controller in question, if the controller was connected (else it was disconnected) */
+typedef void (* RGFW_controllerfunc)(RGFW_window* win, u16 controller, RGFW_bool connected);
 
-/*! set callback for a window move event. Returns previous callback function (if it was set)  */
-RGFWDEF RGFW_windowMovedfunc RGFW_setWindowMovedCallback(RGFW_windowMovedfunc func);
 /*! set callback for a window resize event. Returns previous callback function (if it was set)  */
 RGFWDEF RGFW_windowResizedfunc RGFW_setWindowResizedCallback(RGFW_windowResizedfunc func);
 /*! set callback for a window quit event. Returns previous callback function (if it was set)  */
 RGFWDEF RGFW_windowQuitfunc RGFW_setWindowQuitCallback(RGFW_windowQuitfunc func);
-/*! set callback for a mouse move event. Returns previous callback function (if it was set)  */
-RGFWDEF RGFW_mousePosfunc RGFW_setMousePosCallback(RGFW_mousePosfunc func);
-/*! set callback for a window refresh event. Returns previous callback function (if it was set)  */
-RGFWDEF RGFW_windowRefreshfunc RGFW_setWindowRefreshCallback(RGFW_windowRefreshfunc func);
-/*! set callback for a window focus change event. Returns previous callback function (if it was set)  */
-RGFWDEF RGFW_focusfunc RGFW_setFocusCallback(RGFW_focusfunc func);
 /*! set callback for a mouse notify event. Returns previous callback function (if it was set)  */
 RGFWDEF RGFW_mouseNotifyfunc RGFW_setMouseNotifyCallback(RGFW_mouseNotifyfunc func);
-/*! set callback for a drop event event. Returns previous callback function (if it was set)  */
-RGFWDEF RGFW_dndfunc RGFW_setDndCallback(RGFW_dndfunc func);
-/*! set callback for a start of a drop event. Returns previous callback function (if it was set)  */
-RGFWDEF RGFW_dndInitfunc RGFW_setDndInitCallback(RGFW_dndInitfunc func);
-/*! set callback for a key (press / release) event. Returns previous callback function (if it was set)  */
-RGFWDEF RGFW_keyfunc RGFW_setKeyCallback(RGFW_keyfunc func);
-/*! set callback for a mouse button (press / release) event. Returns previous callback function (if it was set)  */
-RGFWDEF RGFW_mouseButtonfunc RGFW_setMouseButtonCallback(RGFW_mouseButtonfunc func);
 /*! set callback for a controller button (press / release) event. Returns previous callback function (if it was set)  */
-RGFWDEF RGFW_inputButtonfunc RGFW_setInputButtonCallback(RGFW_inputButtonfunc func);
-/*! set callback for a gamepad axis move event. Returns previous callback function (if it was set)  */
-RGFWDEF RGFW_gamepadAxisfunc RGFW_setGamepadAxisCallback(RGFW_gamepadAxisfunc func);
+RGFWDEF RGFW_buttonfunc RGFW_setButtonCallback(RGFW_buttonfunc func);
+/*! set callback for a controller axis move event. Returns previous callback function (if it was set)  */
+RGFWDEF RGFW_controllerAxisfunc RGFW_setControllerAxisCallback(RGFW_controllerAxisfunc func);
+/* TODO(EimaMei): NEW FUNCTION. */
+RGFWDEF RGFW_pointerMovefunc RGFW_setPointerMoveCallback(RGFW_pointerMovefunc func);
 /*! set callback for when a controller is connected or disconnected. Returns the previous callback function (if it was set) */
-RGFWDEF RGFW_gamepadfunc RGFW_setGamepadCallback(RGFW_gamepadfunc func);
+RGFWDEF RGFW_controllerfunc RGFW_setControllerCallback(RGFW_controllerfunc func);
 /*! set call back for when window is maximized. Returns the previous callback function (if it was set) */
 RGFWDEF RGFW_windowResizedfunc RGFW_setWindowMaximizedCallback(RGFW_windowResizedfunc func);
 /*! set call back for when window is minimized. Returns the previous callback function (if it was set) */
 RGFWDEF RGFW_windowResizedfunc RGFW_setWindowMinimizedCallback(RGFW_windowResizedfunc func);
 /*! set call back for when window is restored. Returns the previous callback function (if it was set) */
 RGFWDEF RGFW_windowResizedfunc RGFW_setWindowRestoredCallback(RGFW_windowResizedfunc func);
-/*! set callback for when the DPI changes. Returns previous callback function (if it was set)  */
-RGFWDEF RGFW_scaleUpdatedfunc RGFW_setScaleUpdatedCallback(RGFW_scaleUpdatedfunc func);
 /** @} */
 
 
@@ -1257,11 +1231,9 @@ typedef RGFW_ENUM(u8, RGFW_key) {
 
 
 /*! converts api keycode to the RGFW unmapped/physical key */
-RGFWDEF RGFW_inputButton RGFW_apiKeyToRGFW(u32 keycode);
+RGFWDEF RGFW_button RGFW_apiKeyToRGFW(u32 keycode);
 /*! converts RGFW keycode to the unmapped/physical api key */
-RGFWDEF u32 RGFW_rgfwToApiKey(RGFW_inputButton keycode);
-/* TODO(EimaMei): New function. */
-RGFWDEF const char* RGFW_buttonGetName(RGFW_inputButton button);
+RGFWDEF u32 RGFW_rgfwToApiKey(RGFW_button keycode);
 
 
 typedef RGFW_ENUM(u8, RGFW_mouseIcons) {
@@ -1298,7 +1270,10 @@ RGFWDEF void RGFW_deinit(void); /*!< is called by default when the last open win
 RGFWDEF void* RGFW_init_heap(void); /*!< inits RGFW on the heap instead of in a global var */
 RGFWDEF void RGFW_deinit_heap(void); /*!< deinits the heap instance */
 
-struct __IOHIDDevice;
+typedef struct {
+	RGFW_bool current  : 1;
+	RGFW_bool prev  : 1;
+} RGFW_keyState;
 
 #if !defined(RGFW_NO_INFO) || defined(RGFW_IMPLEMENTATION)
 typedef struct RGFW_info {
@@ -1311,21 +1286,26 @@ typedef struct RGFW_info {
     RGFW_mouse* hiddenMouse;
     RGFW_event events[RGFW_MAX_EVENTS];
 
-    u32 apiKeycodes[RGFW_keyLast];
 	/* TODO(EimaMei): Decide what to do with keycodes. */
-    /* u8 keycodes[RGFW_OS_BASED_VALUE(256, 512, 128, 256)]; */
+	#if RGFW_HAS_KEYBOARD_SUPPORT
+    u32 apiKeycodes[RGFW_keyLast];
+	/* u8 keycodes[RGFW_OS_BASED_VALUE(256, 512, 128, 256)]; */
+	#endif
 
-    /* gamepad data */
-    RGFW_point inputAxes[RGFW_MAX_INPUT_DEVICES][4]; /*!< if a key is currently pressed or not (per gamepad) */
-    RGFW_inputType input_type[RGFW_MAX_INPUT_DEVICES]; /*!< if a key is currently pressed or not (per gamepad) */
-    i32 inputs[RGFW_MAX_INPUT_DEVICES];
-	/* TODOEimaMei): Should this be disabled for certain platforms? Or should
-	 * the implementation just memcopy whatever's appropriate? */
-    char inputs_name[RGFW_MAX_INPUT_DEVICES][128]; /*!< gamepad names */
-    u16 inputCount; /*!< the actual amount of gamepads */
+    /* controller data */
+	ssize_t controllerCount; /*!< the actual amount of controllers */
+	RGFW_controllerType controllerType[RGFW_MAX_CONTROLLER_DEVICES]; /*!< if a key is currently pressed or not (per controller) */
+	RGFW_keyState controllerButtons[RGFW_MAX_CONTROLLER_DEVICES][RGFW_MAX_BUTTON_COUNT]; /*!< if a key is currently pressed or not (per controller) */
+    RGFW_axis controllerAxes[RGFW_MAX_CONTROLLER_DEVICES][RGFW_MAX_AXIS_COUNT]; /*!< if a key is currently pressed or not (per controller) */
 
     RGFW_bool stopCheckEvents_bool;
     u64 timerOffset;
+
+#if RGFW_3DS
+	RGFW_bool check;
+	u32 pressed, released;
+	circlePosition cpad;
+#endif
 } RGFW_info;
 
 RGFWDEF i32 RGFW_init_ptr(RGFW_info* info); /*!< init RGFW, storing the data at the pointer */
@@ -1340,39 +1320,6 @@ RGFW_info* _RGFW = NULL;
 void RGFW_setInfo(RGFW_info* info) { _RGFW = info; }
 RGFW_info* RGFW_getInfo(void) { return _RGFW; }
 
-RGFW_debugfunc RGFW_debugCallback = NULL;
-RGFW_debugfunc RGFW_setDebugCallback(RGFW_debugfunc func) {
-	RGFW_debugfunc RGFW_debugCallbackPrev = RGFW_debugCallback;
-	RGFW_debugCallback = func;
-	return RGFW_debugCallbackPrev;
-}
-
-#ifdef RGFW_DEBUG
-#include <stdio.h>
-#endif
-
-void RGFW_sendDebugInfo(RGFW_debugType type, RGFW_errorCode err, RGFW_debugContext ctx, const char* msg) {
-	if (RGFW_debugCallback) RGFW_debugCallback(type, err, ctx, msg);
-
-    #ifdef RGFW_DEBUG
-	switch (type) {
-		case RGFW_typeInfo: RGFW_PRINTF("RGFW INFO (%i %i): %s", type, err, msg); break;
-		case RGFW_typeError: RGFW_PRINTF("RGFW DEBUG (%i %i): %s", type, err, msg); break;
-		case RGFW_typeWarning: RGFW_PRINTF("RGFW WARNING (%i %i): %s", type, err, msg); break;
-		default: break;
-	}
-
-	switch (err) {
-		#ifdef RGFW_BUFFER
-		case RGFW_errBuffer: case RGFW_infoBuffer: RGFW_PRINTF(" buffer size: %i %i\n", ctx.win->bufferSize.w, ctx.win->bufferSize.h); break;
-		#endif
-		case RGFW_infoMonitor: RGFW_PRINTF(": scale (%s):\n   rect: {%i, %i, %i, %i}\n   physical size:%f %f\n   scale: %f %f\n   pixelRatio: %f\n   refreshRate: %i\n   depth: %i\n", ctx.monitor->name, ctx.monitor->x, ctx.monitor->y, ctx.monitor->mode.area.w, ctx.monitor->mode.area.h, ctx.monitor->physW, ctx.monitor->physH, ctx.monitor->scaleX, ctx.monitor->scaleY, ctx.monitor->pixelRatio, ctx.monitor->mode.refreshRate, ctx.monitor->mode.red + ctx.monitor->mode.green + ctx.monitor->mode.blue); break;
-		case RGFW_infoWindow: RGFW_PRINTF("  with rect of {%i, %i, %i, %i} \n", ctx.win->r.x, ctx.win->r.y,ctx. win->r.w, ctx.win->r.h); break;
-		case RGFW_errDirectXContext: RGFW_PRINTF(" srcError %i\n", ctx.srcError); break;
-		default: RGFW_PRINTF("\n");
-	}
-	#endif
-}
 
 void RGFW_setTime(double time) {
     //_RGFW->timerOffset = RGFW_getTimerValue() - (u64)(time * (double)RGFW_getTimerFreq());
@@ -1399,15 +1346,7 @@ This is the start of keycode data
 	we'll have to do it during runtime using a function & this messy setup
 */
 
-typedef struct {
-	RGFW_bool current  : 1;
-	RGFW_bool prev  : 1;
-} RGFW_keyState;
 
-/* TODO(EimaMei): Figure out what to do with controllers that have more/less buttons
- * than the default input device. */
-RGFW_keyState RGFW_inputDevicesPressed[RGFW_MAX_INPUT_DEVICES][RGFW_inputButtonCount]; /*!< if a key is currently pressed or not (per gamepad) */
-RGFW_keyState RGFW_mouseButtons[RGFW_mouseFinal];
 #if RGFW_HAS_KEYBOARD_SUPPORT
 RGFW_keyState RGFW_keyboard[RGFW_keyLast];
 #endif
@@ -1418,9 +1357,9 @@ RGFWDEF void RGFW_resetKeyPrev(void);
 void RGFW_resetKeyPrev(void) {
 	/* TODO(EimaMei): This feels inneficient to do each frame. Must be resolved. */
 	size_t i, j;
-	for (i = 0; i < RGFW_MAX_INPUT_DEVICES; i += 1) {
-		for (j = 0; j < RGFW_inputButtonCount; j += 1) {
-			RGFW_inputDevicesPressed[i][j].prev = RGFW_FALSE;
+	for (i = 0; i < RGFW_MAX_CONTROLLER_DEVICES; i += 1) {
+		for (j = 0; j < RGFW_MAX_BUTTON_COUNT; j += 1) {
+			_RGFW->controllerButtons[i][j].prev = RGFW_FALSE;
 		}
 	}
 }
@@ -1432,60 +1371,65 @@ void RGFW_resetKeyPrev(void) {
 /*
 	event callback defines start here
 */
-
-
-/*
-	These exist to avoid the
-	if (func == NULL) check
-	for (allegedly) better performance
-
-	RGFW_EMPTY_DEF exists to prevent the missing-prototypes warning
-*/
-static void RGFW_windowMovedfuncEMPTY(RGFW_window* win, RGFW_rect r) { RGFW_UNUSED(win); RGFW_UNUSED(r); }
-static void RGFW_windowResizedfuncEMPTY(RGFW_window* win, RGFW_rect r) { RGFW_UNUSED(win); RGFW_UNUSED(r); }
-static void RGFW_windowRestoredfuncEMPTY(RGFW_window* win, RGFW_rect r) { RGFW_UNUSED(win); RGFW_UNUSED(r); }
-static void RGFW_windowMinimizedfuncEMPTY(RGFW_window* win, RGFW_rect r) { RGFW_UNUSED(win); RGFW_UNUSED(r); }
-static void RGFW_windowMaximizedfuncEMPTY(RGFW_window* win, RGFW_rect r) { RGFW_UNUSED(win); RGFW_UNUSED(r); }
-static void RGFW_windowQuitfuncEMPTY(RGFW_window* win) { RGFW_UNUSED(win); }
-static void RGFW_focusfuncEMPTY(RGFW_window* win, RGFW_bool inFocus) {RGFW_UNUSED(win); RGFW_UNUSED(inFocus);}
-static void RGFW_mouseNotifyfuncEMPTY(RGFW_window* win, RGFW_point point, RGFW_bool status) {RGFW_UNUSED(win); RGFW_UNUSED(point); RGFW_UNUSED(status);}
-static void RGFW_mousePosfuncEMPTY(RGFW_window* win, RGFW_point point, RGFW_point vector) {RGFW_UNUSED(win); RGFW_UNUSED(point); RGFW_UNUSED(vector);}
-static void RGFW_dndInitfuncEMPTY(RGFW_window* win, RGFW_point point) {RGFW_UNUSED(win); RGFW_UNUSED(point);}
-static void RGFW_windowRefreshfuncEMPTY(RGFW_window* win) {RGFW_UNUSED(win); }
-static void RGFW_keyfuncEMPTY(RGFW_window* win, RGFW_key key, u8 keyChar, RGFW_keymod keyMod, RGFW_bool pressed) {RGFW_UNUSED(win); RGFW_UNUSED(key); RGFW_UNUSED(keyChar); RGFW_UNUSED(keyMod); RGFW_UNUSED(pressed);}
-static void RGFW_mouseButtonfuncEMPTY(RGFW_window* win, RGFW_mouseButton button, double scroll, RGFW_bool pressed) {RGFW_UNUSED(win); RGFW_UNUSED(button); RGFW_UNUSED(scroll); RGFW_UNUSED(pressed);}
-static void RGFW_inputButtonfuncEMPTY(RGFW_window* win, u16 gamepad, u8 button, RGFW_bool pressed) {RGFW_UNUSED(win); RGFW_UNUSED(gamepad); RGFW_UNUSED(button); RGFW_UNUSED(pressed); }
-static void RGFW_gamepadAxisfuncEMPTY(RGFW_window* win, u16 gamepad, RGFW_point axis[2], u8 axisesCount, u8 whichAxis) {RGFW_UNUSED(win); RGFW_UNUSED(gamepad); RGFW_UNUSED(axis); RGFW_UNUSED(axisesCount); RGFW_UNUSED(whichAxis); }
-static void RGFW_gamepadfuncEMPTY(RGFW_window* win, u16 gamepad, RGFW_bool connected) {RGFW_UNUSED(win); RGFW_UNUSED(gamepad); RGFW_UNUSED(connected);}
-static void RGFW_dndfuncEMPTY(RGFW_window* win, char** droppedFiles, size_t droppedFilesCount) {RGFW_UNUSED(win); RGFW_UNUSED(droppedFiles); RGFW_UNUSED(droppedFilesCount);}
-static void RGFW_scaleUpdatedfuncEMPTY(RGFW_window* win, float scaleX, float scaleY) {RGFW_UNUSED(win); RGFW_UNUSED(scaleX); RGFW_UNUSED(scaleY); }
-
 #define RGFW_CALLBACK_DEFINE(x, x2) \
-RGFW_##x##func RGFW_##x##Callback = RGFW_##x##funcEMPTY; \
+RGFW_##x##func RGFW_##x##CallbackSrc = NULL; \
 RGFW_##x##func RGFW_set##x2##Callback(RGFW_##x##func func) { \
-    RGFW_##x##func prev = RGFW_##x##Callback; \
-    RGFW_##x##Callback = func; \
+    RGFW_##x##func prev = RGFW_##x##CallbackSrc; \
+    RGFW_##x##CallbackSrc = func; \
     return prev; \
 }
-RGFW_CALLBACK_DEFINE(windowMaximized, WindowMaximized)
-RGFW_CALLBACK_DEFINE(windowMinimized, WindowMinimized)
-RGFW_CALLBACK_DEFINE(windowRestored, WindowRestored)
-RGFW_CALLBACK_DEFINE(windowMoved, WindowMoved)
+
 RGFW_CALLBACK_DEFINE(windowResized, WindowResized)
+#define RGFW_windowResizedCallback(w, r) if (RGFW_windowResizedCallbackSrc) RGFW_windowResizedCallbackSrc(w, r)
+
 RGFW_CALLBACK_DEFINE(windowQuit, WindowQuit)
-RGFW_CALLBACK_DEFINE(mousePos, MousePos)
-RGFW_CALLBACK_DEFINE(windowRefresh, WindowRefresh)
-RGFW_CALLBACK_DEFINE(focus, Focus)
+#define RGFW_windowQuitCallback(w) if (RGFW_windowQuitCallbackSrc) RGFW_windowQuitCallbackSrc(w)
+
 RGFW_CALLBACK_DEFINE(mouseNotify, MouseNotify)
-RGFW_CALLBACK_DEFINE(dnd, Dnd)
-RGFW_CALLBACK_DEFINE(dndInit, DndInit)
-RGFW_CALLBACK_DEFINE(key, Key)
-RGFW_CALLBACK_DEFINE(mouseButton, MouseButton)
-RGFW_CALLBACK_DEFINE(inputButton, InputButton)
-RGFW_CALLBACK_DEFINE(gamepadAxis, GamepadAxis)
-RGFW_CALLBACK_DEFINE(gamepad, Gamepad)
-RGFW_CALLBACK_DEFINE(scaleUpdated, ScaleUpdated)
+#define RGFW_mouseNotifyCallback(w, p, status) if (RGFW_mouseNotifyCallbackSrc) RGFW_mouseNotifyCallbackSrc(w, p, status)
+
+RGFW_CALLBACK_DEFINE(button, Button)
+#define RGFW_buttonCallback(w, controller, button, press) if (RGFW_buttonCallbackSrc) RGFW_buttonCallbackSrc(w, controller, button, press)
+
+RGFW_CALLBACK_DEFINE(controllerAxis, ControllerAxis)
+#define RGFW_controllerAxisCallback(w, controller, whichAxis) if (RGFW_controllerAxisCallbackSrc) RGFW_controllerAxisCallbackSrc(w, controller, whichAxis)
+
+RGFW_CALLBACK_DEFINE(pointerMove, PointerMove)
+#define RGFW_pointerMoveCallback(w, pointer, point) if (RGFW_pointerMoveCallbackSrc) RGFW_pointerMoveCallbackSrc(w, pointer, point)
+
+RGFW_CALLBACK_DEFINE(controller, Controller)
+#define RGFW_controllerCallback(w, controller, connected) if (RGFW_controllerCallbackSrc) RGFW_controllerCallbackSrc(w, controller, connected)
+
+RGFW_CALLBACK_DEFINE(debug, Debug)
+#define RGFW_debugCallback(type, err, ctx, msg) if (RGFW_debugCallbackSrc) RGFW_debugCallbackSrc(type, err, ctx, msg)
 #undef RGFW_CALLBACK_DEFINE
+
+#ifdef RGFW_DEBUG
+#include <stdio.h>
+#endif
+
+void RGFW_sendDebugInfo(RGFW_debugType type, RGFW_errorCode err, RGFW_debugContext ctx, const char* msg) {
+	RGFW_debugCallback(type, err, ctx, msg);
+
+    #ifdef RGFW_DEBUG
+	switch (type) {
+		case RGFW_typeInfo: RGFW_PRINTF("RGFW INFO (%i %i): %s", type, err, msg); break;
+		case RGFW_typeError: RGFW_PRINTF("RGFW DEBUG (%i %i): %s", type, err, msg); break;
+		case RGFW_typeWarning: RGFW_PRINTF("RGFW WARNING (%i %i): %s", type, err, msg); break;
+		default: break;
+	}
+
+	switch (err) {
+		#ifdef RGFW_BUFFER
+		case RGFW_errBuffer: case RGFW_infoBuffer: RGFW_PRINTF(" buffer size: %i %i\n", ctx.win->bufferSize.w, ctx.win->bufferSize.h); break;
+		#endif
+		case RGFW_infoMonitor: RGFW_PRINTF(": scale (%s):\n   rect: {%i, %i, %i, %i}\n   physical size:%f %f\n   scale: %f %f\n   pixelRatio: %f\n   refreshRate: %i\n   depth: %i\n", ctx.monitor->name, ctx.monitor->x, ctx.monitor->y, ctx.monitor->mode.area.w, ctx.monitor->mode.area.h, ctx.monitor->physW, ctx.monitor->physH, ctx.monitor->scaleX, ctx.monitor->scaleY, ctx.monitor->pixelRatio, ctx.monitor->mode.refreshRate, ctx.monitor->mode.red + ctx.monitor->mode.green + ctx.monitor->mode.blue); break;
+		case RGFW_infoWindow: RGFW_PRINTF("  with rect of {%i, %i} \n", ctx.win->r.w, ctx.win->r.h); break;
+		case RGFW_errDirectXContext: RGFW_PRINTF(" srcError %i\n", ctx.srcError); break;
+		default: RGFW_PRINTF("\n");
+	}
+	#endif
+}
 
 void RGFW_window_checkEvents(RGFW_window* win, i32 waitMS) {
 	RGFW_window_eventWait(win, waitMS);
@@ -1770,38 +1714,31 @@ void RGFW_window_initBufferSize(RGFW_window* win, RGFW_area area) {
 #endif
 }
 
-RGFW_bool RGFW_isPressed(u8 controller, RGFW_inputButton button) {
-	RGFW_ASSERT(controller < RGFW_MAX_INPUT_DEVICES);
-	RGFW_ASSERT(button >= 0 && button < RGFW_inputButtonCount);
-	return RGFW_inputDevicesPressed[controller][button].current;
+RGFW_bool RGFW_isPressed(u8 controller, RGFW_button button) {
+	RGFW_ASSERT(controller < RGFW_MAX_CONTROLLER_DEVICES);
+	RGFW_ASSERT(button >= 0 && button < RGFW_MAX_BUTTON_COUNT);
+	return _RGFW->controllerButtons[controller][button].current;
 }
 
-RGFW_bool RGFW_wasPressed(u8 controller, RGFW_inputButton button) {
-	RGFW_ASSERT(controller < RGFW_MAX_INPUT_DEVICES);
-	RGFW_ASSERT(button >= 0 && button < RGFW_inputButtonCount);
-	return RGFW_inputDevicesPressed[controller][button].prev;
+RGFW_bool RGFW_wasPressed(u8 controller, RGFW_button button) {
+	RGFW_ASSERT(controller < RGFW_MAX_CONTROLLER_DEVICES);
+	RGFW_ASSERT(button >= 0 && button < RGFW_MAX_BUTTON_COUNT);
+	return _RGFW->controllerButtons[controller][button].prev;
 }
 
-RGFW_bool RGFW_isHeld(u8 controller, RGFW_inputButton button) {
+RGFW_bool RGFW_isHeld(u8 controller, RGFW_button button) {
 	return RGFW_isPressed(controller, button) && RGFW_wasPressed(controller, button);
 }
 
-RGFW_bool RGFW_isReleased(u8 controller, RGFW_inputButton button) {
+RGFW_bool RGFW_isReleased(u8 controller, RGFW_button button) {
 	return !RGFW_isPressed(controller, button) && RGFW_wasPressed(controller, button);
 }
 
-RGFW_bool RGFW_isMousePressed(RGFW_window* win, RGFW_mouseButton button) {
-	return RGFW_mouseButtons[button].current && (win == NULL || RGFW_window_isInFocus(win));
+ssize_t RGFW_controllerGetCount(void) {
+	return _RGFW->controllerCount;
 }
-RGFW_bool RGFW_wasMousePressed(RGFW_window* win, RGFW_mouseButton button) {
-	return RGFW_mouseButtons[button].prev && (win != NULL || RGFW_window_isInFocus(win));
-}
-RGFW_bool RGFW_isMouseHeld(RGFW_window* win, RGFW_mouseButton button) {
-	return (RGFW_isMousePressed(win, button) && RGFW_wasMousePressed(win, button));
-}
-RGFW_bool RGFW_isMouseReleased(RGFW_window* win, RGFW_mouseButton button) {
-	return (!RGFW_isMousePressed(win, button) && RGFW_wasMousePressed(win, button));
-}
+
+
 
 RGFW_point RGFW_window_getMousePoint(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
@@ -2133,7 +2070,7 @@ i32* RGFW_initFormatAttribs(void) {
 
 	PFNEGLINITIALIZEPROC eglInitializeSource;
 	PFNEGLGETCONFIGSPROC eglGetConfigsSource;
-	PFNEGLCHOOSECONFIgamepadROC eglChooseConfigSource;
+	PFNEGLCHOOSECONFIcontrollerROC eglChooseConfigSource;
 	PFNEGLCREATEWINDOWSURFACEPROC eglCreateWindowSurfaceSource;
 	PFNEGLCREATECONTEXTPROC eglCreateContextSource;
 	PFNEGLMAKECURRENTPROC eglMakeCurrentSource;
@@ -2440,13 +2377,13 @@ Start of 3DS
 
 #ifdef RGFW_3DS
 
-#include <3ds.h>
-
 #define RGFW_ACCEPTED_CTRU_INPUTS \
 	(KEY_A | KEY_B | KEY_SELECT | KEY_START | KEY_DRIGHT | KEY_DLEFT | KEY_DUP | KEY_DDOWN | \
-	KEY_R | KEY_L | KEY_X | KEY_Y | KEY_ZL | KEY_ZR | KEY_TOUCH | \
-	KEY_CPAD_RIGHT | KEY_CPAD_LEFT | KEY_CPAD_UP | KEY_CPAD_DOWN)
+	KEY_R | KEY_L | KEY_X | KEY_Y | KEY_ZL | KEY_ZR | \
+	KEY_CSTICK_RIGHT | KEY_CSTICK_LEFT | KEY_CSTICK_UP | KEY_CSTICK_DOWN)
 
+#define RGFW_CPAD_BITS_H (KEY_CPAD_LEFT | KEY_CPAD_RIGHT)
+#define RGFW_CPAD_BITS_V (KEY_CPAD_UP   | KEY_CPAD_DOWN )
 
 #ifndef RGFW_IMPL_COUNT_TRAILING_ZEROES
 
@@ -2462,60 +2399,19 @@ i32 RGFW_countTrailingZeros(u32 x) {
 #endif
 
 
+const char* RGFW_controllerName(RGFW_controllerType type) {
+	RGFW_ASSERT(type >= 0 && type < RGFW_controllerTypeCount);
 
-RGFW_inputButton RGFW_apiKeyToRGFW(u32 keycode) {
-	/* TODO(EimaMei): Figure out if this functions should work with keyboards
-	 * or not. */
-	/* TODO(EimaMei): Add a check to see if the keycode is base-2. */
-	RGFW_ASSERT(RGFW_HAS_KEYBOARD_SUPPORT == 0);
-	if ((keycode & RGFW_ACCEPTED_CTRU_INPUTS) == 0) { return RGFW_inputButtonInvalid; }
-
-	i32 count = RGFW_countTrailingZeros(keycode);
-	switch (count) {
-		case 14: return RGFW_ZL;
-		case 15: return RGFW_ZR;
-		case 20: return RGFW_Touch;
-	}
-	if (keycode > KEY_TOUCH) { count -= 7; }
-
-	return count;
-}
-
-u32 RGFW_rgfwToApiKey(RGFW_inputButton keycode) {
-	/* TODO(EimaMei): Figure out if this functions should work with keyboards
-	 * or not. */
-	RGFW_ASSERT(RGFW_HAS_KEYBOARD_SUPPORT == 0);
-	RGFW_ASSERT(keycode >= 0 && keycode < RGFW_inputButtonCount);
-
-	static const u32 CTRU_RGFW_KEY_LUT[RGFW_inputButtonCount] = {
-		KEY_A,
-		KEY_B,
-		KEY_SELECT,
-		KEY_START,
-		KEY_DRIGHT,
-		KEY_DLEFT,
-		KEY_DUP,
-		KEY_DDOWN,
-		KEY_R,
-		KEY_L,
-		KEY_X,
-		KEY_Y,
-		KEY_ZL,
-		KEY_ZR,
-		KEY_TOUCH,
-		KEY_CPAD_RIGHT,
-		KEY_CPAD_LEFT,
-		KEY_CPAD_UP,
-		KEY_CPAD_DOWN
+	static const char* NAME_LUT[RGFW_controllerTypeCount] = {
+		"Standard Nintendo 3DS Controller Layout"
 	};
-
-	return CTRU_RGFW_KEY_LUT[keycode];
+	return NAME_LUT[type];
 }
 
-const char* RGFW_buttonGetName(RGFW_inputButton button) {
-	RGFW_ASSERT(button >= 0 && button < RGFW_inputButtonCount);
+const char* RGFW_buttonName(RGFW_button button) {
+	RGFW_ASSERT(button >= 0 && button < RGFW_controllerButtonCount);
 
-	static const char* NAME_LUT[RGFW_inputButtonCount] = {
+	static const char* NAME_LUT[RGFW_controllerButtonCount] = {
 		"A",
 		"B",
 		"Select",
@@ -2530,13 +2426,93 @@ const char* RGFW_buttonGetName(RGFW_inputButton button) {
 		"Y",
 		"ZL",
 		"ZR",
-		"Touch",
-		"C-Pad Right",
-		"C-Pad Left",
-		"C-Pad Up",
-		"C-pad Down"
+		"C-Stick Right",
+		"C-Stick Left",
+		"C-Stick Up",
+		"C-Stick Down"
 	};
 	return NAME_LUT[button];
+}
+
+const char* RGFW_axisName(i32 axis) {
+	RGFW_ASSERT(axis >= 0 && axis < RGFW_MAX_AXIS_COUNT);
+
+	static const char* NAME_LUT[RGFW_MAX_AXIS_COUNT] = {
+		"Circle-Pad X Axis", "Circle-Pad Y Axis",
+		//"Circle-Pad Pro X"
+	};
+	return NAME_LUT[axis];
+}
+
+
+const char* RGFW_pointerName(RGFW_pointerType type) {
+	RGFW_ASSERT(type >= 0 && type < RGFW_pointerTypeCount);
+
+	static const char* NAME_LUT[RGFW_pointerTypeCount] = {
+		"Touchscreen"
+	};
+	return NAME_LUT[type];
+}
+
+const char* RGFW_motionName(RGFW_motionType type) {
+	RGFW_ASSERT(type >= 0 && type < RGFW_motionTypeCount);
+
+	static const char* NAME_LUT[RGFW_motionTypeCount] = {
+		"Accelerometer",
+		"Gyroscope"
+	};
+	return NAME_LUT[type];
+}
+
+
+RGFW_button RGFW_apiKeyToRGFW(u32 keycode) {
+	/* TODO(EimaMei): Figure out if this functions should work with keyboards
+	 * or not. */
+	RGFW_ASSERT(RGFW_HAS_KEYBOARD_SUPPORT == 0);
+
+	keycode &= RGFW_ACCEPTED_CTRU_INPUTS;
+	if (keycode == 0) { return RGFW_buttonInvalid; }
+
+	RGFW_button button = RGFW_countTrailingZeros(keycode);
+	switch (button) {
+		case 14: return RGFW_ZL;
+		case 15: return RGFW_ZR;
+	}
+	if (button >= 24) { button -= 10; }
+
+	RGFW_ASSERT(button >= 0 && button < RGFW_controllerButtonCount);
+
+	return button;
+}
+
+u32 RGFW_rgfwToApiKey(RGFW_button button) {
+	/* TODO(EimaMei): Figure out if this functions should work with keyboards
+	 * or not. */
+	RGFW_ASSERT(RGFW_HAS_KEYBOARD_SUPPORT == 0);
+	RGFW_ASSERT(button >= 0 && button < RGFW_controllerButtonCount);
+
+	static const u32 CTRU_RGFW_KEY_LUT[RGFW_controllerButtonCount] = {
+		KEY_A,
+		KEY_B,
+		KEY_SELECT,
+		KEY_START,
+		KEY_DRIGHT,
+		KEY_DLEFT,
+		KEY_DUP,
+		KEY_DDOWN,
+		KEY_R,
+		KEY_L,
+		KEY_X,
+		KEY_Y,
+		KEY_ZL,
+		KEY_ZR,
+		KEY_CSTICK_RIGHT,
+		KEY_CSTICK_LEFT,
+		KEY_CSTICK_UP,
+		KEY_CSTICK_DOWN
+	};
+
+	return CTRU_RGFW_KEY_LUT[button];
 }
 
 void RGFW_window_initBufferPtr(RGFW_window* win, u8* buffer, RGFW_area area) {
@@ -2615,11 +2591,15 @@ void RGFW_window_freeOpenGL(RGFW_window* win) {
 
 
 i32 RGFW_initPlatform(void) {
+	_RGFW->controllerCount = 1;
+
     return 0;
 }
 
 RGFW_window* RGFW_createWindowPtr(RGFW_area area, RGFW_windowFlags flags, RGFW_window* win) {
 	RGFW_window_basic_init(win, area, flags);
+
+	return win;
 }
 
 RGFW_area RGFW_getScreenSize(void) {
@@ -2632,23 +2612,27 @@ RGFW_point RGFW_getGlobalMousePoint(void) {
 
 
 RGFW_event* RGFW_window_checkEvent(RGFW_window* win) {
+	RGFW_ASSERT(win != NULL);
 
-    if (win == NULL || ((win->_flags & RGFW_windowFreeOnClose) && (win->_flags & RGFW_EVENT_QUIT))) return NULL;
-    RGFW_event* ev = RGFW_window_checkEventCore(win);
-	if (ev) return ev;
+	if ((win->_flags & RGFW_windowFreeOnClose) && (win->_flags & RGFW_EVENT_QUIT)) {
+		return NULL;
+	}
+
+	RGFW_event* ev = RGFW_window_checkEventCore(win);
+	if (ev) {
+		return ev;
+	}
 	ev = &win->event;
 
-	static bool check = false;
-	static u32 pressed, released;
-	/* NOTE(EimaMei): Annoyingly we're pretty much forced to use libctru for
-	 * pretty much everything as it's pretty much impossible to access any
-	 * of the internals or required memory regions without modifying the source
-	 * files. */
-	if (check == false) {
+	/* TODO(EimaMei): devkitPro actually gives you access to 'hidSharedMem' and
+	 * 'hidMemHandle', allowing you to manage input yourself. Might have to take
+	 * a better look at it. */
+	if (_RGFW->check == false) {
 		hidScanInput();
-		pressed = hidKeysHeld() & RGFW_ACCEPTED_CTRU_INPUTS;
-		released = hidKeysUp() & RGFW_ACCEPTED_CTRU_INPUTS;
-		check = true;
+		hidCircleRead(&_RGFW->cpad);
+		_RGFW->pressed = hidKeysHeld();
+		_RGFW->released = hidKeysUp();
+		_RGFW->check = true;
 
 		if (!aptMainLoop()) {
 			ev->type = RGFW_quit;
@@ -2656,41 +2640,86 @@ RGFW_event* RGFW_window_checkEvent(RGFW_window* win) {
 		}
 	}
 
-	if (pressed) {
-		RGFW_inputButton button = RGFW_apiKeyToRGFW(pressed);
+	if (_RGFW->pressed & (RGFW_CPAD_BITS_H | RGFW_CPAD_BITS_V)) {
+		ev->type = RGFW_controllerAxisMove;
+		ev->input_index = 0;
+
+		i32 value;
+		u32 bits = _RGFW->pressed;
+
+		if (bits & RGFW_CPAD_BITS_H) {
+			bits &= RGFW_CPAD_BITS_H;
+			value = _RGFW->cpad.dx;
+			ev->whichAxis = 0;
+		}
+		else {
+			bits &= RGFW_CPAD_BITS_V;
+			value = _RGFW->cpad.dy;
+			ev->whichAxis = 1;
+		}
+
+		/* NOTE(EimaMei): C-Pad is from -156 to 156. */
+		ev->axis.value    = (i16)(value * INT16_MAX / 156);
+		/* NOTE(EimaMei): I picked '40' as the deadzone based on how the CPAD bits
+		 * are set if the value is equal or larger than 41. (http://3dbrew.org/wiki/HID_Shared_Memory). */
+		ev->axis.deadzone = (40 * INT16_MAX / 156);
+		_RGFW->controllerAxes[0][ev->whichAxis] = ev->axis;
+
+		_RGFW->pressed &= ~bits;
+		RGFW_controllerAxisCallback(win, 0, ev->whichAxis);
+		return ev;
+	}
+
+	if (_RGFW->pressed & RGFW_ACCEPTED_CTRU_INPUTS) {
+		RGFW_button button = RGFW_apiKeyToRGFW(_RGFW->pressed);
+		RGFW_ASSERT(button != -1);
 		u32 ogButton = RGFW_rgfwToApiKey(button);
 
-		ev->type = RGFW_inputButtonPressed;
-		ev->gamepad = RGFW_inputTypeStandard;
-		ev->repeat = (hidKeysDown() & ogButton) == 0;
-		ev->button = (u8)button;
+		ev->type = RGFW_buttonPressed;
+		ev->input_index = 0;
+		ev->button = button;
 
-		RGFW_keyState* state = &RGFW_inputDevicesPressed[ev->gamepad][ev->button];
+		RGFW_keyState* state = &_RGFW->controllerButtons[0][ev->button];
+		ev->repeat = (state->prev == true);
 		state->prev = state->current;
 		state->current = true;
 
-		pressed ^= ogButton;
-		RGFW_inputButtonCallback(win, ev->gamepad, ev->button, true);
+		_RGFW->pressed &= ~ogButton;
+		RGFW_buttonCallback(win, 0, ev->button, true);
 		return ev;
 	}
 
-	if (released) {
-		RGFW_inputButton button = RGFW_apiKeyToRGFW(released);
+	if (_RGFW->released & RGFW_ACCEPTED_CTRU_INPUTS) {
+		RGFW_button button = RGFW_apiKeyToRGFW(_RGFW->released);
 
-		ev->gamepad = RGFW_inputTypeStandard;
-		ev->type = RGFW_inputButtonReleased;
-		ev->button = (u8)button;
+		ev->type        = RGFW_buttonReleased;
+		ev->input_index = 0;
+		ev->button      = (u8)button;
+		ev->repeat      = false;
 
-		RGFW_keyState* state = &RGFW_inputDevicesPressed[ev->gamepad][ev->button];
+		RGFW_keyState* state = &_RGFW->controllerButtons[0][ev->button];
 		state->prev = state->current;
 		state->current = false;
 
-		released ^= RGFW_rgfwToApiKey(button);
-		RGFW_inputButtonCallback(win, ev->gamepad, ev->button, false);
+		_RGFW->released &= ~RGFW_rgfwToApiKey(button);
+		RGFW_buttonCallback(win, 0, ev->button, false);
 		return ev;
 	}
 
-	check = false;
+	if (_RGFW->pressed & KEY_TOUCH) {
+		touchPosition touch;
+		hidTouchRead(&touch);
+
+		ev->type        = RGFW_pointerMove;
+		ev->input_index = 0;
+		ev->point       = RGFW_POINT(touch.px, touch.py);
+
+		_RGFW->pressed &= (u32)~KEY_TOUCH;
+		RGFW_pointerMoveCallback(win, 0, ev->point);
+		return ev;
+	}
+
+	_RGFW->check = false;
 	return NULL;
 }
 
@@ -2818,6 +2847,7 @@ void RGFW_window_show(RGFW_window* win) {
 
 void RGFW_window_close(RGFW_window* win) {
 	/* NOTE(EimaMei): Only do gfxExit if win is the last window. */
+	printf("riley has to fix this.\n");
 }
 
 #endif
