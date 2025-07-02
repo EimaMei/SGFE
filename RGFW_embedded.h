@@ -352,14 +352,7 @@ int main() {
 	/* TODO(EimaMei): Circle Pad Pro support would require this to be 4, but as
 	 * of June 29th 2025 I'm not planning to add support for it anytime soon,
 	 * unless this PR gets merged: https://github.com/devkitPro/libctru/pull/568. */
-	#ifndef RGFW_MAX_AXIS_COUNT
-	#define RGFW_MAX_AXIS_COUNT 2
-	#endif
-	#define RGFW_MAX_MOTION_SENSORS 2
 
-
-	#define RGFW_HAS_POINTER_SUPPORT   1
-	#define RGFW_HAS_MOTION_SUPPORT    1
 	#define RGFW_HAS_KEYBOARD_SUPPORT  0
 	#define RGFW_HAS_MOUSE_SUPPORT     0
 
@@ -439,6 +432,19 @@ typedef RGFW_ENUM(i32, RGFW_controllerType) {
 	RGFW_controllerTypeCount,
 };
 
+typedef RGFW_ENUM(i32, RGFW_axisType) {
+#ifdef RGFW_3DS
+	RGFW_axisTypeLeftX,
+	RGFW_axisTypeLeftY,
+	/* TODO(EimaMei): As of July 2nd 2025 Circle Pad Pro support isn't going to
+	 * be added until this PR gets merged: https://github.com/devkitPro/libctru/pull/568. */
+	/* RGFW_axisTypeRightX,
+	RGFW_axisTypeRightY, */
+#endif
+
+	RGFW_axisTypeCount,
+};
+
 typedef RGFW_ENUM(i32, RGFW_pointerType) {
 #ifdef RGFW_3DS
 	RGFW_pointerTouchscreen,
@@ -494,7 +500,7 @@ typedef RGFW_ENUM(i32, RGFW_button) {
 
 /* TODO(EimaMei): New structure. */
 #ifndef RGFW_point3D
-	typedef struct RGFW_point3D { i32 x, y, z; } RGFW_point3D;
+	typedef struct RGFW_point3D { float x, y, z; } RGFW_point3D;
 #endif
 
 /*! basic rect type, if there's not already a rect type of choice */
@@ -554,35 +560,41 @@ typedef RGFW_ENUM(i32, RGFW_button) {
 	RGFWDEF RGFW_bool RGFW_monitorModeCompare(RGFW_monitorMode mon, RGFW_monitorMode mon2, RGFW_modeRequest request);
 #endif
 
-/* RGFW mouse loading */
-typedef void RGFW_mouse;
-
-/*!< loads mouse icon from bitmap (similar to RGFW_window_setIcon). Icon NOT resized by default */
-RGFWDEF RGFW_mouse* RGFW_loadMouse(u8* icon, RGFW_area a, i32 channels);
-/*!< frees RGFW_mouse data */
-RGFWDEF void RGFW_freeMouse(RGFW_mouse* mouse);
-
-
 typedef struct RGFW_axis {
-	i16 value;
-	i16 deadzone;
+	float value;
+	float deadzone;
 } RGFW_axis;
 
+typedef struct {
+	RGFW_bool current  : 1;
+	RGFW_bool prev  : 1;
+} RGFW_keyState;
+
+/* TODO(EimaMei): new structure. */
+typedef struct RGFW_controller {
+	RGFW_bool connected;
+	RGFW_controllerType type;
+
+	/* Input */
+	RGFW_keyState buttons[RGFW_MAX_BUTTON_COUNT];
+    RGFW_axis axes[RGFW_axisTypeCount];
+	RGFW_point pointers[RGFW_pointerTypeCount];
+	RGFW_point3D motions[RGFW_motionTypeCount];
+
+	RGFW_bool enabled_pointers[RGFW_pointerTypeCount];
+	RGFW_bool enabled_motions[RGFW_motionTypeCount];
+} RGFW_controller;
 
 /* NOTE: some parts of the data can represent different things based on the event (read comments in RGFW_event struct) */
 /*! Event structure for checking/getting events */
 typedef struct RGFW_event {
 	RGFW_eventType type; /*!< which event has been sent?*/
-	RGFW_point point; /*!< mouse x, y of event (or drop point) */
 
-	/*! which controller this event applies to (if applicable to any) */
-	ssize_t input_index;
-
-	ssize_t whichAxis; /* which axis was effected */
-	RGFW_axis axis;
-
-	RGFW_bool repeat; /*!< key press event repeated (the key is being held) */
-	RGFW_button button; /* !< which mouse (or controller) button was pressed */
+	RGFW_controller* controller;
+	RGFW_axisType axis;
+	RGFW_pointerType pointer;
+	RGFW_motionType motion;
+	RGFW_button button;
 
 	void* _win; /*!< the window this event applies too (for event queue events) */
 } RGFW_event;
@@ -591,7 +603,11 @@ typedef struct RGFW_event {
 #if defined(RGFW_3DS)
 
 typedef struct RGFW_window_src {
-
+	RGFW_bool check;
+	u32 pressed, released;
+	circlePosition cpad;
+	accelVector accel;
+	angularRate gyro;
 } RGFW_window_src;
 
 #endif
@@ -599,25 +615,13 @@ typedef struct RGFW_window_src {
 /*! Optional arguments for making a windows */
 typedef RGFW_ENUM(u32, RGFW_windowFlags) {
 	RGFW_windowNoInitAPI = RGFW_BIT(0), /* do NOT init an API (including the software rendering buffer) (mostly for bindings. you can also use `#define RGFW_NO_API`) */
-	RGFW_windowNoBorder = RGFW_BIT(1), /*!< the window doesn't have a border */
 	RGFW_windowNoResize = RGFW_BIT(2), /*!< the window cannot be resized by the user */
-	RGFW_windowAllowDND = RGFW_BIT(3), /*!< the window supports drag and drop */
 	RGFW_windowHideMouse = RGFW_BIT(4), /*! the window should hide the mouse (can be toggled later on using `RGFW_window_mouseShow`) */
-	RGFW_windowFullscreen = RGFW_BIT(5), /*!< the window is fullscreen by default */
-	RGFW_windowTransparent = RGFW_BIT(6), /*!< the window is transparent (only properly works on X11 and MacOS, although it's meant for for windows) */
-	RGFW_windowCenter = RGFW_BIT(7), /*! center the window on the screen */
 	RGFW_windowOpenglSoftware = RGFW_BIT(8), /*! use OpenGL software rendering */
-	RGFW_windowCocoaCHDirToRes = RGFW_BIT(9), /*! (cocoa only), change directory to resource folder */
 	RGFW_windowScaleToMonitor = RGFW_BIT(10), /*! scale the window to the screen */
-	RGFW_windowHide = RGFW_BIT(11), /*! the window is hidden */
 	RGFW_windowMaximize = RGFW_BIT(12),
 	RGFW_windowCenterCursor = RGFW_BIT(13),
-	RGFW_windowFloating = RGFW_BIT(14), /*!< create a floating window */
 	RGFW_windowFreeOnClose = RGFW_BIT(15), /*!< free (RGFW_window_close) the RGFW_window struct when the window is closed (by the end user) */
-	RGFW_windowFocusOnShow = RGFW_BIT(16), /*!< focus the window when it's shown */
-	RGFW_windowMinimize = RGFW_BIT(17), /*!< focus the window when it's shown */
-	RGFW_windowFocus = RGFW_BIT(18), /*!< if the window is in focus */
-	RGFW_windowedFullscreen = RGFW_windowNoBorder | RGFW_windowMaximize
 };
 
 typedef struct RGFW_window {
@@ -648,17 +652,6 @@ RGFWDEF RGFW_bool RGFW_monitor_scaleToWindow(RGFW_monitor mon, RGFW_window* win)
 /** * @defgroup Window_management
 * @{ */
 
-
-/*!
- * the class name for X11 and WinAPI. apps with the same class will be grouped by the WM
- * by default the class name will == the root window's name
-*/
-RGFWDEF void RGFW_setXInstName(const char* name); /*!< X11 instance name (window name will by used by default) */
-
-/*! (cocoa only) change directory to resource folder */
-RGFWDEF void RGFW_moveToMacOSResourceDir(void);
-
-/* NOTE: (windows) if the executable has an icon resource named RGFW_ICON, it will be set as the initial icon for the window */
 
 RGFWDEF RGFW_window* RGFW_createWindow(
 	RGFW_area rect, /* rect of window */
@@ -725,11 +718,6 @@ RGFWDEF void RGFW_stopCheckEvents(void);
 /*! window managment functions */
 RGFWDEF void RGFW_window_close(RGFW_window* win); /*!< close the window and free leftover data */
 
-/*! move a window to a given point */
-RGFWDEF void RGFW_window_move(RGFW_window* win,
-	RGFW_point v /*!< new pos */
-);
-
 #ifndef RGFW_NO_MONITOR
 	/*! move window to a specific monitor */
 	RGFWDEF void RGFW_window_moveToMonitor(RGFW_window* win, RGFW_monitor m /* monitor */);
@@ -747,59 +735,15 @@ RGFWDEF void RGFW_window_setMinSize(RGFW_window* win, RGFW_area a);
 /*! set the maximum dimensions of a window */
 RGFWDEF void RGFW_window_setMaxSize(RGFW_window* win, RGFW_area a);
 
-RGFWDEF void RGFW_window_focus(RGFW_window* win); /*!< sets the focus to this window */
-RGFWDEF RGFW_bool RGFW_window_isInFocus(RGFW_window* win); /*!< checks the focus to this window */
-RGFWDEF void RGFW_window_raise(RGFW_window* win); /*!< raise the window (to the top) */
 RGFWDEF void RGFW_window_maximize(RGFW_window* win); /*!< maximize the window */
-RGFWDEF void RGFW_window_setFullscreen(RGFW_window* win, RGFW_bool fullscreen); /*!< turn fullscreen on / off for a window */
-RGFWDEF void RGFW_window_center(RGFW_window* win); /*!< center the window */
-RGFWDEF void RGFW_window_minimize(RGFW_window* win); /*!< minimize the window (in taskbar (per OS))*/
-RGFWDEF void RGFW_window_restore(RGFW_window* win); /*!< restore the window from minimized (per OS)*/
-RGFWDEF void RGFW_window_setFloating(RGFW_window* win, RGFW_bool floating); /*!< make the window a floating window */
-RGFWDEF void RGFW_window_setOpacity(RGFW_window* win, u8 opacity); /*!< sets the opacity of a window */
 
 RGFWDEF RGFW_bool RGFW_window_opengl_isSoftware(RGFW_window* win);
-
-/*! if the window should have a border or not (borderless) based on bool value of `border` */
-RGFWDEF void RGFW_window_setBorder(RGFW_window* win, RGFW_bool border);
-RGFWDEF RGFW_bool RGFW_window_borderless(RGFW_window* win);
-
-/*! turn on / off dnd (RGFW_windowAllowDND stil must be passed to the window)*/
-RGFWDEF void RGFW_window_setDND(RGFW_window* win, RGFW_bool allow);
-/*! check if DND is allowed */
-RGFWDEF RGFW_bool RGFW_window_allowsDND(RGFW_window* win);
-
 
 #ifndef RGFW_NO_PASSTHROUGH
 	/*! turn on / off mouse passthrough */
 	RGFWDEF void RGFW_window_setMousePassthrough(RGFW_window* win, RGFW_bool passthrough);
 #endif
 
-/*! rename window to a given string */
-RGFWDEF void RGFW_window_setName(RGFW_window* win,
-	const char* name
-);
-
-RGFWDEF RGFW_bool RGFW_window_setIcon(RGFW_window* win, /*!< source window */
-	u8* icon /*!< icon bitmap */,
-	RGFW_area a /*!< width and height of the bitmap */,
-	i32 channels /*!< how many channels the bitmap has (rgb : 3, rgba : 4) */
-); /*!< image MAY be resized by default, set both the taskbar and window icon */
-
-typedef RGFW_ENUM(u8, RGFW_icon) {
-	RGFW_iconTaskbar = RGFW_BIT(0),
-	RGFW_iconWindow = RGFW_BIT(1),
-	RGFW_iconBoth = RGFW_iconTaskbar | RGFW_iconWindow
-};
-RGFWDEF RGFW_bool RGFW_window_setIconEx(RGFW_window* win, u8* icon, RGFW_area a, i32 channels, u8 type);
-
-/*!< sets mouse to RGFW_mouse icon (loaded from a bitmap struct) */
-RGFWDEF void RGFW_window_setMouse(RGFW_window* win, RGFW_mouse* mouse);
-
-/*!< sets the mouse to a standard API cursor (based on RGFW_MOUSE, as seen at the end of the RGFW_HEADER part of this file) */
-RGFWDEF	RGFW_bool RGFW_window_setMouseStandard(RGFW_window* win, u8 mouse);
-
-RGFWDEF RGFW_bool RGFW_window_setMouseDefault(RGFW_window* win); /*!< sets the mouse to the default mouse icon */
 /*
 	Locks cursor at the center of the window
 	win->event.point becomes raw mouse movement data
@@ -811,11 +755,6 @@ RGFWDEF void RGFW_window_mouseHold(RGFW_window* win, RGFW_area area);
 RGFWDEF RGFW_bool RGFW_window_mouseHeld(RGFW_window* win);
 /*! stop holding the mouse and let it move freely */
 RGFWDEF void RGFW_window_mouseUnhold(RGFW_window* win);
-
-/*! hide the window */
-RGFWDEF void RGFW_window_hide(RGFW_window* win);
-/*! show the window */
-RGFWDEF void RGFW_window_show(RGFW_window* win);
 
 /*
 	makes it so `RGFW_window_shouldClose` returns true or overrides a window close
@@ -838,16 +777,8 @@ RGFWDEF void RGFW_window_moveMouse(RGFW_window* win, RGFW_point v);
 
 /*! if the window should close (RGFW_close was sent or escape was pressed) */
 RGFWDEF RGFW_bool RGFW_window_shouldClose(RGFW_window* win);
-/*! if the window is fullscreen */
-RGFWDEF RGFW_bool RGFW_window_isFullscreen(RGFW_window* win);
-/*! if the window is hidden */
-RGFWDEF RGFW_bool RGFW_window_isHidden(RGFW_window* win);
-/*! if the window is minimized */
-RGFWDEF RGFW_bool RGFW_window_isMinimized(RGFW_window* win);
 /*! if the window is maximized */
 RGFWDEF RGFW_bool RGFW_window_isMaximized(RGFW_window* win);
-/*! if the window is floating */
-RGFWDEF RGFW_bool RGFW_window_isFloating(RGFW_window* win);
 /** @} */
 
 /** * @defgroup Monitor
@@ -868,27 +799,35 @@ RGFWDEF RGFW_monitor RGFW_window_getMonitor(RGFW_window* win);
 /** * @defgroup Input
 * @{ */
 
-RGFWDEF RGFW_bool RGFW_isPressed(u8 controller, RGFW_button button); /*!< if key is pressed (key code)*/
+RGFWDEF RGFW_bool RGFW_isPressed(RGFW_controller* controller, RGFW_button button); /*!< if key is pressed (key code)*/
 
-RGFWDEF RGFW_bool RGFW_wasPressed(u8 controller, RGFW_button button); /*!< if key was pressed (checks previous state only) (key code) */
+RGFWDEF RGFW_bool RGFW_wasPressed(RGFW_controller* controller, RGFW_button button); /*!< if key was pressed (checks previous state only) (key code) */
 
-RGFWDEF RGFW_bool RGFW_isHeld(u8 controller, RGFW_button button); /*!< if key is held (key code) */
-RGFWDEF RGFW_bool RGFW_isReleased(u8 controller, RGFW_button button); /*!< if key is released (key code) */
+RGFWDEF RGFW_bool RGFW_isHeld(RGFW_controller* controller, RGFW_button button); /*!< if key is held (key code) */
+RGFWDEF RGFW_bool RGFW_isReleased(RGFW_controller* controller, RGFW_button button); /*!< if key is released (key code) */
 
 
 /* TODO(EimaMei): NEW FUNCTION */
 RGFWDEF ssize_t RGFW_controllerGetCount(void);
+
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF RGFW_controller* RGFW_controllerGet(ssize_t port);
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF void RGFW_controllerPointerEnable(RGFW_controller* controller,
+		RGFW_pointerType pointer, RGFW_bool enable);
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF void RGFW_controllerMotionEnable(RGFW_controller* controller,
+		RGFW_motionType motion, RGFW_bool enable);
+
+
 /* TODO(EimaMei): NEW FUNCTION */
 RGFWDEF const char* RGFW_controllerName(RGFW_controllerType type);
-
 /* TODO(EimaMei): NEW FUNCTION */
 RGFWDEF const char* RGFW_buttonName(RGFW_button button);
 /* TODO(EimaMei): NEW FUNCTION */
-RGFWDEF const char* RGFW_axisName(i32 axis);
-
+RGFWDEF const char* RGFW_axisName(RGFW_axisType axis);
 /* TODO(EimaMei): NEW FUNCTION */
 RGFWDEF const char* RGFW_pointerName(RGFW_pointerType type);
-
 /* TODO(EimaMei): NEW FUNCTION */
 RGFWDEF const char* RGFW_motionName(RGFW_motionType type);
 
@@ -945,13 +884,15 @@ typedef void (* RGFW_windowQuitfunc)(RGFW_window* win);
 /*! RGFW_mouseEnter / RGFW_mouseLeave, the window that changed, the point of the mouse (enter only) and if the mouse has entered */
 typedef void (* RGFW_mouseNotifyfunc)(RGFW_window* win, RGFW_point point, RGFW_bool status);
 /*! RGFW_buttonPressed, the window that got the event, the button that was pressed, the scroll value, if it was a press (else it's a release) */
-typedef void (* RGFW_buttonfunc)(RGFW_window* win, ssize_t controller, RGFW_button button, RGFW_bool pressed);
+typedef void (* RGFW_buttonfunc)(RGFW_window* win, RGFW_controller* controller, RGFW_button button, RGFW_bool pressed);
 /*! RGFW_controllerAxisMove, the window that got the event, the controller in question, the axis values and the axis count */
-typedef void (* RGFW_controllerAxisfunc)(RGFW_window* win, ssize_t controller, ssize_t whichAxis);
+typedef void (* RGFW_controllerAxisfunc)(RGFW_window* win, RGFW_controller* controller, RGFW_axisType axis);
 /* TODO(EimaMei): NEW FUNCTION. */
-typedef void (* RGFW_pointerMovefunc)(RGFW_window* win, ssize_t pointer, RGFW_point point);
+typedef void (* RGFW_pointerMovefunc)(RGFW_window* win, RGFW_controller* controller, RGFW_pointerType pointer);
+/* TODO(EimaMei): NEW FUNCTION. */
+typedef void (* RGFW_motionMovefunc)(RGFW_window* win, RGFW_controller* controller, RGFW_motionType motion);
 /*! RGFW_controllerConnected / RGFW_controllerDisconnected, the window that got the event, the controller in question, if the controller was connected (else it was disconnected) */
-typedef void (* RGFW_controllerfunc)(RGFW_window* win, u16 controller, RGFW_bool connected);
+typedef void (* RGFW_controllerfunc)(RGFW_window* win, RGFW_controller* controller, RGFW_bool connected);
 
 /*! set callback for a window resize event. Returns previous callback function (if it was set)  */
 RGFWDEF RGFW_windowResizedfunc RGFW_setWindowResizedCallback(RGFW_windowResizedfunc func);
@@ -965,6 +906,8 @@ RGFWDEF RGFW_buttonfunc RGFW_setButtonCallback(RGFW_buttonfunc func);
 RGFWDEF RGFW_controllerAxisfunc RGFW_setControllerAxisCallback(RGFW_controllerAxisfunc func);
 /* TODO(EimaMei): NEW FUNCTION. */
 RGFWDEF RGFW_pointerMovefunc RGFW_setPointerMoveCallback(RGFW_pointerMovefunc func);
+/* TODO(EimaMei): NEW FUNCTION. */
+RGFWDEF RGFW_motionMovefunc RGFW_setMotionMoveCallback(RGFW_motionMovefunc func);
 /*! set callback for when a controller is connected or disconnected. Returns the previous callback function (if it was set) */
 RGFWDEF RGFW_controllerfunc RGFW_setControllerCallback(RGFW_controllerfunc func);
 /*! set call back for when window is maximized. Returns the previous callback function (if it was set) */
@@ -1270,10 +1213,6 @@ RGFWDEF void RGFW_deinit(void); /*!< is called by default when the last open win
 RGFWDEF void* RGFW_init_heap(void); /*!< inits RGFW on the heap instead of in a global var */
 RGFWDEF void RGFW_deinit_heap(void); /*!< deinits the heap instance */
 
-typedef struct {
-	RGFW_bool current  : 1;
-	RGFW_bool prev  : 1;
-} RGFW_keyState;
 
 #if !defined(RGFW_NO_INFO) || defined(RGFW_IMPLEMENTATION)
 typedef struct RGFW_info {
@@ -1283,7 +1222,6 @@ typedef struct RGFW_info {
     i32 eventLen;
     i32 eventIndex;
 
-    RGFW_mouse* hiddenMouse;
     RGFW_event events[RGFW_MAX_EVENTS];
 
 	/* TODO(EimaMei): Decide what to do with keycodes. */
@@ -1292,20 +1230,11 @@ typedef struct RGFW_info {
 	/* u8 keycodes[RGFW_OS_BASED_VALUE(256, 512, 128, 256)]; */
 	#endif
 
-    /* controller data */
-	ssize_t controllerCount; /*!< the actual amount of controllers */
-	RGFW_controllerType controllerType[RGFW_MAX_CONTROLLER_DEVICES]; /*!< if a key is currently pressed or not (per controller) */
-	RGFW_keyState controllerButtons[RGFW_MAX_CONTROLLER_DEVICES][RGFW_MAX_BUTTON_COUNT]; /*!< if a key is currently pressed or not (per controller) */
-    RGFW_axis controllerAxes[RGFW_MAX_CONTROLLER_DEVICES][RGFW_MAX_AXIS_COUNT]; /*!< if a key is currently pressed or not (per controller) */
+	ssize_t controller_count; /*!< the actual amount of controllers */
+	RGFW_controller controllers[RGFW_MAX_CONTROLLER_DEVICES];
 
-    RGFW_bool stopCheckEvents_bool;
+	RGFW_bool stopCheckEvents_bool;
     u64 timerOffset;
-
-#if RGFW_3DS
-	RGFW_bool check;
-	u32 pressed, released;
-	circlePosition cpad;
-#endif
 } RGFW_info;
 
 RGFWDEF i32 RGFW_init_ptr(RGFW_info* info); /*!< init RGFW, storing the data at the pointer */
@@ -1358,8 +1287,10 @@ void RGFW_resetKeyPrev(void) {
 	/* TODO(EimaMei): This feels inneficient to do each frame. Must be resolved. */
 	size_t i, j;
 	for (i = 0; i < RGFW_MAX_CONTROLLER_DEVICES; i += 1) {
+		if (!_RGFW->controllers[i].connected) { return ; }
+
 		for (j = 0; j < RGFW_MAX_BUTTON_COUNT; j += 1) {
-			_RGFW->controllerButtons[i][j].prev = RGFW_FALSE;
+			_RGFW->controllers[i].buttons[j].prev = RGFW_FALSE;
 		}
 	}
 }
@@ -1392,10 +1323,13 @@ RGFW_CALLBACK_DEFINE(button, Button)
 #define RGFW_buttonCallback(w, controller, button, press) if (RGFW_buttonCallbackSrc) RGFW_buttonCallbackSrc(w, controller, button, press)
 
 RGFW_CALLBACK_DEFINE(controllerAxis, ControllerAxis)
-#define RGFW_controllerAxisCallback(w, controller, whichAxis) if (RGFW_controllerAxisCallbackSrc) RGFW_controllerAxisCallbackSrc(w, controller, whichAxis)
+#define RGFW_controllerAxisCallback(w, controller, axis) if (RGFW_controllerAxisCallbackSrc) RGFW_controllerAxisCallbackSrc(w, controller, axis)
 
 RGFW_CALLBACK_DEFINE(pointerMove, PointerMove)
-#define RGFW_pointerMoveCallback(w, pointer, point) if (RGFW_pointerMoveCallbackSrc) RGFW_pointerMoveCallbackSrc(w, pointer, point)
+#define RGFW_pointerMoveCallback(w, controller, pointer) if (RGFW_pointerMoveCallbackSrc) RGFW_pointerMoveCallbackSrc(w, controller, pointer)
+
+RGFW_CALLBACK_DEFINE(motionMove, MotionMove)
+#define RGFW_motionMoveCallback(w, controller, motion) if (RGFW_pointerMoveCallbackSrc) RGFW_motionMoveCallbackSrc(w, controller, motion)
 
 RGFW_CALLBACK_DEFINE(controller, Controller)
 #define RGFW_controllerCallback(w, controller, connected) if (RGFW_controllerCallbackSrc) RGFW_controllerCallbackSrc(w, controller, connected)
@@ -1437,33 +1371,8 @@ void RGFW_window_checkEvents(RGFW_window* win, i32 waitMS) {
 	while (RGFW_window_checkEvent(win) != NULL && RGFW_window_shouldClose(win) == 0) {
 		if (win->event.type == RGFW_quit) return;
 	}
-
-	#ifdef RGFW_WASM /* WASM needs to run the sleep function for asyncify */
-		RGFW_sleep(0);
-	#endif
 }
 
-void RGFW_window_checkMode(RGFW_window* win);
-void RGFW_window_checkMode(RGFW_window* win) {
-	/* TODO(EimaMei): Figure out this entire function. */
-	if (RGFW_window_isMinimized(win)) {
-		win->_flags |= RGFW_windowMinimize;
-		/* TODO(EimaMei): Figure out. */
-		// RGFW_windowMinimizedCallback(win, win->r);
-	} else if (RGFW_window_isMaximized(win)) {
-		win->_flags |= RGFW_windowMaximize;
-		RGFW_eventQueuePushEx(e.type = RGFW_windowMaximized; e._win = win);
-		/* TODO(EimaMei): Figure out. */
-		// RGFW_windowMaximizedCallback(win, win->r);
-	} else if (((win->_flags & RGFW_windowMinimize) && !RGFW_window_isMaximized(win)) ||
-				(win->_flags & RGFW_windowMaximize && !RGFW_window_isMaximized(win))) {
-		win->_flags &= ~(u32)RGFW_windowMinimize;
-		if (RGFW_window_isMaximized(win) == RGFW_FALSE) win->_flags &= ~(u32)RGFW_windowMaximize;
-		RGFW_eventQueuePushEx(e.type = RGFW_windowRestored; e._win = win);
-		/* TODO(EimaMei): Figure out. */
-		// RGFW_windowRestoredCallback(win, win->r);
-	}
-}
 
 /*
 no more event call back defines
@@ -1482,7 +1391,7 @@ no more event call back defines
 #define RGFW_WINDOW_ALLOC 		RGFW_BIT(28) /* if window was allocated by RGFW */
 #define RGFW_BUFFER_ALLOC 		RGFW_BIT(29) /* if window.buffer was allocated by RGFW */
 #define RGFW_WINDOW_INIT 		RGFW_BIT(30) /* if window.buffer was allocated by RGFW */
-#define RGFW_INTERNAL_FLAGS (RGFW_EVENT_QUIT | RGFW_HOLD_MOUSE |  RGFW_MOUSE_LEFT | RGFW_WINDOW_ALLOC | RGFW_BUFFER_ALLOC | RGFW_windowFocus)
+#define RGFW_INTERNAL_FLAGS (RGFW_EVENT_QUIT | RGFW_HOLD_MOUSE |  RGFW_MOUSE_LEFT | RGFW_WINDOW_ALLOC | RGFW_BUFFER_ALLOC)
 
 RGFW_window* RGFW_createWindow(RGFW_area area, RGFW_windowFlags flags) {
 	RGFW_window* win = (RGFW_window*)RGFW_ALLOC(sizeof(RGFW_window));
@@ -1647,25 +1556,10 @@ void RGFW_window_setFlags(RGFW_window* win, RGFW_windowFlags flags) {
 	if (flags & RGFW_windowScaleToMonitor)			RGFW_window_scaleToMonitor(win);
 	#endif
 
-	if (flags & RGFW_windowCenter)					RGFW_window_center(win);
 	if (flags & RGFW_windowCenterCursor)
 		RGFW_window_moveMouse(win, RGFW_POINT(win->r.w / 2, win->r.h / 2));
-	if (flags & RGFW_windowNoBorder)				RGFW_window_setBorder(win, 0);
-	else RGFW_window_setBorder(win, 1);
-	if (flags & RGFW_windowFullscreen)				RGFW_window_setFullscreen(win, RGFW_TRUE);
-	else if (cmpFlags & RGFW_windowFullscreen) 	RGFW_window_setFullscreen(win, 0);
 	if (flags & RGFW_windowMaximize)				RGFW_window_maximize(win);
-	else if (cmpFlags & RGFW_windowMaximize) 	RGFW_window_restore(win);
-	if (flags & RGFW_windowMinimize)				RGFW_window_minimize(win);
-	else if (cmpFlags & RGFW_windowMinimize) 	RGFW_window_restore(win);
-	if (flags & RGFW_windowHideMouse)				RGFW_window_showMouse(win, 0);
 	else if (cmpFlags & RGFW_windowHideMouse)  	RGFW_window_showMouse(win, 1);
-	if (flags & RGFW_windowHide)				RGFW_window_hide(win);
-	else if (cmpFlags & RGFW_windowHide)  		RGFW_window_show(win);
-	if (flags & RGFW_windowCocoaCHDirToRes)			RGFW_moveToMacOSResourceDir();
-	if (flags & RGFW_windowFloating)				RGFW_window_setFloating(win, 1);
-	else if (cmpFlags & RGFW_windowFloating)		RGFW_window_setFloating(win, 0);
-	if (flags & RGFW_windowFocus)					RGFW_window_focus(win);
 
 	if (flags & RGFW_windowNoResize) {
 	    RGFW_window_setMaxSize(win, RGFW_AREA(win->r.w, win->r.h));
@@ -1680,14 +1574,6 @@ void RGFW_window_setFlags(RGFW_window* win, RGFW_windowFlags flags) {
 
 RGFW_bool RGFW_window_opengl_isSoftware(RGFW_window* win) {
     return RGFW_BOOL(win->_flags |= RGFW_windowOpenglSoftware);
-}
-
-RGFW_bool RGFW_window_isInFocus(RGFW_window* win) {
-#ifdef RGFW_WASM
-    return RGFW_TRUE;
-#else
-    return RGFW_BOOL(win->_flags & RGFW_windowFocus);
-#endif
 }
 
 void RGFW_window_initBuffer(RGFW_window* win) {
@@ -1714,28 +1600,28 @@ void RGFW_window_initBufferSize(RGFW_window* win, RGFW_area area) {
 #endif
 }
 
-RGFW_bool RGFW_isPressed(u8 controller, RGFW_button button) {
-	RGFW_ASSERT(controller < RGFW_MAX_CONTROLLER_DEVICES);
+RGFW_bool RGFW_isPressed(RGFW_controller* controller, RGFW_button button) {
+	RGFW_ASSERT(controller != NULL);
 	RGFW_ASSERT(button >= 0 && button < RGFW_MAX_BUTTON_COUNT);
-	return _RGFW->controllerButtons[controller][button].current;
+	return controller->buttons[button].current;
 }
 
-RGFW_bool RGFW_wasPressed(u8 controller, RGFW_button button) {
-	RGFW_ASSERT(controller < RGFW_MAX_CONTROLLER_DEVICES);
+RGFW_bool RGFW_wasPressed(RGFW_controller* controller, RGFW_button button) {
+	RGFW_ASSERT(controller != NULL);
 	RGFW_ASSERT(button >= 0 && button < RGFW_MAX_BUTTON_COUNT);
-	return _RGFW->controllerButtons[controller][button].prev;
+	return controller->buttons[button].prev;
 }
 
-RGFW_bool RGFW_isHeld(u8 controller, RGFW_button button) {
+RGFW_bool RGFW_isHeld(RGFW_controller* controller, RGFW_button button) {
 	return RGFW_isPressed(controller, button) && RGFW_wasPressed(controller, button);
 }
 
-RGFW_bool RGFW_isReleased(u8 controller, RGFW_button button) {
+RGFW_bool RGFW_isReleased(RGFW_controller* controller, RGFW_button button) {
 	return !RGFW_isPressed(controller, button) && RGFW_wasPressed(controller, button);
 }
 
 ssize_t RGFW_controllerGetCount(void) {
-	return _RGFW->controllerCount;
+	return _RGFW->controller_count;
 }
 
 
@@ -1770,12 +1656,6 @@ void RGFW_setBit(u32* data, u32 bit, RGFW_bool value) {
 		*data |= bit;
 	else if (!value && (*(data) & bit))
 		*data ^= bit;
-}
-
-void RGFW_window_center(RGFW_window* win) {
-	RGFW_ASSERT(win != NULL);
-	RGFW_area screenR = RGFW_getScreenSize();
-	RGFW_window_move(win, RGFW_POINT((i32)(screenR.w - (u32)win->r.w) / 2, (screenR.h - (u32)win->r.h) / 2));
 }
 
 RGFW_bool RGFW_monitor_scaleToWindow(RGFW_monitor mon, RGFW_window* win) {
@@ -1831,15 +1711,7 @@ void RGFW_window_scaleToMonitor(RGFW_window* win) {
 
 	RGFW_window_resize(win, RGFW_AREA((u32)(monitor.scaleX * (float)win->r.w), (u32)(monitor.scaleY * (float)win->r.h)));
 }
-
-void RGFW_window_moveToMonitor(RGFW_window* win, RGFW_monitor m) {
-	RGFW_window_move(win, RGFW_POINT(m.x, m.y));
-}
 #endif
-
-RGFW_bool RGFW_window_setIcon(RGFW_window* win, u8* icon, RGFW_area a, i32 channels) {
-	return RGFW_window_setIconEx(win, icon, a, channels, RGFW_iconBoth);
-}
 
 RGFWDEF void RGFW_captureCursor(RGFW_window* win, RGFW_area);
 RGFWDEF void RGFW_releaseCursor(RGFW_window* win);
@@ -1937,13 +1809,6 @@ void RGFW_window_showMouseFlags(RGFW_window* win, RGFW_bool show) {
 RGFW_bool RGFW_window_mouseHidden(RGFW_window* win) {
 	return (RGFW_bool)RGFW_BOOL(win->_flags & RGFW_windowHideMouse);
 }
-
-RGFW_bool RGFW_window_borderless(RGFW_window* win) {
-	return (RGFW_bool)RGFW_BOOL(win->_flags & RGFW_windowNoBorder);
-}
-
-RGFW_bool RGFW_window_isFullscreen(RGFW_window* win){ return RGFW_BOOL(win->_flags & RGFW_windowFullscreen); }
-RGFW_bool RGFW_window_allowsDND(RGFW_window* win) { return RGFW_BOOL(win->_flags & RGFW_windowAllowDND); }
 
 /*
 	graphics API specific code (end of generic code)
@@ -2408,6 +2273,45 @@ const char* RGFW_controllerName(RGFW_controllerType type) {
 	return NAME_LUT[type];
 }
 
+
+RGFW_controller* RGFW_controllerGet(ssize_t port) {
+	RGFW_ASSERT(port >= 0 && port < RGFW_MAX_CONTROLLER_DEVICES);
+	return &_RGFW->controllers[port];
+}
+
+void RGFW_controllerPointerEnable(RGFW_controller* controller,
+		RGFW_pointerType pointer, RGFW_bool enable) {
+	RGFW_ASSERT(controller != NULL);
+	RGFW_ASSERT(pointer >= 0 && pointer < RGFW_pointerTypeCount);
+
+	controller->enabled_pointers[pointer] = enable;
+}
+
+
+void RGFW_controllerMotionEnable(RGFW_controller* controller, RGFW_motionType motion,
+		RGFW_bool enable) {
+	RGFW_ASSERT(controller != NULL);
+	RGFW_ASSERT(motion >= 0 && motion < RGFW_motionTypeCount);
+
+	if (controller->enabled_motions[motion] == enable) {
+		return ;
+	}
+
+	switch (motion) {
+		case RGFW_motionAccelerometer: {
+			if (enable) HIDUSER_EnableAccelerometer();
+			else        HIDUSER_DisableAccelerometer();
+		} break;
+
+		case RGFW_motionGyroscope: {
+			if (enable) HIDUSER_EnableGyroscope();
+			else        HIDUSER_DisableGyroscope();
+		} break;
+	}
+
+	controller->enabled_motions[motion] = enable;
+}
+
 const char* RGFW_buttonName(RGFW_button button) {
 	RGFW_ASSERT(button >= 0 && button < RGFW_controllerButtonCount);
 
@@ -2434,10 +2338,10 @@ const char* RGFW_buttonName(RGFW_button button) {
 	return NAME_LUT[button];
 }
 
-const char* RGFW_axisName(i32 axis) {
-	RGFW_ASSERT(axis >= 0 && axis < RGFW_MAX_AXIS_COUNT);
+const char* RGFW_axisName(RGFW_axisType axis) {
+	RGFW_ASSERT(axis >= 0 && axis < RGFW_axisTypeCount);
 
-	static const char* NAME_LUT[RGFW_MAX_AXIS_COUNT] = {
+	static const char* NAME_LUT[RGFW_axisTypeCount] = {
 		"Circle-Pad X Axis", "Circle-Pad Y Axis",
 		//"Circle-Pad Pro X"
 	};
@@ -2571,10 +2475,6 @@ void RGFW_window_initBufferPtr(RGFW_window* win, u8* buffer, RGFW_area area) {
 #endif
 }
 
-void RGFW_window_setBorder(RGFW_window* win, RGFW_bool border) {
-	RGFW_setBit(&win->_flags, RGFW_windowNoBorder, !border);
-}
-
 void RGFW_releaseCursor(RGFW_window* win) {
 }
 
@@ -2591,7 +2491,9 @@ void RGFW_window_freeOpenGL(RGFW_window* win) {
 
 
 i32 RGFW_initPlatform(void) {
-	_RGFW->controllerCount = 1;
+	_RGFW->controller_count = 1;
+	_RGFW->controllers[0].connected = true;
+	_RGFW->controllers[0].enabled_pointers[RGFW_pointerTouchscreen] = true;
 
     return 0;
 }
@@ -2611,6 +2513,15 @@ RGFW_point RGFW_getGlobalMousePoint(void) {
 }
 
 
+u32 hidCheckSectionUpdateTime(vu32 *sharedmem_section, u32 id);
+
+void RGFW_window_eventWait(RGFW_window* win, i32 waitMS) {
+	/* TODO(EimaMei): This doesn't actually sleep? Also it's unclear if setting
+	 * nanosecond to -1 actually means that hid is going to wait for any event
+	 * forever. */
+	hidWaitForAnyEvent(RGFW_TRUE, 0, (waitMS == -1) ? -1 : waitMS * 1000000);
+}
+
 RGFW_event* RGFW_window_checkEvent(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
 
@@ -2622,112 +2533,167 @@ RGFW_event* RGFW_window_checkEvent(RGFW_window* win) {
 	if (ev) {
 		return ev;
 	}
+
+	RGFW_window_src* src = &win->src;
 	ev = &win->event;
+
+	RGFW_controller* controller = RGFW_controllerGet(0);
 
 	/* TODO(EimaMei): devkitPro actually gives you access to 'hidSharedMem' and
 	 * 'hidMemHandle', allowing you to manage input yourself. Might have to take
 	 * a better look at it. */
-	if (_RGFW->check == false) {
+	if (src->check == false) {
 		hidScanInput();
-		hidCircleRead(&_RGFW->cpad);
-		_RGFW->pressed = hidKeysHeld();
-		_RGFW->released = hidKeysUp();
-		_RGFW->check = true;
+		hidCircleRead(&src->cpad);
 
+		src->pressed = hidKeysHeld();
+		src->released = hidKeysUp();
+		src->check = true;
+
+		bool motion_found_event = false;
+		if (controller->enabled_motions[RGFW_motionAccelerometer] == false) {
+			 goto gyro_code;
+		}
+
+		accelVector accelOld = src->accel;
+		hidAccelRead(&src->accel);
+
+		if (src->accel.x != accelOld.x || src->accel.y != accelOld.y || src->accel.z != accelOld.z) {
+			ev->controller = controller;
+			ev->type = RGFW_motionMove;
+			ev->motion = RGFW_motionAccelerometer;
+
+			/* TODO(EimaMei): Check if these conversations are even accurate. */
+			RGFW_point3D* vector = &ev->controller->motions[ev->motion];
+			vector->x = src->accel.x / 512.0f;
+			vector->y = src->accel.y / 512.0f;
+			vector->z = src->accel.z / 512.0f;
+
+			/* TODO(EimaMei): Callback here. */
+			motion_found_event = true;
+			RGFW_eventQueuePush(*ev);
+			RGFW_pointerMoveCallback(win, ev->controller, ev->motion);
+		}
+
+		angularRate gyroOld;
+gyro_code:
+
+		if (controller->enabled_motions[RGFW_motionGyroscope] == false) {
+			 goto end_code;
+		}
+
+		gyroOld = src->gyro;
+		hidGyroRead(&src->gyro);
+
+		if (src->gyro.x != gyroOld.x || src->gyro.y != gyroOld.y || src->gyro.z != gyroOld.z) {
+			ev->controller = controller;
+			ev->type = RGFW_motionMove;
+			ev->motion = RGFW_motionGyroscope;
+
+			/* TODO(EimaMei): Check if these conversations are even accurate. */
+			RGFW_point3D* vector = &ev->controller->motions[ev->motion];
+			vector->x = src->gyro.x / 16384.0f;// / 512.0f * 2.0f - 1.0f;
+			vector->y = src->gyro.y / 16384.0f;// / 512.0f * 2.0f - 1.0f;
+			vector->z = src->gyro.z / 16384.0f;// / 512.0f * 2.0f - 1.0f;
+
+			/* TODO(EimaMei): Callback here. */
+			motion_found_event = true;
+			RGFW_eventQueuePush(*ev);
+			RGFW_pointerMoveCallback(win, ev->controller, ev->motion);
+		}
+
+end_code:
 		if (!aptMainLoop()) {
 			ev->type = RGFW_quit;
 			return ev;
 		}
+
+		if (motion_found_event) {
+			*ev = *RGFW_eventQueuePop(win);
+			return ev;
+		}
 	}
 
-	if (_RGFW->pressed & (RGFW_CPAD_BITS_H | RGFW_CPAD_BITS_V)) {
-		ev->type = RGFW_controllerAxisMove;
-		ev->input_index = 0;
 
-		i32 value;
-		u32 bits = _RGFW->pressed;
+	if (src->pressed & (RGFW_CPAD_BITS_H | RGFW_CPAD_BITS_V)) {
+		ev->controller = controller;
+		ev->type = RGFW_controllerAxisMove;
+
+		float value;
+		u32 bits = src->pressed;
 
 		if (bits & RGFW_CPAD_BITS_H) {
 			bits &= RGFW_CPAD_BITS_H;
-			value = _RGFW->cpad.dx;
-			ev->whichAxis = 0;
+			value = (float)src->cpad.dx;
+			ev->axis = RGFW_axisTypeLeftX;
 		}
 		else {
 			bits &= RGFW_CPAD_BITS_V;
-			value = _RGFW->cpad.dy;
-			ev->whichAxis = 1;
+			value = (float)src->cpad.dy;
+			ev->axis = RGFW_axisTypeLeftY;
 		}
 
-		/* NOTE(EimaMei): C-Pad is from -156 to 156. */
-		ev->axis.value    = (i16)(value * INT16_MAX / 156);
+		RGFW_axis* axis = &ev->controller->axes[ev->axis];
+		/* NOTE(EimaMei): C-Pad range is -156 to 156. */
+		axis->value    = value / 156.0f;
 		/* NOTE(EimaMei): I picked '40' as the deadzone based on how the CPAD bits
 		 * are set if the value is equal or larger than 41. (http://3dbrew.org/wiki/HID_Shared_Memory). */
-		ev->axis.deadzone = (40 * INT16_MAX / 156);
-		_RGFW->controllerAxes[0][ev->whichAxis] = ev->axis;
+		axis->deadzone = (40.0f / 156.0f);
 
-		_RGFW->pressed &= ~bits;
-		RGFW_controllerAxisCallback(win, 0, ev->whichAxis);
+		src->pressed &= ~bits;
+		RGFW_controllerAxisCallback(win, ev->controller, ev->axis);
 		return ev;
 	}
 
-	if (_RGFW->pressed & RGFW_ACCEPTED_CTRU_INPUTS) {
-		RGFW_button button = RGFW_apiKeyToRGFW(_RGFW->pressed);
+	if (src->pressed & RGFW_ACCEPTED_CTRU_INPUTS) {
+		RGFW_button button = RGFW_apiKeyToRGFW(src->pressed);
 		RGFW_ASSERT(button != -1);
-		u32 ogButton = RGFW_rgfwToApiKey(button);
 
+		ev->controller = controller;
 		ev->type = RGFW_buttonPressed;
-		ev->input_index = 0;
 		ev->button = button;
 
-		RGFW_keyState* state = &_RGFW->controllerButtons[0][ev->button];
-		ev->repeat = (state->prev == true);
+		RGFW_keyState* state = &ev->controller->buttons[ev->button];
 		state->prev = state->current;
 		state->current = true;
+		src->pressed &= ~RGFW_rgfwToApiKey(button);
 
-		_RGFW->pressed &= ~ogButton;
-		RGFW_buttonCallback(win, 0, ev->button, true);
+		RGFW_buttonCallback(win, ev->controller, ev->button, true);
 		return ev;
 	}
 
-	if (_RGFW->released & RGFW_ACCEPTED_CTRU_INPUTS) {
-		RGFW_button button = RGFW_apiKeyToRGFW(_RGFW->released);
+	if (src->released & RGFW_ACCEPTED_CTRU_INPUTS) {
+		RGFW_button button = RGFW_apiKeyToRGFW(src->released);
 
-		ev->type        = RGFW_buttonReleased;
-		ev->input_index = 0;
-		ev->button      = (u8)button;
-		ev->repeat      = false;
+		ev->controller = controller;
+		ev->type = RGFW_buttonReleased;
+		ev->button = button;
 
-		RGFW_keyState* state = &_RGFW->controllerButtons[0][ev->button];
+		RGFW_keyState* state = &ev->controller->buttons[ev->button];
 		state->prev = state->current;
 		state->current = false;
+		src->released &= ~RGFW_rgfwToApiKey(button);
 
-		_RGFW->released &= ~RGFW_rgfwToApiKey(button);
-		RGFW_buttonCallback(win, 0, ev->button, false);
+		RGFW_buttonCallback(win, ev->controller, ev->button, false);
 		return ev;
 	}
 
-	if (_RGFW->pressed & KEY_TOUCH) {
+	if (controller->enabled_pointers[RGFW_pointerTouchscreen] && src->pressed & KEY_TOUCH) {
 		touchPosition touch;
 		hidTouchRead(&touch);
 
-		ev->type        = RGFW_pointerMove;
-		ev->input_index = 0;
-		ev->point       = RGFW_POINT(touch.px, touch.py);
+		ev->controller = controller;
+		ev->type       = RGFW_pointerMove;
+		ev->controller->pointers[RGFW_pointerTouchscreen] = RGFW_POINT(touch.px, touch.py);
 
-		_RGFW->pressed &= (u32)~KEY_TOUCH;
-		RGFW_pointerMoveCallback(win, 0, ev->point);
+		src->pressed &= (u32)~KEY_TOUCH;
+		RGFW_pointerMoveCallback(win, ev->controller, RGFW_pointerTouchscreen);
 		return ev;
 	}
 
-	_RGFW->check = false;
+	src->check = false;
 	return NULL;
 }
-
-void RGFW_window_move(RGFW_window* win, RGFW_point v) {
-	RGFW_ASSERT(win != NULL);
-	/* TODO(EimaMei): Remove this? */
-}
-
 
 void RGFW_window_resize(RGFW_window* win, RGFW_area a) {
 	RGFW_ASSERT(win != NULL);
@@ -2755,95 +2721,12 @@ void RGFW_window_maximize(RGFW_window* win) {
 	win->_oldRect = win->r;
 }
 
-void RGFW_window_focus(RGFW_window* win) {
-	RGFW_ASSERT(win);
-}
-
-void RGFW_window_raise(RGFW_window* win) {
-	RGFW_ASSERT(win);
-}
-
-void RGFW_window_setFullscreen(RGFW_window* win, RGFW_bool fullscreen) {
-	RGFW_ASSERT(win != NULL);
-    if (fullscreen) {
-		win->_flags |= RGFW_windowFullscreen;
-		win->_oldRect = win->r;
-	}
-	else win->_flags &= ~(u32)RGFW_windowFullscreen;
-}
-
-void RGFW_window_setFloating(RGFW_window* win, RGFW_bool floating) {
-    RGFW_ASSERT(win != NULL);
-}
-
-void RGFW_window_setOpacity(RGFW_window* win, u8 opacity) {
-	RGFW_ASSERT(win != NULL);
-}
-
-void RGFW_window_minimize(RGFW_window* win) {
-	RGFW_ASSERT(win != NULL);
-	if (RGFW_window_isMaximized(win)) return;
-
-	win->_oldRect = win->r;
-}
-
-void RGFW_window_restore(RGFW_window* win) {
-	RGFW_ASSERT(win != NULL);
-	win->r = win->_oldRect;
-	//RGFW_window_move(win, RGFW_POINT(win->r.x, win->r.y));
-	RGFW_window_resize(win, RGFW_AREA(win->r.w, win->r.h));
-
-    RGFW_window_show(win);
-}
-
-RGFW_bool RGFW_window_isFloating(RGFW_window* win) {
-	return RGFW_FALSE;
-}
-
-void RGFW_window_setName(RGFW_window* win, const char* name) {
-	RGFW_ASSERT(win != NULL);
-}
-
 #ifndef RGFW_NO_PASSTHROUGH
 void RGFW_window_setMousePassthrough(RGFW_window* win, RGFW_bool passthrough) {
 	RGFW_ASSERT(win != NULL);
 }
 #endif /* RGFW_NO_PASSTHROUGH */
 
-RGFW_bool RGFW_window_setIconEx(RGFW_window* win, u8* icon, RGFW_area a, i32 channels, u8 type) {
-	RGFW_ASSERT(win != NULL);
-}
-
-RGFW_mouse* RGFW_loadMouse(u8* icon, RGFW_area a, i32 channels) {
-    RGFW_ASSERT(icon);
-	RGFW_ASSERT(channels == 3 || channels == 4);
-
-}
-
-void RGFW_window_setMouse(RGFW_window* win, RGFW_mouse* mouse) {
-}
-
-void RGFW_freeMouse(RGFW_mouse* mouse) {
-}
-
-void RGFW_window_moveMouse(RGFW_window* win, RGFW_point p) {
-}
-
-RGFW_bool RGFW_window_setMouseDefault(RGFW_window* win) {
-	return RGFW_window_setMouseStandard(win, RGFW_mouseArrow);
-}
-
-RGFW_bool RGFW_window_setMouseStandard(RGFW_window* win, u8 mouse) {
-	RGFW_ASSERT(win != NULL);
-}
-
-void RGFW_window_hide(RGFW_window* win) {
-}
-
-void RGFW_window_show(RGFW_window* win) {
-	win->_flags &= ~(u32)RGFW_windowHide;
-	if (win->_flags & RGFW_windowFocusOnShow) RGFW_window_focus(win);
-}
 
 void RGFW_window_close(RGFW_window* win) {
 	/* NOTE(EimaMei): Only do gfxExit if win is the last window. */

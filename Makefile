@@ -1,14 +1,30 @@
 # Parameter explanations:
 #   CC - compiler used by the Makefile. Can be whatever you desire.
-#   PLATFORM - lets the Makefile know for which platform to compile for. Current
-#   	values: WIN32_GNU, WIN32_MSVC, OS_X, LINUX, WASM_WASI, WASM_EMCC, 3DS,
-#	DEFAULT. Setting this value to 'DEFAULT' makes the  Makefile guess which
-#	platform to target.
-#   DEBUG - enables flags that help with find errors in the source code.
+#
+#   PLATFORM - sets the platform target to compile for. Current values: WIN32_GNU,
+# WIN32_MSVC, OS_X, LINUX, WASM_WASI, WASM_EMCC, 3DS, DEFAULT. Selecting 'DEFAULT'
+# makes the Makefile automatically guess which platform to target.
+#
+# 	MODE - sets the release mode to compile for. Current values: FAST, MODE,
+# RELEASE. 'FAST' disables all flags and enables ones requires for fast compilation.
+# 'MODE' turns on all warnings as well as flags to help with MODEging/finding
+# problematic code. 'RELEASE' turns on all optimisations as well as warnings.
+#
+# 	LANGUAGE - selects which programming language to target. Currently C and C++
+# are the only valid options.
 
 CC        = arm-none-eabi-gcc
 PLATFORM  = 3DS
-DEBUG     = 0
+MODE      = FAST
+LANGUAGE  = C
+
+# Building options:
+#	NAME   - the executable name.
+#	SRC    - source file to target.
+#	OUTPUT - the directory where all of the output goes to.
+NAME   = basic
+SRC    = examples/embedded/basic/basic.c
+OUTPUT = build
 
 
 ifeq ($(PLATFORM),DEFAULT)
@@ -33,65 +49,65 @@ ifeq ($(PLATFORM),DEFAULT)
 	endif
 endif
 
-NAME = basic
-SRC = examples/3ds/basic/basic.c
-OUTPUT = build
 
-GNU_FLAGS = \
-	-Wall -Wextra -Wpedantic \
-	-Wconversion -Wsign-conversion -Wdouble-promotion \
-	\
-	-Wpointer-arith \
-	\
-	-Wcast-align \
-	\
-	\
-	-Wmissing-prototypes -Wstrict-prototypes -Wold-style-definition \
-	\
-	-Wswitch-enum -Wnested-externs \
-	\
-	-Werror=format-security -Wformat=2 -Wformat-signedness \
-	\
-	-Winit-self -Wshadow -Wredundant-decls \
-	\
-	-Wmissing-noreturn \
-	\
-	-fwrapv -fstrict-aliasing \
-	-fstrict-flex-arrays=3 -fno-omit-frame-pointer
+ifeq ($(LANGUAGE),C)
+	GNU_FLAGS = -std=c99 -x c -Wvla
+else ifeq ($(LANGUAGE),CPP)
+	GNU_FLAGS = -std=c++11 -x c++ -fno-exceptions
+endif
+
+
+ifeq ($(MODE),FAST)
+	GNU_FLAGS += -O0 -flto
+
+else
+	GNU_FLAGS += \
+		-Wall -Wextra -Wpedantic \
+		-Wconversion -Wsign-conversion -Wdouble-promotion \
+		\
+		-Wpointer-arith \
+		\
+		-Wcast-align \
+		\
+		\
+		-Wmissing-prototypes -Wstrict-prototypes -Wold-style-definition \
+		\
+		-Wswitch-enum -Wnested-externs \
+		\
+		-Werror=format-security -Wformat=2 -Wformat-signedness \
+		\
+		-Winit-self -Wshadow -Wredundant-decls \
+		\
+		-Wmissing-noreturn \
+		\
+		-fwrapv -fstrict-aliasing \
+		-fstrict-flex-arrays=3 -fno-omit-frame-pointer
+
+	ifneq (,$(filter $(CC),gcc g++))
+		GNU_FLAGS += -Wcast-align=strict -Wlogical-op
+	endif
+
+	ifeq ($(MODE),DEBUG)
+		GNU_FLAGS += \
+			-fstack-clash-protection \
+			-fstack-protector-strong \
+			-ftrivial-auto-var-init=pattern
+
+		ifneq ($(PLATFORM),3DS)
+			GNU_FLAGS += -fsanitize=undefined -fsanitize=address
+		endif
+	else ifeq ($(MODE),RELEASE)
+		GNU_FLAGS += \
+			-O3 \
+			-D SI_RELEASE_MODE \
+			-fno-delete-null-pointer-checks \
+			-fno-strict-aliasing \
+			-ftrivial-auto-var-init=zero \
+			-flto
+	endif
+endif
 
 GNU_INCLUDES = -I"." -I"include"
-
-ifneq (,$(filter $(CC), g++ clang++))
-	GNU_FLAGS += -std=c++11 -x c++
-else
-	GNU_FLAGS += -std=c99 -x c -Wvla
-endif
-
-
-ifneq (,$(filter $(CC),gcc g++))
-	GNU_FLAGS += -Wcast-align=strict -Wlogical-op
-endif
-
-ifeq ($(DEBUG),1)
-	GNU_FLAGS += \
-		-fstack-clash-protection \
-		-fstack-protector-strong \
-		-ftrivial-auto-var-init=pattern
-
-	ifneq ($(PLATFORM),3DS)
-		GNU_FLAGS += \
-			-fsanitize=undefined \
-			-fsanitize=address
-	endif
-else
-	GNU_FLAGS += \
-		-O3 \
-		-D SI_RELEASE_MODE \
-		-fno-delete-null-pointer-checks \
-		-fno-strict-aliasing \
-		-ftrivial-auto-var-init=zero \
-		-flto
-endif
 
 
 ifeq ($(PLATFORM),DEFAULT)
@@ -121,14 +137,12 @@ ifeq ($(PLATFORM),WIN32_GNU)
 	INCLUDES = $(GNU_INCLUDES)
 
 	LIBS = -lkernel32 -lole32 -lopengl32
-
 	EXE_OUT = .exe
-
 
 else ifeq ($(PLATFORM),WIN32_MSVC)
 	FLAGS = -nologo -std:c11 -Wall -wd4668 -wd4820 -wd5045
 	INCLUDES = -I"." -I"include"
-	ifeq ($(DEBUG),0)
+	ifeq ($(MODE),0)
 		FLAGS += -O2 -wd4711 -D SI_RELEASE_MODE
 	endif
 
@@ -172,7 +186,7 @@ else ifeq ($(PLATFORM),3DS)
 		$(error DEVKITARM must be set in your environment: export DEVKITARM=<path to devkitARM>)
 	endif
 
-	DESCRIPTION = A half-accurate, semi-performant GameBoy emulator.
+	DESCRIPTION = RGFW examples for the Nintendo 3DS
 	AUTHOR      = EimaMei
 	ICON        = ../../res/default_icon.png
 
