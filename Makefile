@@ -23,7 +23,7 @@ LANGUAGE  = C
 #	SRC    - source file to target.
 #	OUTPUT - the directory where all of the output goes to.
 NAME   = basic
-SRC    = examples/embedded/basic/basic.c
+SRC    = examples/embedded/buffer/buffer.c
 OUTPUT = build
 
 

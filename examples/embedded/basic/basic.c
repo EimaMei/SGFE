@@ -3,7 +3,10 @@
 
 size_t counter = 0;
 
-void* myAlloc(size_t size, unsigned int line, const char* file) {
+void* myAlloc(size_t size, int line, const char* file);
+void myFree(void* ptr, int line, const char* file);
+
+void* myAlloc(size_t size, int line, const char* file) {
     void* ptr = malloc(size);
     printf("%s:%i allocated %u bytes at %p\n",  file, line, (unsigned int)size, ptr);
     counter++;
@@ -11,7 +14,7 @@ void* myAlloc(size_t size, unsigned int line, const char* file) {
     return ptr;
 }
 
-void myFree(void* ptr, unsigned int line, const char* file) {
+void myFree(void* ptr, int line, const char* file) {
     counter--;
     printf("%s:%i freed address %p\n", file, line, ptr);
     free(ptr);
@@ -24,29 +27,20 @@ void myFree(void* ptr, unsigned int line, const char* file) {
 #define RGFW_IMPLEMENTATION
 #include <RGFW_embedded.h>
 
-static unsigned char icon[4 * 3 * 3] = {0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF};
-
 
 #if RGFW_3DS
-	#define CMD_BUTTON    RGFW_Select
-	#define QUIT_BUTTON   RGFW_Start
-	#define MOTION_BUTTON RGFW_Y
-	#define FPS_BUTTON RGFW_X
+	#define BUTTON_CMD    RGFW_Select
+	#define BUTTON_QUIT   RGFW_Start
+	#define BUTTON_MOTION RGFW_Y
 #endif
-
 
 
 int main(void) {
 	gfxInit(GSP_RGBA8_OES, GSP_RGB565_OES, false);
 	consoleInit(GFX_BOTTOM, NULL);
 
-	RGFW_window *win = RGFW_createWindow(RGFW_AREA(0, 0), 0);
-
-
+	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowConsoleInit);
 	RGFW_bool motion_enabled = false;
-	u32 frames = 0;
-	u32 fps = 0;
-	const double startTime = RGFW_getTime();
 
 	ssize_t i, j;
 	for (i = 0; i < RGFW_controllerGetCount(); i += 1) {
@@ -72,7 +66,6 @@ int main(void) {
 			RGFW_controllerPointerEnable(controller, j, true);
 		}
 
-		/* TODO(EimaMei): dealing with supported buttons, axes. */
 		printf("Controller #%i: %s\n", i, RGFW_controllerName(controller->type));
 		for (j = 0; j < RGFW_axisTypeCount; j += 1) {
 			printf("\tAxis #%02i: %s\n", j, RGFW_axisName(j));
@@ -80,9 +73,7 @@ int main(void) {
 
 		printf("\n");
 
-		/* TODO(EimaMei): Add a way to get the maximum amount of buttons for a controller type. */
-		/* TODO(EimaMei): Add a way to get buttons from a specific controller type. */
-		for (j = 0; j < RGFW_MAX_BUTTON_COUNT; j += 1) {
+		for (j = controller->button_start; j < controller->button_end; j += 1) {
 			printf("\tButton #%02i: %s\n", j, RGFW_buttonName(j));
 		}
 
@@ -137,18 +128,19 @@ int main(void) {
 
 		RGFW_controller* controller = RGFW_controllerGet(0);
 		if (controller->connected) {
-			if (RGFW_isPressed(controller, CMD_BUTTON)) {
-				if (RGFW_isHeld(controller, MOTION_BUTTON)) {
+			if (RGFW_isPressed(controller, BUTTON_CMD)) {
+				if (RGFW_isHeld(controller, BUTTON_MOTION)) {
 					motion_enabled ^= true;
-					printf("Motion %s!\n", motion_enabled ? "enabled" : "disabled");
+					printf(
+						"Motion %s! Now waiting for the command button to be released...\n",
+						motion_enabled ? "enabled" : "disabled"
+					);
 
-					while (RGFW_isPressed(controller, CMD_BUTTON)) {
+					while (RGFW_isPressed(controller, BUTTON_CMD)) {
 						RGFW_window_checkEvents(win, RGFW_eventWaitNext);
 					}
 				}
-				else if (RGFW_isHeld(controller, FPS_BUTTON))
-					printf("fps: %d\n", fps);
-				else if (RGFW_isHeld(controller, QUIT_BUTTON)) {
+				else if (RGFW_isHeld(controller, BUTTON_QUIT)) {
 					RGFW_window_setShouldClose(win, RGFW_TRUE);
 					continue;
 				}
@@ -167,9 +159,6 @@ int main(void) {
 #endif
 
 		//RGFW_window_swapBuffers(win);
-
-		//fps = RGFW_checkFPS(startTime, frames, 60);
-		frames++;
 	}
 
 	//RGFW_freeMouse(mouse);
