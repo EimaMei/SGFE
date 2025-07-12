@@ -1,13 +1,14 @@
 #define PORTABLEGL_IMPLEMENTATION
 #include "portablegl.h"
 
-#define u8 u8
-
-
-#define __gltypes_h_
 #define RGFW_BUFFER
 #define RGFW_IMPLEMENTATION
-#include "RGFW.h"
+#include <RGFW_embedded.h>
+
+#if RGFW_3DS
+    #define BUTTON_QUIT   RGFW_Start
+#endif
+
 
 typedef struct My_Uniforms
 {
@@ -26,10 +27,10 @@ void uniform_color_fs(float* fs_input, Shader_Builtins* builtins, void* uniforms
 }
 
 int main() {
-	RGFW_window* win = RGFW_createWindow("name", RGFW_RECT(500, 500, 500, 500), (u64)RGFW_windowCenter | RGFW_windowNoResize);
+	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), 0);
 
 	glContext context;
-	init_glContext(&context, (u32**)&win->buffer, win->r.w, 500, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+	init_glContext(&context, (u32**)&win->buffer, win->bufferSize.w, win->bufferSize.h, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
 
 	float points[] = { -0.5, -0.5, 0,
 						0.5, -0.5, 0,
@@ -52,13 +53,13 @@ int main() {
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-	glViewport(0, 0, win->r.w, win->r.h);
+	glViewport(0, 0, win->bufferSize.w, win->bufferSize.h);
 
 	i32 running = 1;
 
 	while (running) {
 		while (RGFW_window_checkEvent(win)) {
-			if (win->event.type == RGFW_quit || RGFW_isPressed(win, RGFW_escape)) {
+			if (win->event->type == RGFW_quit || RGFW_isPressed(RGFW_controllerGet(0), BUTTON_QUIT)) {
 				running = 0;
 				break;
 			}

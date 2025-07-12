@@ -23,7 +23,7 @@ LANGUAGE  = C
 #	SRC    - source file to target.
 #	OUTPUT - the directory where all of the output goes to.
 NAME   = basic
-SRC    = examples/embedded/buffer/buffer.c
+SRC    = examples/embedded/portableGL/pgl.c
 OUTPUT = build
 
 
@@ -193,7 +193,7 @@ else ifeq ($(PLATFORM),3DS)
 	FLAGS = $(GNU_FLAGS) -specs=3dsx.specs -D __3DS__ -mword-relocations -ffunction-sections -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 	INCLUDES = $(GNU_INCLUDES) -I"$(CURDIR)" -I"$(DEVKITPRO)/libctru/include" -I"$(DEVKITARM)/include"
 
-	LIBS = -L$(DEVKITPRO)/libctru/lib/ -lcitro3d -lcitro2d -lctru
+	LIBS = -L$(DEVKITPRO)/libctru/lib/ -lcitro3d -lcitro2d -lctru -lm
 	EXE_OUT = .3dsx
 
 	export PATH := $(DEVKITPRO)/tools/bin:$(DEVKITARM)/bin:$(DEVKITPRO)/portlibs/3ds/bin:$(PATH)

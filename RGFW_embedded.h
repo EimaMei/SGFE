@@ -615,12 +615,8 @@ typedef struct RGFW_window_src {
 	angularRate gyro;
 
 	#if defined(RGFW_BUFFER)
-	u8* framebuffer[2];
-	#ifndef RGFW_BUFFER_NATIVE
-	u8* native;
-	#endif
-	ssize_t framebuffer_size;
-	RGFW_bool cur_framebuffer;
+	u8* front_buffer;
+	ssize_t front_buffer_size;
 	#endif
 } RGFW_window_src;
 
@@ -674,7 +670,7 @@ RGFWDEF RGFW_window* RGFW_createWindowPtr(
 
 RGFWDEF void RGFW_window_initBuffer(RGFW_window* win);
 RGFWDEF void RGFW_window_initBufferSize(RGFW_window* win, RGFW_videoMode mode, RGFW_pixelFormat format);
-RGFWDEF void RGFW_window_initBufferPtr(RGFW_window* win, u8* buffer_front, u8* buffer_back, RGFW_videoMode mode, RGFW_pixelFormat format);
+RGFWDEF void RGFW_window_initBufferPtr(RGFW_window* win, u8* buffer, RGFW_videoMode mode, RGFW_pixelFormat format);
 
 /*! set the window flags (will undo flags if they don't match the old ones) */
 RGFWDEF void RGFW_window_setFlags(RGFW_window* win, RGFW_windowFlags);
@@ -1532,25 +1528,16 @@ void RGFW_window_initBuffer(RGFW_window* win) {
 }
 
 void RGFW_window_initBufferSize(RGFW_window* win, RGFW_videoMode mode, RGFW_pixelFormat format) {
-	win->_flags |= RGFW_BUFFER_ALLOC;
 	RGFW_area res = RGFW_videoModeResolution(mode);
+	u8* buffer = RGFW_ALLOC((size_t)(res.w * res.h * RGFW_pixelFormatBPP(format)));
 
-	ssize_t size = res.w * res.h * RGFW_pixelFormatBPP(format);
-#ifndef RGFW_BUFFER_NATIVE
-	u8* framebuffers = RGFW_ALLOC(2 * (size_t)size);
-#elif RGFW_3DS
-	u8* framebuffers = linearAlloc(2 * (size_t)size);
-
-#endif
-	if (framebuffers == NULL) {
+	if (buffer == NULL) {
 		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errNoMem, RGFW_DEBUG_CTX(NULL, 0), "Ran out of memory when allocating framebuffers.");
 		return ;
 	}
 
-	RGFW_window_initBufferPtr(
-		win, &framebuffers[0], &framebuffers[size],
-		mode, format
-	);
+	win->_flags |= RGFW_BUFFER_ALLOC;
+	RGFW_window_initBufferPtr(win, buffer, mode, format);
 }
 
 RGFW_bool RGFW_isPressed(RGFW_controller* controller, RGFW_button button) {
@@ -2265,12 +2252,7 @@ void RGFW_gfxPresentFramebuffer(RGFW_window* win, bool has_stereo) {
 	u32 stride = GSP_SCREEN_WIDTH * (u32)RGFW_pixelFormatBPP(win->format);
 	u32 pixel_format = (u32)win->format | (1 << 8);
 
-	win->buffer = win->src.framebuffer[win->src.cur_framebuffer];
-#ifndef RGFW_BUFFER_NATIVE
-	u8* fb_a = win->src.native;
-#else
-	u8* fb_a = win->buffer;
-#endif
+	u8* fb_a = win->src.front_buffer;
 	u8* fb_b = fb_a;
 
 	switch (win->mode) {
@@ -2280,21 +2262,21 @@ void RGFW_gfxPresentFramebuffer(RGFW_window* win, bool has_stereo) {
 
 		case RGFW_videoMode3D: {
 			pixel_format |= BIT(5);
-			if (has_stereo) fb_b += win->src.framebuffer_size / 2;
+			if (has_stereo) fb_b += win->src.front_buffer_size / 2;
 		} break;
 	}
 
 	gspPresentBuffer(
-		win->mode == RGFW_videoModeBottomScreen, win->src.cur_framebuffer,
+		win->mode == RGFW_videoModeBottomScreen, 0,
 		fb_a, fb_b, stride, pixel_format
 	);
 }
 
-/* TODO(EimaMei): Add support for other 3 formats. */
-u8* RGFW_window_bufferToNative(RGFW_window* win);
-u8* RGFW_window_bufferToNative(RGFW_window* win) {
 #ifndef RGFW_BUFFER_NATIVE
-	u8* dst = win->src.native;
+/* TODO(EimaMei): Add support for other 3 formats. */
+void RGFW_window_bufferToNative(RGFW_window* win);
+void RGFW_window_bufferToNative(RGFW_window* win) {
+	u8* dst = win->src.front_buffer;
 	u8* src = win->buffer;
 
 	const ssize_t width  = win->bufferSize.w,
@@ -2310,36 +2292,26 @@ u8* RGFW_window_bufferToNative(RGFW_window* win) {
 			dst[pixel + 3] = src[opixel + 0];
 		}
 	}
-
-	return dst;
-#else
-	RGFW_ASSERT(win->mode == win->bufferMode);
-	return win->buffer;
-#endif
 }
+#endif
 
 #endif
 
-void RGFW_window_initBufferPtr(RGFW_window* win, u8* buffer_front, u8* buffer_back,
-		RGFW_videoMode mode, RGFW_pixelFormat format) {
+void RGFW_window_initBufferPtr(RGFW_window* win, u8* buffer, RGFW_videoMode mode, 
+		RGFW_pixelFormat format) {
 #if defined(RGFW_BUFFER)
+	win->buffer = buffer;
 	win->bufferMode = mode;
 	win->bufferFormat = format;
+	win->bufferSize = RGFW_videoModeResolution(mode);
 
 	if ((win->_flags & RGFW_GSP_INIT) == 0) {
 		gspInit();
 		win->_flags |= RGFW_GSP_INIT;
 	}
 
-	win->bufferSize = RGFW_videoModeResolution(mode);
-
-	win->src.framebuffer[0] = buffer_front;
-	win->src.framebuffer[1] = buffer_back;
-#ifndef RGFW_BUFFER_NATIVE
-	win->src.native = linearAlloc(800 * 240 * 4);
-#endif
-	win->src.framebuffer_size = win->bufferSize.w * win->bufferSize.h * RGFW_pixelFormatBPP(format);
-	win->src.cur_framebuffer = 0;
+	win->src.front_buffer_size = win->bufferSize.w * win->bufferSize.h * RGFW_pixelFormatBPP(format);
+	win->src.front_buffer = linearAlloc(800 * 240 * 4);
 	RGFW_gfxPresentFramebuffer(win, false);
 
 	gspWaitForVBlank();
@@ -2348,8 +2320,7 @@ void RGFW_window_initBufferPtr(RGFW_window* win, u8* buffer_front, u8* buffer_ba
 	RGFW_sendDebugInfo(RGFW_typeInfo, RGFW_infoBuffer, RGFW_DEBUG_CTX(win, 0), " creating a 4 channel buffer");
 
 #else
-	RGFW_UNUSED(win); RGFW_UNUSED(buffer_front); RGFW_UNUSED(buffer_back); 
-	RGFW_UNUSED(mode); RGFW_UNUSED(format);
+	RGFW_UNUSED(win); RGFW_UNUSED(buffer); RGFW_UNUSED(mode); RGFW_UNUSED(format);
 #endif
 }
 
@@ -2661,23 +2632,13 @@ RGFW_event* RGFW_window_checkEvent(RGFW_window* win) {
 
 void RGFW_window_close(RGFW_window* win) {
 	/* NOTE(EimaMei): Only do gfxExit if win is the last window. */
-	RGFW_PRINTF("riley has to fix this.\n");
+	// TODO(EimaMei: ("riley has to fix this.\n");
 
 #if defined(RGFW_BUFFER)
-#ifndef RGFW_BUFFER_NATIVE
 	if ((win->_flags & RGFW_BUFFER_ALLOC)) {
-		RGFW_FREE(win->src.framebuffer[0]);
+		RGFW_FREE(win->buffer);
+		linearFree(win->src.front_buffer);
 	}
-
-	if (win->src.native) {
-		linearFree(win->src.native);
-	}
-#else
-	if ((win->_flags & RGFW_BUFFER_ALLOC)) {
-		linearFree(win->src.framebuffer[0]);
-	}
-
-#endif
 #endif
 
 	_RGFW->windowCount -= 1;
@@ -2692,9 +2653,15 @@ void RGFW_window_close(RGFW_window* win) {
 
 void RGFW_window_swapBuffers_software(RGFW_window* win) {
 #if defined(RGFW_BUFFER)
-	GSPGPU_FlushDataCache(RGFW_window_bufferToNative(win), (u32)win->src.framebuffer_size);
 
-	win->src.cur_framebuffer ^= 1;
+#ifdef RGFW_BUFFER_NATIVE
+	RGFW_MEMCPY(win->src.front_buffer, win->buffer, (size_t)win->src.front_buffer_size);
+#else 
+	RGFW_window_bufferToNative(win);
+#endif
+
+	GSPGPU_FlushDataCache(win->src.front_buffer, (u32)win->src.front_buffer_size);
+
 	RGFW_gfxPresentFramebuffer(win, true);
 	gspWaitForVBlank();
 #else

@@ -1,11 +1,16 @@
+#define RGFW_IMPLEMENTATION
+#define RGFW_BUFFER
+#include <RGFW_embedded.h>
 
-#define SILK_PIXELBUFFER_WIDTH 500
-#define SILK_PIXELBUFFER_HEIGHT 500
+#if RGFW_3DS
+	#define SILK_PIXELBUFFER_WIDTH  400
+    #define SILK_PIXELBUFFER_HEIGHT 240
+
+    #define BUTTON_QUIT   RGFW_Start
+#endif
+
 #define SILK_IMPLEMENTATION
 #include "silk.h"
-
-#include <stdint.h>
-#include <stddef.h>
 
 typedef int8_t      i8;
 typedef uint16_t   u16;
@@ -14,24 +19,13 @@ typedef uint64_t   u64;
 typedef int64_t    i64;
 
 
-#define u8 u8
-#define RGFW_IMPLEMENTATION
-#define RGFW_BUFFER
-
-#include "RGFW.h"
-
 int main(void) {
-    RGFW_window* win = RGFW_createWindow("Basic buffer example", RGFW_RECT(0, 0, 500, 500), RGFW_windowCenter | RGFW_windowTransparent | RGFW_windowNoResize);
-    RGFW_window_initBufferSize(win, RGFW_AREA(500, 500));
+    RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), 0);
 
-    u32 angle = 0;
-    u32 frames = 0;
-    double frameStartTime = RGFW_getTime();
-
-    i8 running = 1;
+    RGFW_bool running = RGFW_TRUE;
     while (running) {
         while (RGFW_window_checkEvent(win)) {
-            if (win->event.type == RGFW_quit || RGFW_isPressed(win, RGFW_escape)) {
+            if (win->event->type == RGFW_quit || RGFW_isPressed(win->event->controller, BUTTON_QUIT)) {
                 running = 0;
                 break;
             }   
@@ -58,19 +52,16 @@ int main(void) {
             SILK_PIXELBUFFER_WIDTH,
             text, 
             (vec2i) { 
-                win->r.w / 2 - silkMeasureText(text, text_size, text_spacing).x / 2, 
-                win->r.h / 2 - silkMeasureText(text, text_size, text_spacing).y / 2 + win->r.h / 4 
+                win->bufferSize.w / 2 - silkMeasureText(text, text_size, text_spacing).x / 2, 
+                win->bufferSize.h / 2 - silkMeasureText(text, text_size, text_spacing).y / 2 + win->bufferSize.h / 4 
             }, 
             text_size,
             text_spacing,
             0xff000000
         );
         
-        angle++;
 
         RGFW_window_swapBuffers(win);
-		RGFW_checkFPS(frameStartTime, frames, 60);
-        frames++;
     }
 
     RGFW_window_close(win);
