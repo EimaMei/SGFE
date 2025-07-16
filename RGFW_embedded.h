@@ -34,15 +34,11 @@
 	#define RGFW_IMPLEMENTATION - (required) makes it so the source code is included
 	#define RGFW_DEBUG - (optional) makes it so RGFW prints debug messages and errors when they're found
 	#define RGFW_BUFFER - (optional) draw directly to (RGFW) window pixel buffer that is drawn to screen (the buffer is in the RGBA format)
-	#define RGFW_EGL - (optional) use EGL for loading an OpenGL context (instead of the system's opengl api)
-	#define RGFW_OPENGL_ES1 - (optional) use EGL to load and use Opengl ES (version 1) for backend rendering (instead of the system's opengl api)
-									This version doesn't work for desktops (I'm pretty sure)
-	#define RGFW_OPENGL_ES2 - (optional) use OpenGL ES (version 2)
-	#define RGFW_OPENGL_ES3 - (optional) use OpenGL ES (version 3)
+	#define RGFW_EGL - (optional) use EGL for loading an OpenGL context (instead of the system's OpenGL api)
 	#define RGFW_DIRECTX - (optional) include integration directX functions (windows only)
 	#define RGFW_VULKAN - (optional) include helpful vulkan integration functions and macros
 	#define RGFW_WEBGPU - (optional) use webGPU for rendering (Web ONLY)
-	#define RGFW_NO_API - (optional) don't use any rendering API (no opengl, no vulkan, no directX)
+	#define RGFW_NO_API - (optional) don't use any rendering API (no OpenGL, no vulkan, no directX)
 
 	#define RGFW_LINK_EGL (optional) (windows only) if EGL is being used, if EGL functions should be defined dymanically (using GetProcAddress)
 	#define RGFW_X11 (optional) (unix only) if X11 should be used. This option is turned on by default by unix systems except for MacOS
@@ -66,7 +62,6 @@
 
 	#define RGFW_ALLOC x  - choose the default allocation function (defaults to standard malloc)
 	#define RGFW_FREE x  - choose the default deallocation function (defaults to standard free)
-	#define RGFW_USERPTR x - choose the default userptr sent to the malloc call, (NULL by default)
 
 	#define RGFW_EXPORT - use when building RGFW
 	#define RGFW_IMPORT - use when linking with RGFW (not as a single-header)
@@ -169,7 +164,7 @@ int main() {
         Robert Gonzalez (@uni-dos) -> code review (wayland)
         @TheLastVoyager -> code review
         @yehoravramenko -> code review (winapi)
-        @halocupcake -> code review (opengl)
+        @halocupcake -> code review (OpenGL)
         @GideonSerf -> documentation
         Alexandre Almeida (@M374LX) -> code review (keycodes)
         Vũ Xuân Trường (@wanwanvxt) -> code review (winapi)
@@ -195,16 +190,8 @@ int main() {
     #endif
 #endif
 
-#ifndef RGFW_USERPTR
-	#define RGFW_USERPTR NULL
-#endif
-
 #ifndef RGFW_UNUSED
 	#define RGFW_UNUSED(x) (void)(x)
-#endif
-
-#ifndef RGFW_ROUND
-	#define RGFW_ROUND(x) (i32)((x) >= 0 ? (x) + 0.5f : (x) - 0.5f)
 #endif
 
 #ifndef RGFW_ALLOC
@@ -218,7 +205,7 @@ int main() {
 	#define RGFW_ASSERT assert
 #endif
 
-#if !defined(RGFW_MEMCPY) || !defined(RGFW_STRNCMP) || !defined(RGFW_STRNCPY) || !defined(RGFW_MEMSET)
+#if !defined(RGFW_MEMCPY) || !defined(RGFW_STRNCMP) || !defined(RGFW_MEMSET)
 	#include <string.h>
 #endif
 
@@ -230,51 +217,15 @@ int main() {
 	#define RGFW_MEMCPY(dist, src, len) memcpy(dist, src, len)
 #endif
 
-#ifndef RGFW_STRNCMP
-	#define RGFW_STRNCMP(s1, s2, max) strncmp(s1, s2, max)
-#endif
-
-#ifndef RGFW_STRNCPY
-	#define RGFW_STRNCPY(dist, src, len) strncpy(dist, src, len)
-#endif
-
-#ifndef RGFW_STRSTR
-	#define RGFW_STRSTR(str, substr) strstr(str, substr)
-#endif
-
-#ifndef RGFW_STRTOL
-	/* required for X11 XDnD and X11 Monitor DPI */
-	#include <stdlib.h>
-	#define RGFW_STRTOL(str, endptr, base) strtol(str, endptr, base)
-	#define RGFW_ATOF(num) atof(num)
-#endif
-
 #if !defined(RGFW_PRINTF) && ( defined(RGFW_DEBUG) || defined(RGFW_WAYLAND) )
     /* required when using RGFW_DEBUG */
     #include <stdio.h>
     #define RGFW_PRINTF printf
 #endif
 
-#ifdef RGFW_WIN95 /* for windows 95 testing (not that it really works) */
-	#define RGFW_NO_MONITOR
-	#define RGFW_NO_PASSTHROUGH
-#endif
-
-#if defined(RGFW_EXPORT) ||  defined(RGFW_IMPORT)
-	#if defined(_WIN32)
-		#if defined(__TINYC__) && (defined(RGFW_EXPORT) ||  defined(RGFW_IMPORT))
-			#define __declspec(x) __attribute__((x))
-		#endif
-
-		#if defined(RGFW_EXPORT)
-			#define RGFWDEF __declspec(dllexport)
-		#else
-			#define RGFWDEF __declspec(dllimport)
-		#endif
-	#else
-		#if defined(RGFW_EXPORT)
-			#define RGFWDEF __attribute__((visibility("default")))
-		#endif
+#if defined(RGFW_EXPORT) || defined(RGFW_IMPORT)
+	#if defined(RGFW_EXPORT)
+		#define RGFWDEF __attribute__((visibility("default")))
 	#endif
     #ifndef RGFWDEF
         #define RGFWDEF
@@ -357,6 +308,17 @@ int main() {
 	#define RGFW_HAS_MOUSE_SUPPORT     0
 
 	#include <3ds.h>
+
+	#ifdef RGFW_OPENGL
+	#define RIP_BACKEND RIP_BACKEND_KYGX
+	#include <GLES/gl2.h>
+	#endif
+
+	/* TODO(EimaMei): comment. */
+	#ifndef RGFW_ALLOC_SYS
+	#define RGFW_ALLOC_SYS(size) linearAlloc((size_t)(size))
+	#define RGFW_FREE_SYS(ptr) linearFree(ptr)
+	#endif
 #endif
 
 /*
@@ -614,9 +576,19 @@ typedef struct RGFW_window_src {
 	accelVector accel;
 	angularRate gyro;
 
+	#if defined(RGFW_OPENGL)
+		GLASSCtx ctx;
+		GLuint framebuffer;
+		GLuint renderbuffer;
+	#endif
+
 	#if defined(RGFW_BUFFER)
-	u8* front_buffer;
-	ssize_t front_buffer_size;
+		u8* buffers[2];
+		#ifndef RGFW_BUFFER_NATIVE
+		u8* buffers_native[2];
+		#endif
+		ssize_t current_buffer;
+		ssize_t buffer_size;
 	#endif
 } RGFW_window_src;
 
@@ -626,7 +598,6 @@ typedef struct RGFW_window_src {
 typedef RGFW_ENUM(u32, RGFW_windowFlags) {
 	RGFW_windowNoInitAPI      = RGFW_BIT(0), /* do NOT init an API (including the software rendering buffer) (mostly for bindings. you can also use `#define RGFW_NO_API`) */
 	RGFW_windowConsoleInit    = RGFW_BIT(1), /* TODO(EimaMei): New enum. */
-	RGFW_windowOpenglSoftware = RGFW_BIT(8), /*! use OpenGL software rendering */
 	RGFW_windowFreeOnClose    = RGFW_BIT(15), /*!< free (RGFW_window_close) the RGFW_window struct when the window is closed (by the end user) */
 };
 
@@ -634,10 +605,8 @@ typedef struct RGFW_window {
 	RGFW_window_src src; /*!< src window data */
 
 #if defined(RGFW_BUFFER)
-	u8* buffer; /*!< buffer for non-GPU systems (OSMesa, basic software rendering) */
+	u8* buffer; /*!< buffer for software rendering */
 	RGFW_area bufferSize;
-	RGFW_videoMode bufferMode;
-	RGFW_pixelFormat bufferFormat;
 #endif
 	void* userPtr; /* ptr for usr data */
 
@@ -721,8 +690,6 @@ RGFWDEF void RGFW_stopCheckEvents(void);
 /*! window managment functions */
 RGFWDEF void RGFW_window_close(RGFW_window* win); /*!< close the window and free leftover data */
 
-RGFWDEF RGFW_bool RGFW_window_opengl_isSoftware(RGFW_window* win);
-
 /*
 	Locks cursor at the center of the window
 	win->event.point becomes raw mouse movement data
@@ -795,10 +762,9 @@ typedef RGFW_ENUM(u8, RGFW_debugType) {
 
 typedef RGFW_ENUM(u8, RGFW_errorCode) {
 	RGFW_noError = 0, /*!< no error */
-	RGFW_errNoMem,
-	RGFW_errOpenglContext, RGFW_errEGLContext, /*!< error with the OpenGL context */
+	RGFW_errOutOfMemory,
+	RGFW_errOpenGLContext, RGFW_errEGLContext, /*!< error with the OpenGL context */
 	RGFW_errWayland, RGFW_errX11,
-	RGFW_errDirectXContext,
 	RGFW_errIOKit,
 	RGFW_errClipboard,
 	RGFW_errFailedFuncLoad,
@@ -877,7 +843,7 @@ RGFWDEF RGFW_windowResizedfunc RGFW_setWindowRestoredCallback(RGFW_windowResized
 /** * @defgroup graphics_API
 * @{ */
 
-/*!< make the window the current opengl drawing context
+/*!< make the window the current OpenGL drawing context
 
 	NOTE:
  	if you want to switch the graphics context's thread,
@@ -889,7 +855,7 @@ RGFWDEF void RGFW_window_makeCurrent(RGFW_window* win);
 /*! get current RGFW window graphics context */
 RGFWDEF RGFW_window* RGFW_getCurrent(void);
 
-/* supports openGL, directX, OSMesa, EGL and software rendering */
+/* supports OpenGL and software rendering */
 RGFWDEF void RGFW_window_swapBuffers(RGFW_window* win); /*!< swap the rendering buffer */
 RGFWDEF void RGFW_window_swapInterval(RGFW_window* win, i32 swapInterval);
 /*!< render the software rendering buffer (this is called by RGFW_window_swapInterval)  */
@@ -899,85 +865,47 @@ typedef void (*RGFW_proc)(void); /* function pointer equivalent of void* */
 
 /*! native API functions */
 #if defined(RGFW_OPENGL) || defined(RGFW_EGL)
-/*!< create an opengl context for the RGFW window, run by createWindow by default (unless the RGFW_windowNoInitAPI is included) */
-RGFWDEF void RGFW_window_initOpenGL(RGFW_window* win);
+/*!< create an OpenGL context for the RGFW window, run by createWindow by default (unless the RGFW_windowNoInitAPI is included) */
+RGFWDEF bool RGFW_window_initOpenGL(RGFW_window* win);
 /*!< called by `RGFW_window_close` by default (unless the RGFW_windowNoInitAPI is set) */
 RGFWDEF void RGFW_window_freeOpenGL(RGFW_window* win);
 
 /*! OpenGL init hints */
-typedef RGFW_ENUM(u8, RGFW_glHints)  {
+typedef RGFW_ENUM(i32, RGFW_glHints)  {
 	RGFW_glStencil = 0,  /*!< set stencil buffer bit size (8 by default) */
-	RGFW_glSamples, /*!< set number of sampiling buffers (4 by default) */
-	RGFW_glStereo, /*!< use GL_STEREO (GL_FALSE by default) */
+	RGFW_glSamples, /*!< set number of sample buffers (4 by default) */
+	RGFW_glStereo, /*!< hint the context to use stereoscopic frame buffers for 3D (false by default) */
 	RGFW_glAuxBuffers, /*!< number of aux buffers (0 by default) */
-	RGFW_glDoubleBuffer, /*!< request double buffering */
-	RGFW_glRed, RGFW_glGreen, RGFW_glBlue, RGFW_glAlpha, /*!< set RGBA bit sizes */
-	RGFW_glDepth,
-	RGFW_glAccumRed, RGFW_glAccumGreen, RGFW_glAccumBlue,RGFW_glAccumAlpha, /*!< set accumulated RGBA bit sizes */
-	RGFW_glSRGB, /*!< request sRGA */
-	RGFW_glRobustness, /*!< request a robust context */
-	RGFW_glDebug, /*!< request opengl debugging */
-	RGFW_glNoError, /*!< request no opengl errors */
-	RGFW_glReleaseBehavior,
-	RGFW_glProfile,
-	RGFW_glMajor, RGFW_glMinor,
-	RGFW_glFinalHint = 32, /*!< the final hint (not for setting) */
-	RGFW_releaseFlush = 0,  RGFW_glReleaseNone, /* RGFW_glReleaseBehavior options */
-	RGFW_glCore = 0,  RGFW_glCompatibility /*!< RGFW_glProfile options */
+	RGFW_glDoubleBuffer, /*!< request double buffering (true by default) */
+	RGFW_glRed, RGFW_glGreen, RGFW_glBlue, RGFW_glAlpha, /*!< set color bit sizes (all 8 by default) */
+	RGFW_glDepth, /*!< set depth buffer bit size (24 by default) */
+	RGFW_glAccumRed, RGFW_glAccumGreen, RGFW_glAccumBlue,RGFW_glAccumAlpha, /*!< set accumulated RGBA bit sizes (all 0 by default) */
+	RGFW_glSRGB, /*!< request sRGA format (false by default) */
+	RGFW_glRobustness, /*!< request a "robust" (as in memory-safe) context (false by default). For more information check the overview section: https://registry.khronos.org/OpenGL/extensions/EXT/EXT_robustness.txt */
+	RGFW_glDebug, /*!< request OpenGL debugging (false by default). */
+	RGFW_glNoError, /*!< request no OpenGL errors (false by default). This causes OpenGL errors to be undefined behavior. For more information check the overview section: https://registry.khronos.org/OpenGL/extensions/KHR/KHR_no_error.txt */
+	RGFW_glReleaseBehavior, /*!< hint how the OpenGL driver should behave when changing contexts (RGFW_glReleaseNone by default). For more information check the overview section: https://registry.khronos.org/OpenGL/extensions/KHR/KHR_context_flush_control.txt */
+	RGFW_glProfile, /*!< set OpenGL API profile (RGFW_glCore by default) */
+	RGFW_glMajor, RGFW_glMinor,  /*!< set the OpenGL API profile version (by default RGFW_glMajor is 1, RGFW_glMinor is 0) */
+
+	RGFW_glHintsCount,
 };
+
+typedef RGFW_ENUM(i32, RGFW_glValue)  {
+	RGFW_releaseFlush = 0, RGFW_glReleaseNone, /* RGFW_glReleaseBehavior options */
+	RGFW_glCore = 0, RGFW_glCompatibility, RGFW_glES /*!< RGFW_glProfile options */
+};
+
 RGFWDEF void RGFW_setGLHint(RGFW_glHints hint, i32 value);
-RGFWDEF RGFW_bool RGFW_extensionSupported(const char* extension, size_t len);	/*!< check if whether the specified API extension is supported by the current OpenGL or OpenGL ES context */
-RGFWDEF RGFW_proc RGFW_getProcAddress(const char* procname); /*!< get native opengl proc address */
+RGFWDEF i32 RGFW_getGLHint(RGFW_glHints hint);
+
 RGFWDEF void RGFW_window_makeCurrent_OpenGL(RGFW_window* win); /*!< to be called by RGFW_window_makeCurrent */
 RGFWDEF void RGFW_window_swapBuffers_OpenGL(RGFW_window* win); /*!< swap opengl buffer (only) called by RGFW_window_swapInterval  */
-void* RGFW_getCurrent_OpenGL(void); /*!< get the current context (OpenGL backend (GLX) (WGL) (EGL) (cocoa) (webgl))*/
 
-RGFWDEF RGFW_bool RGFW_extensionSupportedPlatform(const char* extension, size_t len);	/*!< check if whether the specified platform-specific API extension is supported by the current OpenGL or OpenGL ES context */
+RGFWDEF void* RGFW_getCurrent_OpenGL(void); /*!< get the current context (OpenGL backend (3DS))*/
+
 #endif
-#ifdef RGFW_VULKAN
-	#if defined(RGFW_WAYLAND) && defined(RGFW_X11)
-    	#define VK_USE_PLATFORM_WAYLAND_KHR
-		#define VK_USE_PLATFORM_XLIB_KHR
-        #define RGFW_VK_SURFACE ((RGFW_usingWayland()) ? ("VK_KHR_wayland_surface") : ("VK_KHR_xlib_surface"))
-    #elif defined(RGFW_WAYLAND)
-		#define VK_USE_PLATFORM_WAYLAND_KHR
-		#define VK_USE_PLATFORM_XLIB_KHR
-        #define RGFW_VK_SURFACE "VK_KHR_wayland_surface"
-    #elif defined(RGFW_X11)
-		#define VK_USE_PLATFORM_XLIB_KHR
-		#define RGFW_VK_SURFACE "VK_KHR_xlib_surface"
-	#elif defined(RGFW_WINDOWS)
-		#define VK_USE_PLATFORM_WIN32_KHR
-		#define OEMRESOURCE
-		#define RGFW_VK_SURFACE "VK_KHR_win32_surface"
-	#elif defined(RGFW_MACOS) && !defined(RGFW_MACOS_X11)
-		#define VK_USE_PLATFORM_MACOS_MVK
-		#define RGFW_VK_SURFACE "VK_MVK_macos_surface"
-	#else
-		#define RGFW_VK_SURFACE NULL
-	#endif
 
-/* if you don't want to use the above macros */
-RGFWDEF const char** RGFW_getVKRequiredInstanceExtensions(size_t* count); /*!< gets (static) extension array (and size (which will be 2)) */
-
-#include <vulkan/vulkan.h>
-
-RGFWDEF VkResult RGFW_window_createVKSurface(RGFW_window* win, VkInstance instance, VkSurfaceKHR* surface);
-RGFWDEF RGFW_bool RGFW_getVKPresentationSupport(VkInstance instance, VkPhysicalDevice physicalDevice, u32 queueFamilyIndex);
-#endif
-#ifdef RGFW_DIRECTX
-#ifndef RGFW_WINDOWS
-	#undef RGFW_DIRECTX
-#else
-	#define OEMRESOURCE
-	#include <dxgi.h>
-
-	#ifndef __cplusplus
-		#define __uuidof(T) IID_##T
-	#endif
-RGFWDEF int RGFW_window_createDXSwapChain(RGFW_window* win, IDXGIFactory* pFactory, IUnknown* pDevice, IDXGISwapChain** swapchain);
-#endif
-#endif
 
 /** @} */
 
@@ -1131,7 +1059,12 @@ RGFWDEF u32 RGFW_rgfwToApiKey(RGFW_button keycode);
 /* TODO(EimaMei): new function. | can return 0 or maybe not. */
 RGFWDEF RGFW_systemModel RGFW_systemGetModel(void);
 /* TODO(EimaMei): new function. */
-static inline float RGFW_systemGet3DSlider(void);
+RGFWDEF float RGFW_systemGet3DSlider(void);
+
+#ifdef RGFW_OPENGL
+/* TODO(EimaMei): new function */
+bool RGFW_system_OpenGL_fixScreen(GLuint shader_program, const char* mat4_uniform_name);
+#endif
 
 /* Returns a video mode that's considered to be the most optimal for the system
  * by the library. Usually this returns a mode that has a standard resolution,
@@ -1154,19 +1087,6 @@ RGFWDEF i32 RGFW_pixelFormatBPP(RGFW_pixelFormat mode);
 /* TODO(EimaMei): New function. */
 RGFWDEF const char* RGFW_pixelFormatStr(RGFW_pixelFormat mode);
 
-
-
-
-#endif /* RGFW_HEADER */
-#if defined(RGFW_X11) || defined(RGFW_WAYLAND)
-	#define RGFW_OS_BASED_VALUE(l, w, m, h) l
-#elif defined(RGFW_WINDOWS)
-	#define RGFW_OS_BASED_VALUE(l, w, m, h) w
-#elif defined(RGFW_MACOS)
-	#define RGFW_OS_BASED_VALUE(l, w, m, h) m
-#elif defined(RGFW_WASM)
-	#define RGFW_OS_BASED_VALUE(l, w, m, h) h
-#endif
 
 /*! optional init/deinit function */
 RGFWDEF i32 RGFW_init(void); /*!< is called by default when the first window is created by default */
@@ -1196,6 +1116,13 @@ typedef struct RGFW_info {
 	RGFW_controller controllers[RGFW_MAX_CONTROLLER_DEVICES];
 
 	RGFW_bool stopCheckEvents_bool;
+
+	#ifdef RGFW_3DS
+	#ifdef RGFW_OPENGL
+	RGFW_bool kygx_initialized;
+	#endif
+	#endif
+
 } RGFW_info;
 
 RGFWDEF i32 RGFW_init_ptr(RGFW_info* info); /*!< init RGFW, storing the data at the pointer */
@@ -1236,6 +1163,7 @@ RGFW_keyState RGFW_keyboard[RGFW_keyLast];
 	else     (var) &= ~(mask); \
 } while (0)
 
+#define RGFW_COUNTOF(array) (ssize_t)(sizeof(array) / sizeof((array)[0]))
 
 RGFWDEF void RGFW_resetKeyPrev(void);
 
@@ -1303,6 +1231,9 @@ RGFW_CALLBACK_DEFINE(debug, Debug)
 #endif
 
 void RGFW_sendDebugInfo(RGFW_debugType type, RGFW_errorCode err, RGFW_debugContext ctx, const char* msg) {
+	#ifdef RGFW_OPENGL
+	if (RGFW_getGLHint(RGFW_glNoError)) { return ;}
+	#endif
 	RGFW_debugCallback(type, err, ctx, msg);
 
     #ifdef RGFW_DEBUG
@@ -1318,7 +1249,6 @@ void RGFW_sendDebugInfo(RGFW_debugType type, RGFW_errorCode err, RGFW_debugConte
 		case RGFW_errBuffer: case RGFW_infoBuffer: RGFW_PRINTF(" videoMode = %s, pixelFormat = %s\n", RGFW_videoModeStr(ctx.win->mode), RGFW_pixelFormatStr(ctx.win->format)); break;
 		#endif
 		case RGFW_infoWindow: RGFW_PRINTF(" videoMode = %s, pixelFormat = %s\n", RGFW_videoModeStr(ctx.win->mode), RGFW_pixelFormatStr(ctx.win->format)); break;
-		case RGFW_errDirectXContext: RGFW_PRINTF(" srcError %i\n", ctx.srcError); break;
 		default: RGFW_PRINTF("\n");
 	}
 	#endif
@@ -1343,15 +1273,13 @@ no more event call back defines
     attribs[index++] = v; \
 }
 
-/* RGFW_BIT(23) */
-#define RGFW_GSP_INIT   		RGFW_BIT(24) /* TODO(EimaMei): new flag. */
+/* RGFW_BIT(24) */
 #define RGFW_EVENT_QUIT 		RGFW_BIT(25) /* the window close button was pressed */
-#define RGFW_CONSOLE_INIT 		RGFW_BIT(26) /* TODO(EimaMei): new flag. */
 #define RGFW_MOUSE_LEFT 		RGFW_BIT(27) /* if mouse left the window */
 #define RGFW_WINDOW_ALLOC 		RGFW_BIT(28) /* if window was allocated by RGFW */
 #define RGFW_BUFFER_ALLOC 		RGFW_BIT(29) /* if window.buffer was allocated by RGFW */
 #define RGFW_WINDOW_INIT 		RGFW_BIT(30) /* if window.buffer was allocated by RGFW */
-#define RGFW_INTERNAL_FLAGS (RGFW_GSP_INIT | RGFW_EVENT_QUIT | RGFW_CONSOLE_INIT | RGFW_MOUSE_LEFT | RGFW_WINDOW_ALLOC | RGFW_BUFFER_ALLOC)
+#define RGFW_INTERNAL_FLAGS (RGFW_EVENT_QUIT | RGFW_MOUSE_LEFT | RGFW_WINDOW_ALLOC | RGFW_BUFFER_ALLOC)
 
 
 RGFW_window* RGFW_createWindow(RGFW_videoMode mode, RGFW_windowFlags flags) {
@@ -1492,22 +1420,22 @@ void RGFW_window_basic_init(RGFW_window* win, RGFW_videoMode mode, RGFW_windowFl
 
 	/* set and init the new window's data */
 	win->mode = mode;
-	win->format = RGFW_pixelFormatRGBA8;
+	win->format = -1;
 	/* TODO(EimaMei): Add an input exit button? Should this be kept for keyboard
 	 * supported system? */
 #if RGFW_HAS_KEYBOARD_SUPPORT
 	win->exitKey = RGFW_escape;
 #endif
 
-	win->_flags = 0 | (win->_flags & RGFW_WINDOW_ALLOC);
-    win->_flags |= flags;
+	win->_flags = (win->_flags & RGFW_WINDOW_ALLOC) | flags;
 	win->event = NULL;
 
-	#ifdef RGFW_BUFFER
-	if ((flags & (RGFW_windowNoInitAPI | RGFW_windowConsoleInit)) == 0) {
+	if ((flags & RGFW_windowNoInitAPI) == 0) {
+		#ifdef RGFW_OPENGL
+		RGFW_window_initOpenGL(win);
+		#endif
         RGFW_window_initBuffer(win);
     }
-	#endif 
 
 	RGFW_window_setFlags(win, win->_flags);
 }
@@ -1518,21 +1446,17 @@ void RGFW_window_setFlags(RGFW_window* win, RGFW_windowFlags flags) {
 	win->_flags = flags | (win->_flags & RGFW_INTERNAL_FLAGS);
 }
 
-RGFW_bool RGFW_window_opengl_isSoftware(RGFW_window* win) {
-    return RGFW_BOOL(win->_flags |= RGFW_windowOpenglSoftware);
-}
-
 void RGFW_window_initBuffer(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
-	RGFW_window_initBufferSize(win, win->mode, win->format);
+	RGFW_window_initBufferSize(win, win->mode, RGFW_pixelFormatRGBA8);
 }
 
 void RGFW_window_initBufferSize(RGFW_window* win, RGFW_videoMode mode, RGFW_pixelFormat format) {
 	RGFW_area res = RGFW_videoModeResolution(mode);
-	u8* buffer = RGFW_ALLOC((size_t)(res.w * res.h * RGFW_pixelFormatBPP(format)));
 
+	u8* buffer = (u8*)RGFW_ALLOC_SYS(res.w * res.h * RGFW_pixelFormatBPP(format));
 	if (buffer == NULL) {
-		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errNoMem, RGFW_DEBUG_CTX(NULL, 0), "Ran out of memory when allocating framebuffers.");
+		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOutOfMemory, RGFW_DEBUG_CTX(NULL, 0), "Ran out of memory when allocating framebuffers.");
 		return ;
 	}
 
@@ -1648,409 +1572,42 @@ void RGFW_updateKeyMods(RGFW_window* win, RGFW_bool capital, RGFW_bool numlock, 
 
 #if defined(RGFW_OPENGL) || defined(RGFW_EGL)
 
-
-/* EGL, normal OpenGL only */
-#ifndef RGFW_EGL
-i32 RGFW_GL_HINTS[RGFW_glFinalHint] = {8,
-#else
-i32 RGFW_GL_HINTS[RGFW_glFinalHint] = {0,
-#endif
-	0, 0, 0, 1, 8, 8, 8, 8, 24, 0, 0, 0, 0, 0, 0, 0, 0, RGFW_glReleaseNone, RGFW_glCore, 0, 0};
+i32 RGFW_GL_HINTS[RGFW_glHintsCount] = {
+	/* RGFW_glStencil         */ 8,
+	/* RGFW_glSamples         */ 4,
+	/* RGFW_glStereo          */ RGFW_FALSE,
+	/* RGFW_glAuxBuffers      */ 0,
+	/* RGFW_glDoubleBuffer    */ RGFW_TRUE,
+	/* RGFW_glRed             */ 8,
+	/* RGFW_glGreen           */ 8,
+	/* RGFW_glBlue            */ 8,
+	/* RGFW_glAlpha           */ 8,
+	/* RGFW_glDepth           */ 24,
+	/* RGFW_glAccumRed        */ 0,
+	/* RGFW_glAccumGreen      */ 0,
+	/* RGFW_glAccumBlue       */ 0,
+	/* RGFW_glAccumAlpha      */ 0,
+	/* RGFW_glSRGB            */ RGFW_FALSE,
+	/* RGFW_glRobustness      */ RGFW_FALSE,
+	/* RGFW_glDebug           */ RGFW_FALSE,
+	/* RGFW_glNoError         */ RGFW_FALSE,
+	/* RGFW_glReleaseBehavior */ RGFW_glReleaseNone,
+	/* RGFW_glProfile         */ RGFW_glCore,
+	/* RGFW_glMajor           */ 1,
+	/* RGFW_glMinor           */ 0,
+};
 
 void RGFW_setGLHint(RGFW_glHints hint, i32 value) {
-	if (hint < RGFW_glFinalHint && hint) RGFW_GL_HINTS[hint] = value;
+	RGFW_ASSERT(hint >= 0 && hint < RGFW_glHintsCount);
+	RGFW_GL_HINTS[hint] = value;
 }
 
-RGFW_bool RGFW_extensionSupportedStr(const char* extensions, const char* ext, size_t len) {
-    const char *start = extensions;
-    const char *where;
-    const char* terminator;
-
-    if (extensions == NULL || ext == NULL)
-        return RGFW_FALSE;
-
-    where = RGFW_STRSTR(extensions, ext);
-    while (where) {
-        terminator = where + len;
-        if ((where == start || *(where - 1) == ' ') &&
-            (*terminator == ' ' || *terminator == '\0')) {
-            return RGFW_TRUE;
-        }
-        where = RGFW_STRSTR(terminator, ext);
-    }
-
-    return RGFW_FALSE;
+i32 RGFW_getGLHint(RGFW_glHints hint) {
+	RGFW_ASSERT(hint >= 0 && hint < RGFW_glHintsCount);
+	return RGFW_GL_HINTS[hint];
 }
 
-RGFW_bool RGFW_extensionSupported(const char* extension, size_t len) {
-    #ifdef GL_NUM_EXTENSIONS
-    if (RGFW_GL_HINTS[RGFW_glMajor] >= 3) {
-        i32 i;
-        GLint count = 0;
-
-        RGFW_proc RGFW_glGetStringi = RGFW_getProcAddress("glGetStringi");
-        RGFW_proc RGFW_glGetIntegerv = RGFW_getProcAddress("RGFW_glGetIntegerv");
-        if (RGFW_glGetIntegerv)
-            ((void(*)(GLenum, GLint*))RGFW_glGetIntegerv)(GL_NUM_EXTENSIONS, &count);
-
-        for (i = 0; RGFW_glGetStringi && i < count;  i++) {
-            const char* en = ((const char* (*)(u32, u32))RGFW_glGetStringi)(GL_EXTENSIONS, (u32)i);
-            if (en && RGFW_STRNCMP(en, extension, len) == 0)
-                return RGFW_TRUE;
-        }
-    } else
 #endif
-    {
-        RGFW_proc RGFW_glGetString = RGFW_getProcAddress("glGetString");
-
-        if (RGFW_glGetString) {
-            const char* extensions = ((const char*(*)(u32))RGFW_glGetString)(GL_EXTENSIONS);
-            if ((extensions != NULL) && RGFW_extensionSupportedStr(extensions, extension, len))
-                return RGFW_TRUE;
-        }
-    }
-
-    return RGFW_extensionSupportedPlatform(extension, len);
-}
-
-/* OPENGL normal only (no EGL / OSMesa) */
-#if defined(RGFW_OPENGL) && !defined(RGFW_EGL) && !defined(RGFW_CUSTOM_BACKEND) && !defined(RGFW_WASM)
-
-/*  The window'ing api needs to know how to render the data we (or opengl) give it
-	MacOS and Windows do this using a structure called a "pixel format"
-	X11 calls it a "Visual"
-	This function returns the attributes for the format we want */
-i32* RGFW_initFormatAttribs(void);
-i32* RGFW_initFormatAttribs(void) {
-	static i32 attribs[] = {
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-	};
-
-	size_t index = (sizeof(attribs) / sizeof(attribs[0])) - 27;
-
-	#define RGFW_GL_ADD_ATTRIB(attrib, attVal) \
-		if (attVal) { \
-			attribs[index] = attrib;\
-			attribs[index + 1] = attVal;\
-			index += 2;\
-		}
-
-        RGFW_GL_ADD_ATTRIB(RGFW_GL_DOUBLEBUFFER, 1);
-
-		RGFW_GL_ADD_ATTRIB(RGFW_GL_ALPHA_SIZE, RGFW_GL_HINTS[RGFW_glAlpha]);
-		RGFW_GL_ADD_ATTRIB(RGFW_GL_DEPTH_SIZE, RGFW_GL_HINTS[RGFW_glDepth]);
-        RGFW_GL_ADD_ATTRIB(RGFW_GL_STENCIL_SIZE, RGFW_GL_HINTS[RGFW_glStencil]);
-		RGFW_GL_ADD_ATTRIB(RGFW_GL_STEREO, RGFW_GL_HINTS[RGFW_glStereo]);
-		RGFW_GL_ADD_ATTRIB(RGFW_GL_AUX_BUFFERS, RGFW_GL_HINTS[RGFW_glAuxBuffers]);
-
-		i32 accumSize = (i32)(RGFW_GL_HINTS[RGFW_glAccumRed] + RGFW_GL_HINTS[RGFW_glAccumGreen] +  RGFW_GL_HINTS[RGFW_glAccumBlue] + RGFW_GL_HINTS[RGFW_glAccumAlpha]) / 4;
-		RGFW_GL_ADD_ATTRIB(14, accumSize);
-
-	RGFW_GL_ADD_ATTRIB(0, 0);
-
-	return attribs;
-}
-
-/* EGL only (no OSMesa nor normal OPENGL) */
-#elif defined(RGFW_EGL)
-
-#include <EGL/egl.h>
-
-#if defined(RGFW_LINK_EGL)
-	typedef EGLBoolean(EGLAPIENTRY* PFN_eglInitialize)(EGLDisplay, EGLint*, EGLint*);
-
-	PFNEGLINITIALIZEPROC eglInitializeSource;
-	PFNEGLGETCONFIGSPROC eglGetConfigsSource;
-	PFNEGLCHOOSECONFIcontrollerROC eglChooseConfigSource;
-	PFNEGLCREATEWINDOWSURFACEPROC eglCreateWindowSurfaceSource;
-	PFNEGLCREATECONTEXTPROC eglCreateContextSource;
-	PFNEGLMAKECURRENTPROC eglMakeCurrentSource;
-	PFNEGLGETDISPLAYPROC eglGetDisplaySource;
-	PFNEGLSWAPBUFFERSPROC eglSwapBuffersSource;
-	PFNEGLSWAPINTERVALPROC eglSwapIntervalSource;
-	PFNEGLBINDAPIPROC eglBindAPISource;
-	PFNEGLDESTROYCONTEXTPROC eglDestroyContextSource;
-	PFNEGLTERMINATEPROC eglTerminateSource;
-	PFNEGLDESTROYSURFACEPROC eglDestroySurfaceSource;
-
-	#define eglInitialize eglInitializeSource
-	#define eglGetConfigs eglGetConfigsSource
-	#define eglChooseConfig eglChooseConfigSource
-	#define eglCreateWindowSurface eglCreateWindowSurfaceSource
-	#define eglCreateContext eglCreateContextSource
-	#define eglMakeCurrent eglMakeCurrentSource
-	#define eglGetDisplay eglGetDisplaySource
-	#define eglSwapBuffers eglSwapBuffersSource
-	#define eglSwapInterval eglSwapIntervalSource
-	#define eglBindAPI eglBindAPISource
-	#define eglDestroyContext eglDestroyContextSource
-	#define eglTerminate eglTerminateSource
-	#define eglDestroySurface eglDestroySurfaceSource;
-#endif
-
-
-#define EGL_SURFACE_MAJOR_VERSION_KHR 0x3098
-#define EGL_SURFACE_MINOR_VERSION_KHR 0x30fb
-
-#ifndef RGFW_GL_ADD_ATTRIB
-#define RGFW_GL_ADD_ATTRIB(attrib, attVal) \
-	if (attVal) { \
-		attribs[index] = attrib;\
-		attribs[index + 1] = attVal;\
-		index += 2;\
-	}
-#endif
-
-
-void RGFW_window_initOpenGL(RGFW_window* win) {
-	EGLint major, minor;
-
-	eglInitialize(win->src.EGL_display, &major, &minor);
-
-	#ifndef EGL_OPENGL_ES1_BIT
-	#define EGL_OPENGL_ES1_BIT 0x1
-	#endif
-
-	EGLint egl_config[24] = {
-		EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-		EGL_RENDERABLE_TYPE,
-		#ifdef RGFW_OPENGL_ES1
-		EGL_OPENGL_ES1_BIT,
-		#elif defined(RGFW_OPENGL_ES3)
-		EGL_OPENGL_ES3_BIT,
-		#elif defined(RGFW_OPENGL_ES2)
-		EGL_OPENGL_ES2_BIT,
-		#else
-		EGL_OPENGL_BIT,
-		#endif
-		EGL_NONE, EGL_NONE
-	};
-
-	{
-		size_t index = 7;
-		EGLint* attribs = egl_config;
-
-		RGFW_GL_ADD_ATTRIB(EGL_RED_SIZE, RGFW_GL_HINTS[RGFW_glRed]);
-		RGFW_GL_ADD_ATTRIB(EGL_GREEN_SIZE, RGFW_GL_HINTS[RGFW_glBlue]);
-		RGFW_GL_ADD_ATTRIB(EGL_BLUE_SIZE, RGFW_GL_HINTS[RGFW_glGreen]);
-		RGFW_GL_ADD_ATTRIB(EGL_ALPHA_SIZE, RGFW_GL_HINTS[RGFW_glAlpha]);
-		RGFW_GL_ADD_ATTRIB(EGL_DEPTH_SIZE, RGFW_GL_HINTS[RGFW_glDepth]);
-
-		if (RGFW_GL_HINTS[RGFW_glSRGB])
-			RGFW_GL_ADD_ATTRIB(0x3089, RGFW_GL_HINTS[RGFW_glSRGB]);
-
-		RGFW_GL_ADD_ATTRIB(EGL_NONE, EGL_NONE);
-	}
-
-	EGLConfig config;
-	EGLint numConfigs;
-	eglChooseConfig(win->src.EGL_display, egl_config, &config, 1, &numConfigs);
-
-	#if defined(RGFW_MACOS)
-		void* layer = RGFW_cocoaGetLayer();
-
-		RGFW_window_cocoaSetLayer(win, layer);
-
-		win->src.EGL_surface = eglCreateWindowSurface(win->src.EGL_display, config, (EGLNativeWindowType) layer, NULL);
-	#elif defined(RGFW_WINDOWS)
-		win->src.EGL_surface = eglCreateWindowSurface(win->src.EGL_display, config, (EGLNativeWindowType) win->src.window, NULL);
-	#elif defined(RGFW_WAYLAND)
-		if (_RGFW->useWaylandBool)
-			win->src.EGL_surface = eglCreateWindowSurface(win->src.EGL_display, config, (EGLNativeWindowType) win->src.eglWindow, NULL);
-		else
-    #endif
-    #ifdef RGFW_X11
-            win->src.EGL_surface = eglCreateWindowSurface(win->src.EGL_display, config, (EGLNativeWindowType) win->src.window, NULL);
-    #else
-    {}
-    #endif
-    #if !defined(RGFW_X11) && !defined(RGFW_WAYLAND) && !defined(RGFW_MACOS)
-		win->src.EGL_surface = eglCreateWindowSurface(win->src.EGL_display, config, (EGLNativeWindowType) win->src.window, NULL);
-	#endif
-
-	EGLint attribs[12];
-	size_t index = 0;
-
-#ifdef RGFW_OPENGL_ES1
-    RGFW_GL_ADD_ATTRIB(EGL_CONTEXT_CLIENT_VERSION, 1);
-#elif defined(RGFW_OPENGL_ES2)
-    RGFW_GL_ADD_ATTRIB(EGL_CONTEXT_CLIENT_VERSION, 2);
-#elif defined(RGFW_OPENGL_ES3)
-    RGFW_GL_ADD_ATTRIB(EGL_CONTEXT_CLIENT_VERSION, 3);
-#endif
-
-    RGFW_GL_ADD_ATTRIB(EGL_STENCIL_SIZE, RGFW_GL_HINTS[RGFW_glStencil]);
-	RGFW_GL_ADD_ATTRIB(EGL_SAMPLES, RGFW_GL_HINTS[RGFW_glSamples]);
-
-    if (RGFW_GL_HINTS[RGFW_glDoubleBuffer] == 0)
-		RGFW_GL_ADD_ATTRIB(EGL_RENDER_BUFFER, EGL_SINGLE_BUFFER);
-
-	if (RGFW_GL_HINTS[RGFW_glMajor]) {
-		RGFW_GL_ADD_ATTRIB(EGL_CONTEXT_MAJOR_VERSION, RGFW_GL_HINTS[RGFW_glMajor]);
-		RGFW_GL_ADD_ATTRIB(EGL_CONTEXT_MINOR_VERSION, RGFW_GL_HINTS[RGFW_glMinor]);
-
-		if (RGFW_GL_HINTS[RGFW_glProfile] == RGFW_glCore) {
-			RGFW_GL_ADD_ATTRIB(EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT);
-		}
-		else {
-			RGFW_GL_ADD_ATTRIB(EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT);
-		}
-	}
-
-	RGFW_GL_ADD_ATTRIB(EGL_CONTEXT_OPENGL_ROBUST_ACCESS, RGFW_GL_HINTS[RGFW_glRobustness]);
-	RGFW_GL_ADD_ATTRIB(EGL_CONTEXT_OPENGL_DEBUG, RGFW_GL_HINTS[RGFW_glDebug]);
-	if (RGFW_GL_HINTS[RGFW_glReleaseBehavior] == RGFW_releaseFlush) {
-		RGFW_GL_ADD_ATTRIB(0x2097, 0x2098);
-	} else {
-		RGFW_GL_ADD_ATTRIB(0x2096, 0x0000);
-	}
-
-	RGFW_GL_ADD_ATTRIB(EGL_NONE, EGL_NONE);
-
-	#if defined(RGFW_OPENGL_ES1) || defined(RGFW_OPENGL_ES2) || defined(RGFW_OPENGL_ES3)
-	eglBindAPI(EGL_OPENGL_ES_API);
-	#else
-	eglBindAPI(EGL_OPENGL_API);
-	#endif
-
-	win->src.EGL_context = eglCreateContext(win->src.EGL_display, config, EGL_NO_CONTEXT, attribs);
-
-	if (win->src.EGL_context == NULL) {
-		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errEGLContext, RGFW_DEBUG_CTX(win, 0), "failed to create an EGL opengl context");
-		return;
-	}
-
-	eglMakeCurrent(win->src.EGL_display, win->src.EGL_surface, win->src.EGL_surface, win->src.EGL_context);
-	eglSwapBuffers(win->src.EGL_display, win->src.EGL_surface);
-	RGFW_sendDebugInfo(RGFW_typeInfo, RGFW_infoOpenGL, RGFW_DEBUG_CTX(win, 0), "EGL opengl context initalized");
-}
-
-void RGFW_window_freeOpenGL(RGFW_window* win) {
-	if (win->src.EGL_display == NULL) return;
-
-	eglDestroySurface(win->src.EGL_display, win->src.EGL_surface);
-	eglDestroyContext(win->src.EGL_display, win->src.EGL_context);
-	eglTerminate(win->src.EGL_display);
-  win->src.EGL_display = NULL;
-  #ifdef RGFW_WAYLAND
-		wl_egl_window_destroy(win->src.eglWindow);
-		RGFW_sendDebugInfo(RGFW_typeInfo, RGFW_infoOpenGL, RGFW_DEBUG_CTX(win, 0), "EGL window context freed");
-  #endif
-	RGFW_sendDebugInfo(RGFW_typeInfo, RGFW_infoOpenGL, RGFW_DEBUG_CTX(win, 0), "EGL opengl context freed");
-}
-
-void RGFW_window_makeCurrent_OpenGL(RGFW_window* win) {
-    if (win == NULL)
-        eglMakeCurrent(_RGFW->root->src.EGL_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    else {
-        eglMakeCurrent(win->src.EGL_display, win->src.EGL_surface, win->src.EGL_surface, win->src.EGL_context);
-    }
-}
-
-void RGFW_window_swapBuffers_OpenGL(RGFW_window* win) { eglSwapBuffers(win->src.EGL_display, win->src.EGL_surface); }
-
-void* RGFW_getCurrent_OpenGL(void) { return eglGetCurrentContext(); }
-
-#if defined(RGFW_WINDOWS)
-HMODULE RGFW_wgl_dll = NULL;
-#endif
-
-RGFW_proc RGFW_getProcAddress(const char* procname) {
-	#if defined(RGFW_WINDOWS)
-	RGFW_proc proc = (RGFW_proc) GetProcAddress(RGFW_wgl_dll, procname);
-
-		if (proc)
-			return proc;
-	#endif
-
-	return (RGFW_proc) eglGetProcAddress(procname);
-}
-
-RGFW_bool RGFW_extensionSupportedPlatform(const char* extension, size_t len) {
-    const char* extensions = eglQueryString(_RGFW->root->src.EGL_display, EGL_EXTENSIONS);
-    return extensions != NULL && RGFW_extensionSupportedStr(extensions, extension, len);
-}
-
-void RGFW_window_swapInterval(RGFW_window* win, i32 swapInterval) {
-	RGFW_ASSERT(win != NULL);
-
-	eglSwapInterval(win->src.EGL_display, swapInterval);
-
-}
-
-#endif /* RGFW_EGL */
-
-/*
-	end of RGFW_EGL defines
-*/
-#endif /* end of RGFW_GL (OpenGL, EGL, OSMesa )*/
-
-/*
-	RGFW_VULKAN defines
-*/
-#ifdef RGFW_VULKAN
-#ifdef RGFW_MACOS
-#include <objc/message.h>
-#endif
-
-const char** RGFW_getVKRequiredInstanceExtensions(size_t* count) {
-    static const char* arr[2] = {VK_KHR_SURFACE_EXTENSION_NAME};
-    arr[1] = RGFW_VK_SURFACE;
-    if (count != NULL) *count = 2;
-
-    return (const char**)arr;
-}
-
-VkResult RGFW_window_createVKSurface(RGFW_window* win, VkInstance instance, VkSurfaceKHR* surface) {
-    RGFW_ASSERT(win != NULL); RGFW_ASSERT(instance);
-	RGFW_ASSERT(surface != NULL);
-
-    *surface = VK_NULL_HANDLE;
-
-#ifdef RGFW_X11
-    RGFW_GOTO_WAYLAND(0);
-    VkXlibSurfaceCreateInfoKHR x11 = { VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR, 0, 0, (Display*) win->src.display, (Window) win->src.window };
-    return vkCreateXlibSurfaceKHR(instance, &x11, NULL, surface);
-#endif
-#if defined(RGFW_WAYLAND)
-RGFW_WAYLAND_LABEL
-    VkWaylandSurfaceCreateInfoKHR wayland = { VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR, 0, 0, (struct wl_display*) win->src.wl_display, (struct wl_surface*) win->src.surface };
-    return vkCreateWaylandSurfaceKHR(instance, &wayland, NULL, surface);
-#elif defined(RGFW_WINDOWS)
-    VkWin32SurfaceCreateInfoKHR win32 = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, 0, 0, GetModuleHandle(NULL), (HWND)win->src.window };
-
-    return vkCreateWin32SurfaceKHR(instance, &win32, NULL, surface);
-#elif defined(RGFW_MACOS) && !defined(RGFW_MACOS_X11)
-    void* contentView = ((void* (*)(id, SEL))objc_msgSend)((id)win->src.window, sel_getUid("contentView"));
-    VkMacOSSurfaceCreateFlagsMVK macos = { VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK, 0, 0, win->src.display, (void*)contentView };
-
-    return vkCreateMacOSSurfaceMVK(instance, &macos, NULL, surface);
-#endif
-}
-
-
-RGFW_bool RGFW_getVKPresentationSupport(VkInstance instance, VkPhysicalDevice physicalDevice, u32 queueFamilyIndex) {
-    RGFW_ASSERT(instance);
-	if (_RGFW == NULL) RGFW_init();
-#ifdef RGFW_X11
-    RGFW_GOTO_WAYLAND(0);
-	Visual* visual = DefaultVisual(_RGFW->display, DefaultScreen(_RGFW->display));
-    if (_RGFW->root)
-        visual = _RGFW->root->src.visual.visual;
-
-    RGFW_bool out = vkGetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice, queueFamilyIndex, _RGFW->display, XVisualIDFromVisual(visual));
-    return out;
-#endif
-#if defined(RGFW_WAYLAND)
-RGFW_WAYLAND_LABEL
-    RGFW_bool wlout = vkGetPhysicalDeviceWaylandPresentationSupportKHR(physicalDevice, queueFamilyIndex, _RGFW->wl_display);
-    return wlout;
-#elif defined(RGFW_WINDOWS)
-#elif defined(RGFW_MACOS) && !defined(RGFW_MACOS_X11)
-    return RGFW_FALSE; /* TODO */
-#endif
-}
-#endif /* end of RGFW_vulkan */
 
 /*
 This is where OS specific stuff starts
@@ -2247,12 +1804,16 @@ u32 RGFW_rgfwToApiKey(RGFW_button button) {
 
 
 #ifdef RGFW_BUFFER
-void RGFW_gfxPresentFramebuffer(RGFW_window* win, bool has_stereo);
-void RGFW_gfxPresentFramebuffer(RGFW_window* win, bool has_stereo) {
+void _RGFW__gfxPresentFramebuffer(RGFW_window* win, bool has_stereo);
+void _RGFW__gfxPresentFramebuffer(RGFW_window* win, bool has_stereo) {
 	u32 stride = GSP_SCREEN_WIDTH * (u32)RGFW_pixelFormatBPP(win->format);
 	u32 pixel_format = (u32)win->format | (1 << 8);
 
-	u8* fb_a = win->src.front_buffer;
+#ifndef RGFW_BUFFER_NATIVE
+	u8* fb_a = win->src.buffers_native[win->src.current_buffer];
+#else
+	u8* fb_a = win->buffer;
+#endif
 	u8* fb_b = fb_a;
 
 	switch (win->mode) {
@@ -2262,12 +1823,12 @@ void RGFW_gfxPresentFramebuffer(RGFW_window* win, bool has_stereo) {
 
 		case RGFW_videoMode3D: {
 			pixel_format |= BIT(5);
-			if (has_stereo) fb_b += win->src.front_buffer_size / 2;
+			if (has_stereo) fb_b += win->src.buffer_size / 2;
 		} break;
 	}
 
 	gspPresentBuffer(
-		win->mode == RGFW_videoModeBottomScreen, 0,
+		win->mode == RGFW_videoModeBottomScreen, (u32)win->src.current_buffer,
 		fb_a, fb_b, stride, pixel_format
 	);
 }
@@ -2276,7 +1837,7 @@ void RGFW_gfxPresentFramebuffer(RGFW_window* win, bool has_stereo) {
 /* TODO(EimaMei): Add support for other 3 formats. */
 void RGFW_window_bufferToNative(RGFW_window* win);
 void RGFW_window_bufferToNative(RGFW_window* win) {
-	u8* dst = win->src.front_buffer;
+	u8* dst = win->src.buffers_native[win->src.current_buffer];
 	u8* src = win->buffer;
 
 	const ssize_t width  = win->bufferSize.w,
@@ -2297,41 +1858,158 @@ void RGFW_window_bufferToNative(RGFW_window* win) {
 
 #endif
 
-void RGFW_window_initBufferPtr(RGFW_window* win, u8* buffer, RGFW_videoMode mode, 
+void RGFW_window_initBufferPtr(RGFW_window* win, u8* buffer, RGFW_videoMode mode,
 		RGFW_pixelFormat format) {
 #if defined(RGFW_BUFFER)
 	win->buffer = buffer;
-	win->bufferMode = mode;
-	win->bufferFormat = format;
 	win->bufferSize = RGFW_videoModeResolution(mode);
+	win->mode = mode;
+	win->format = format;
 
-	if ((win->_flags & RGFW_GSP_INIT) == 0) {
-		gspInit();
-		win->_flags |= RGFW_GSP_INIT;
-	}
+	win->src.current_buffer = 0;
+	win->src.buffer_size = win->bufferSize.w * win->bufferSize.h * RGFW_pixelFormatBPP(format);
+	#ifdef RGFW_BUFFER_NATIVE
+	win->src.buffers[0] = buffer;
+	win->src.buffers[1] = RGFW_ALLOC_SYS(win->src.buffer_size);
+	#else
+	win->src.buffers[0] = buffer;
+	win->src.buffers[1] = RGFW_ALLOC((size_t)win->src.buffer_size);
 
-	win->src.front_buffer_size = win->bufferSize.w * win->bufferSize.h * RGFW_pixelFormatBPP(format);
-	win->src.front_buffer = linearAlloc(800 * 240 * 4);
-	RGFW_gfxPresentFramebuffer(win, false);
+	win->src.buffers_native[0] = RGFW_ALLOC_SYS(win->src.buffer_size);
+	win->src.buffers_native[1] = RGFW_ALLOC_SYS(win->src.buffer_size);
+	#endif
 
+	_RGFW__gfxPresentFramebuffer(win, false);
 	gspWaitForVBlank();
 	GSPGPU_SetLcdForceBlack(RGFW_FALSE);
 
-	RGFW_sendDebugInfo(RGFW_typeInfo, RGFW_infoBuffer, RGFW_DEBUG_CTX(win, 0), " creating a 4 channel buffer");
+	RGFW_sendDebugInfo(RGFW_typeInfo, RGFW_infoBuffer, RGFW_DEBUG_CTX(win, 0), "Creating a 4 channel buffer");
 
 #else
 	RGFW_UNUSED(win); RGFW_UNUSED(buffer); RGFW_UNUSED(mode); RGFW_UNUSED(format);
 #endif
 }
 
-#ifndef RGFW_EGL
-void RGFW_window_initOpenGL(RGFW_window* win) {
+#ifdef RGFW_OPENGL
+
+bool RGFW_window_initOpenGL(RGFW_window* win) {
+	if (RGFW_getGLHint(RGFW_glProfile) != RGFW_glES) {
+		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS only supports GLES.");
+		return false;
+	}
+
+	if (RGFW_getGLHint(RGFW_glMajor) != 1 || (RGFW_getGLHint(RGFW_glMinor) != 0 && RGFW_getGLHint(RGFW_glMinor) != 1)) {
+		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS can only support up to GLES 1.1.");
+		return false;
+	}
+
+	if (RGFW_getGLHint(RGFW_glStencil) != 8) {
+		RGFW_sendDebugInfo(RGFW_typeWarning, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS only supports an 8-bit stencil buffer. Defaulting to 8 bits.");
+		RGFW_setGLHint(RGFW_glStencil, 8);
+	}
+
+	if (RGFW_getGLHint(RGFW_glDepth) != 24) {
+		RGFW_sendDebugInfo(RGFW_typeWarning, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS only supports a 24-bit depth buffer. Defaulting to 24 bits.");
+		RGFW_setGLHint(RGFW_glStencil, 24);
+	}
+
+	/* TODO(EimaMei): Initialize kygx in the global context as opengl. */
+	if (!_RGFW->kygx_initialized) {
+		_RGFW->kygx_initialized = kygxInit();
+		if (!_RGFW->kygx_initialized) {
+			RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "Failed to initialize KYGX.");
+			return false;
+		}
+	}
+
+	GLASSCtxParams params;
+    glassGetDefaultContextParams(&params, GLASS_VERSION_2_0);
+	params.targetScreen = (win->mode == RGFW_videoModeBottomScreen) ? GLASS_SCREEN_BOTTOM : GLASS_SCREEN_TOP;
+
+	win->src.ctx = glassCreateContext(&params);
+	if (win->src.ctx == NULL) {
+		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "Failed to create a GLASS context.");
+		return false;
+	}
+	glassBindContext(win->src.ctx);
+
+
+	i32 r = RGFW_getGLHint(RGFW_glRed),
+		g = RGFW_getGLHint(RGFW_glGreen),
+		b = RGFW_getGLHint(RGFW_glBlue),
+		a = RGFW_getGLHint(RGFW_glAlpha);
+
+	GLenum internal_format;
+	if (r == 8 && g == 8 && b == 8) {
+		if (a == 8) {
+			internal_format = GL_RGBA8_OES;
+			win->format = RGFW_pixelFormatRGBA8;
+		}
+		else if (a == 0) {
+			internal_format = GL_RGB8_OES;
+			win->format = RGFW_pixelFormatBGR8;
+		}
+		else {
+			RGFW_sendDebugInfo(RGFW_typeWarning, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "Invalid alpha channel size. Defaulting to the RGBA8 format.");
+			RGFW_setGLHint(RGFW_glAlpha, 8);
+			internal_format = GL_RGBA8_OES;
+			win->format = RGFW_pixelFormatRGBA8;
+		}
+	}
+	else if (r == 4 && g == 4 && b == 4 && a == 4) {
+		internal_format = GL_RGBA4;
+		win->format = RGFW_pixelFormatRGBA4;
+	}
+	else if (r == 5 && g == 5 && b == 5 && a == 1) {
+		internal_format = GL_RGB5_A1;
+		win->format = RGFW_pixelFormatRGB5_A1;
+	}
+	else {
+		RGFW_sendDebugInfo(RGFW_typeWarning, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "Invalid R, B, G and A channel sizes. Defaulting to the RGBA8 format.");
+		for (ssize_t i = 0; i < 4; i += 1) {
+			RGFW_setGLHint(RGFW_glRed + i, 8);
+		}
+
+		internal_format = GL_RGBA8_OES;
+		win->format = RGFW_pixelFormatRGBA8;
+	}
+
+	if (RGFW_getGLHint(RGFW_glStereo)) {
+		if (win->mode == RGFW_videoModeBottomScreen) {
+			RGFW_sendDebugInfo(RGFW_typeWarning, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "Cannot enable 3D for the bottom screen.");
+		}
+		else {
+			win->mode = RGFW_videoMode3D;
+		}
+	}
+
+	GLint width = RGFW_videoModeResolution(win->mode).w;
+	glGenRenderbuffers(1, &win->src.renderbuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, win->src.renderbuffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, internal_format, width, 240);
+
+	glGenFramebuffers(1, &win->src.framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, win->src.framebuffer);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, win->src.renderbuffer);
+
+	glViewport(0, 0, width, 240);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+	return true;
 }
 
 void RGFW_window_freeOpenGL(RGFW_window* win) {
-}
-#endif
+	RGFW_ASSERT(win != NULL);
+	if (win->src.ctx == NULL) { return ; }
 
+	glDeleteRenderbuffers(1, &win->src.renderbuffer);
+	glDeleteFramebuffers(1, &win->src.framebuffer);
+
+	glassDestroyContext(win->src.ctx);
+	win->src.ctx = NULL;
+}
+
+#endif
 
 RGFW_systemModel RGFW_systemGetModel(void) {
 	RGFW_init();
@@ -2410,17 +2088,20 @@ i32 RGFW_initPlatform(void) {
 	controller->button_start = 0;
 	controller->button_end = RGFW_controllerButtonCount - 1;
 
+	gfxInitDefault();
+
     return 0;
 }
 
 void RGFW_deinitPlatform(void) {
-#ifdef RGFW_BUFFER
-	gspExit();
-#endif
+	gfxExit();
 
-	if (_RGFW->root->_flags & RGFW_CONSOLE_INIT) {
-		gfxExit();
+	#ifdef RGFW_OPENGL
+	if (_RGFW->kygx_initialized) {
+		kygxExit();
+		_RGFW->kygx_initialized = false;
 	}
+	#endif
 }
 
 RGFW_window* RGFW_createWindowPtr(RGFW_videoMode mode, RGFW_windowFlags flags,
@@ -2429,28 +2110,9 @@ RGFW_window* RGFW_createWindowPtr(RGFW_videoMode mode, RGFW_windowFlags flags,
 	return win;
 }
 
-RGFW_area RGFW_windowGetSize(RGFW_window* win) {
-	RGFW_ASSERT(win != NULL);
-	RGFW_init();
-	return RGFW_videoModeResolution(win->mode);
-}
-
 void RGFW_window_consoleInit(RGFW_window* win) {
-	if (win->_flags & RGFW_CONSOLE_INIT) { return ; }
-
-	/* NOTE(EimaMei): libctru's GFX API forces us to allocate both screens for
-	 * whatever and because the console API in the backend uses it, we're also
-	 * forced to initialize both screens. That's dumb. */
-	if (win->mode != RGFW_videoModeBottomScreen) {
-		gfxInit(GSP_RGB565_OES, GSP_RGBA4_OES, false);
-		gfxSetWide(win->mode == RGFW_videoModeWide);
-		consoleInit(GFX_TOP, NULL);
-	}
-	else {
-		gfxInit(GSP_RGBA4_OES, GSP_RGB565_OES, false);
-		consoleInit(GFX_BOTTOM, NULL);
-	}
-	win->_flags |= RGFW_CONSOLE_INIT;
+	RGFW_init();
+	consoleInit(win->mode != RGFW_videoModeBottomScreen ? GFX_TOP : GFX_BOTTOM, NULL);
 }
 
 u32 hidCheckSectionUpdateTime(vu32 *sharedmem_section, u32 id);
@@ -2634,10 +2296,27 @@ void RGFW_window_close(RGFW_window* win) {
 	/* NOTE(EimaMei): Only do gfxExit if win is the last window. */
 	// TODO(EimaMei: ("riley has to fix this.\n");
 
-#if defined(RGFW_BUFFER)
-	if ((win->_flags & RGFW_BUFFER_ALLOC)) {
-		RGFW_FREE(win->buffer);
-		linearFree(win->src.front_buffer);
+#ifdef RGFW_OPENGL
+	RGFW_window_freeOpenGL(win);
+#endif
+
+#ifdef RGFW_BUFFER
+	if (win->buffer != NULL) {
+		win->buffer = NULL;
+
+		if ((win->_flags & RGFW_BUFFER_ALLOC)) {
+			RGFW_FREE_SYS(win->src.buffers[0]);
+		}
+
+		#ifdef RGFW_BUFFER_NATIVE
+		RGFW_FREE_SYS(win->src.buffers[1]);
+
+		#else
+		RGFW_FREE(win->src.buffers[1]);
+
+		RGFW_FREE_SYS(win->src.buffers_native[0]);
+		RGFW_FREE_SYS(win->src.buffers_native[1]);
+		#endif
 	}
 #endif
 
@@ -2651,19 +2330,69 @@ void RGFW_window_close(RGFW_window* win) {
 	}
 }
 
+RGFW_area RGFW_windowGetSize(RGFW_window* win) {
+	RGFW_ASSERT(win != NULL);
+	static const i32 WIDTH_LUT[RGFW_videoModeCount] = {400, 400, 800, 320};
+	return RGFW_AREA(WIDTH_LUT[win->mode], 240);
+}
+
+
+#if defined(RGFW_OPENGL)
+
+void RGFW_window_makeCurrent_OpenGL(RGFW_window* win) {
+	glassBindContext(win ? win->src.ctx : NULL);
+}
+
+void* RGFW_getCurrent_OpenGL(void) {
+	return glassGetBoundContext();
+}
+
+void RGFW_window_swapBuffers_OpenGL(RGFW_window* win) {
+	RGFW_ASSERT(win != NULL);
+	glassSwapContextBuffers(win->src.ctx, NULL);
+}
+
+void RGFW_window_swapInterval(RGFW_window* win, i32 swapInterval) {
+	RGFW_ASSERT(win != NULL);
+	((GLASSCtxParams*)win->src.ctx)->vsync = RGFW_BOOL(swapInterval);
+}
+
+bool RGFW_system_OpenGL_fixScreen(GLuint shader_program, const char* mat4_uniform_name) {
+    static const float deg90_rotation_matrix[4][4] = {
+        { 0.0f,  1.0f, 0.0f, 0.0f },
+        {-1.0f,  0.0f, 0.0f, 0.0f },
+        { 0.0f,  0.0f, 1.0f, 0.0f },
+        { 0.0f,  0.0f, 0.0f, 1.0f }
+    };
+
+	GLint uniform = glGetUniformLocation(shader_program, mat4_uniform_name);
+	if (uniform == -1) {
+		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOpenGLContext,  RGFW_DEBUG_CTX(NULL, 0), "Invalid uniform name.");
+		return false;
+	}
+
+    glUniformMatrix4fv(uniform, 1, GL_FALSE, (const float*)deg90_rotation_matrix);
+	return true;
+}
+
+#endif
+
 void RGFW_window_swapBuffers_software(RGFW_window* win) {
 #if defined(RGFW_BUFFER)
 
-#ifdef RGFW_BUFFER_NATIVE
-	RGFW_MEMCPY(win->src.front_buffer, win->buffer, (size_t)win->src.front_buffer_size);
-#else 
+#ifndef RGFW_BUFFER_NATIVE
 	RGFW_window_bufferToNative(win);
+	u8* buffer = win->src.buffers_native[win->src.current_buffer];
+#else
+	u8* buffer = win->buffer;
 #endif
+	GSPGPU_FlushDataCache(buffer, (u32)win->src.buffer_size);
 
-	GSPGPU_FlushDataCache(win->src.front_buffer, (u32)win->src.front_buffer_size);
-
-	RGFW_gfxPresentFramebuffer(win, true);
+	_RGFW__gfxPresentFramebuffer(win, (RGFW_systemGet3DSlider() == 0.0f));
 	gspWaitForVBlank();
+
+	win->src.current_buffer ^= 1;
+	win->buffer = win->src.buffers[win->src.current_buffer];
 #else
 	RGFW_UNUSED(win);
 #endif
@@ -2680,3 +2409,6 @@ void RGFW_window_swapBuffers_software(RGFW_window* win) {
 #if _MSC_VER
 	#pragma warning( pop )
 #endif
+
+
+#endif /* RGFW_HEADER */

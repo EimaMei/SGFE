@@ -23,8 +23,9 @@ LANGUAGE  = C
 #	SRC    - source file to target.
 #	OUTPUT - the directory where all of the output goes to.
 NAME   = basic
-SRC    = examples/embedded/portableGL/pgl.c
+SRC    = examples/silk/silk.c
 OUTPUT = build
+EMULATOR = FALSE
 
 
 ifeq ($(PLATFORM),DEFAULT)
@@ -191,9 +192,9 @@ else ifeq ($(PLATFORM),3DS)
 	ICON        = ../../res/default_icon.png
 
 	FLAGS = $(GNU_FLAGS) -specs=3dsx.specs -D __3DS__ -mword-relocations -ffunction-sections -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
-	INCLUDES = $(GNU_INCLUDES) -I"$(CURDIR)" -I"$(DEVKITPRO)/libctru/include" -I"$(DEVKITARM)/include"
+	INCLUDES = -I"resources/3DS/include" $(GNU_INCLUDES) -I"$(CURDIR)" -I"$(DEVKITPRO)/libctru/include" -I"$(DEVKITARM)/include"
 
-	LIBS = -L$(DEVKITPRO)/libctru/lib/ -lcitro3d -lcitro2d -lctru -lm
+	LIBS = -L"resources/3DS/lib" -lGLASSv2 -lkygx -lrip -L$(DEVKITPRO)/libctru/lib/ -lctru -lm
 	EXE_OUT = .3dsx
 
 	export PATH := $(DEVKITPRO)/tools/bin:$(DEVKITARM)/bin:$(DEVKITPRO)/portlibs/3ds/bin:$(PATH)
@@ -211,7 +212,11 @@ all: $(OUTPUT) $(EXE) run
 
 # Run the executable.
 run: $(EXE)
+ifneq ($(PLATFORM),3DS)
 	./$(EXE)
+else
+	3dslink -r -1 $(EXE)
+endif
 
 # Clean the 'build' folder.
 clean:

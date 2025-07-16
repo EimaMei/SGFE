@@ -1,6 +1,9 @@
 #Folders
 .cache
 build
+examples/unimplemented_desktop_examples
 
 #Files 
 compile_commands.json
+ideas.txt
+examples/embedded/resources/*/deps
