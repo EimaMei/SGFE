@@ -872,8 +872,8 @@ RGFWDEF void RGFW_window_freeOpenGL(RGFW_window* win);
 
 /*! OpenGL init hints */
 typedef RGFW_ENUM(i32, RGFW_glHints)  {
-	RGFW_glStencil = 0,  /*!< set stencil buffer bit size (8 by default) */
-	RGFW_glSamples, /*!< set number of sample buffers (4 by default) */
+	RGFW_glStencil = 0,  /*!< set stencil buffer bit size (0 by default) */
+	RGFW_glSamples, /*!< set number of sample buffers (0 by default) */
 	RGFW_glStereo, /*!< hint the context to use stereoscopic frame buffers for 3D (false by default) */
 	RGFW_glAuxBuffers, /*!< number of aux buffers (0 by default) */
 	RGFW_glDoubleBuffer, /*!< request double buffering (true by default) */
@@ -1573,8 +1573,8 @@ void RGFW_updateKeyMods(RGFW_window* win, RGFW_bool capital, RGFW_bool numlock, 
 #if defined(RGFW_OPENGL) || defined(RGFW_EGL)
 
 i32 RGFW_GL_HINTS[RGFW_glHintsCount] = {
-	/* RGFW_glStencil         */ 8,
-	/* RGFW_glSamples         */ 4,
+	/* RGFW_glStencil         */ 0,
+	/* RGFW_glSamples         */ 0,
 	/* RGFW_glStereo          */ RGFW_FALSE,
 	/* RGFW_glAuxBuffers      */ 0,
 	/* RGFW_glDoubleBuffer    */ RGFW_TRUE,
@@ -1903,14 +1903,16 @@ bool RGFW_window_initOpenGL(RGFW_window* win) {
 		return false;
 	}
 
-	if (RGFW_getGLHint(RGFW_glStencil) != 8) {
-		RGFW_sendDebugInfo(RGFW_typeWarning, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS only supports an 8-bit stencil buffer. Defaulting to 8 bits.");
-		RGFW_setGLHint(RGFW_glStencil, 8);
+	i32 stencil = RGFW_getGLHint(RGFW_glStencil);
+	if (stencil != 0 && stencil != 8) {
+		RGFW_sendDebugInfo(RGFW_typeWarning, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS only supports an 8-bit stencil buffer. Defaulting to 0.");
+		RGFW_setGLHint(RGFW_glStencil, 0);
 	}
 
-	if (RGFW_getGLHint(RGFW_glDepth) != 24) {
-		RGFW_sendDebugInfo(RGFW_typeWarning, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS only supports a 24-bit depth buffer. Defaulting to 24 bits.");
-		RGFW_setGLHint(RGFW_glStencil, 24);
+	i32 depth = RGFW_getGLHint(RGFW_glStencil);
+	if (depth != 0 && depth != 24) {
+		RGFW_sendDebugInfo(RGFW_typeWarning, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS only supports a 24-bit depth buffer. Defaulting to 0.");
+		RGFW_setGLHint(RGFW_glStencil, 0);
 	}
 
 	/* TODO(EimaMei): Initialize kygx in the global context as opengl. */

@@ -23,7 +23,7 @@ LANGUAGE  = C
 #	SRC    - source file to target.
 #	OUTPUT - the directory where all of the output goes to.
 NAME   = basic
-SRC    = examples/silk/silk.c
+SRC    = examples/buffer/native.c
 OUTPUT = build
 EMULATOR = FALSE
 
