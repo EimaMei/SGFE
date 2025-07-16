@@ -2,8 +2,8 @@
 .cache
 build
 examples/unimplemented_desktop_examples
+resources/*/deps
 
 #Files 
 compile_commands.json
 ideas.txt
-examples/embedded/resources/*/deps
