@@ -1350,7 +1350,7 @@ SILK_API pixel silkPixelTint(pixel pix, pixel tint) {
 }
 
 SILK_API color_channel silkPixelChannelRed(pixel pix) {
-    
+
 #if defined(SILK_BYTEORDER_LITTLE_ENDIAN)
 
     return (0x000000ff & pix) >> (8 * 0);
@@ -1427,13 +1427,13 @@ SILK_API i32 silkDrawPixel(pixel* buffer, vec2i buf_size, i32 buf_stride, vec2i 
     // as there won't be any change in this specific position.
     if(silkGetPixel(buffer, position, buf_stride) == pix) {
         return SILK_SUCCESS;
-    } 
+    }
 
 #if defined(SILK_ALPHABLEND_ENABLE)
 
     pix = silkAlphaBlend(
-        silkGetPixel(buffer, position, buf_stride), 
-        pix, 
+        silkGetPixel(buffer, position, buf_stride),
+        pix,
         silkPixelToColor(pix).a
     );
 
@@ -2084,9 +2084,9 @@ SILK_API i32 silkDrawTextDefault(pixel* buffer, vec2i buf_size, i32 buf_stride, 
                 silkDrawRect(
                     buffer,
                     buf_size,
-                    buf_stride, 
-                    (vec2i) { (glyph_position.x + x) * font_size, (glyph_position.y + y) * font_size }, 
-                    (vec2i) { font_size, font_size }, 
+                    buf_stride,
+                    (vec2i) { (glyph_position.x + x) * font_size, (glyph_position.y + y) * font_size },
+                    (vec2i) { font_size, font_size },
                     pix
                 );
             }
@@ -2276,11 +2276,11 @@ SILK_API string silkGetFilePathExtension(const string path) {
 // --------------------------------------------------------------------------------------------------------------------------------
 
 SILK_API image silkGenImageColor(vec2i size, pixel pix) {
-    image result = { 
+    image result = {
         .data = (pixel*) SILK_MALLOC(size.x * size.y * sizeof(pixel)),
         .size = size
     };
-    
+
     for(i32 i = 0; i < size.x * size.y; i++) {
         result.data[i] = pix;
     }
@@ -2289,7 +2289,7 @@ SILK_API image silkGenImageColor(vec2i size, pixel pix) {
 }
 
 SILK_API image silkGenImageCheckerboard(vec2i size, i32 checker_size, pixel a, pixel b) {
-    image result = { 
+    image result = {
         .data = (pixel*) SILK_MALLOC(size.x * size.y * sizeof(pixel)),
         .size = size
     };
@@ -2310,11 +2310,11 @@ SILK_API image silkGenImageCheckerboard(vec2i size, i32 checker_size, pixel a, p
             }
 
             silkDrawRect(
-                result.data, 
-                size, 
-                size.x, 
-                (vec2i) { x, y }, 
-                (vec2i) { checker_size, checker_size }, 
+                result.data,
+                size,
+                size.x,
+                (vec2i) { x, y },
+                (vec2i) { checker_size, checker_size },
                 color
             );
         }
@@ -2341,12 +2341,12 @@ SILK_API image silkScaleImage(image* source, vec2i dest_size) {
             };
 
             silkSetPixel(
-                result.data, 
-                (vec2i) { x, y }, 
-                dest_size.x, 
+                result.data,
+                (vec2i) { x, y },
+                dest_size.x,
                 silkGetPixel(
-                    source->data, 
-                    new_position, 
+                    source->data,
+                    new_position,
                     source->size.x
                 )
             );

@@ -1,11 +1,8 @@
-/*
-    based on 
-    https://gist.github.com/jfuerth/82b816510bb2cc063c9945baf1093fd9
-*/
 
 #define RGFW_OPENGL
 #define RGFW_IMPLEMENTATION
 #include <RGFW_embedded.h>
+#include <resources/controls.h>
 #include "gles1_vshader.h"
 
 static
@@ -50,8 +47,8 @@ int main(void) {
     }
     glUseProgram(shader_program);
 
-    /* NOTE(EimaMei): On some embedded platforms video graphics must be allocated 
-     * from a specific memory address, otherwise you'll just only see a blank screen. 
+    /* NOTE(EimaMei): On some embedded platforms video graphics must be allocated
+     * from a specific memory address, otherwise you'll just only see a blank screen.
      * We copy over our vertices to a valid buffer for this. */
     vertex vertices[] = {
         {{-1,  1},  {1, 0, 0, 1}},
@@ -63,30 +60,30 @@ int main(void) {
 
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)allocated_vertices->pos);
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)&allocated_vertices->color);
-    
+
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
 
     #ifdef RGFW_3DS
-    /* NOTE(EimaMei): The Nintendo 3DS internally uses a "portrait" resolution 
+    /* NOTE(EimaMei): The Nintendo 3DS internally uses a "portrait" resolution
      * for its screens, meaning bottom left is (-1.0, 1.0) while top right is
-     * (1.0, -1.0). You can either handle this issue on your own by having a matrix 
+     * (1.0, -1.0). You can either handle this issue on your own by having a matrix
      * that's always rotated by 90 degrees clockwise or let RGFW do that for you
      * by inputting a mat4 uniform variable and calling the "fixScreen" function. */
-    RGFW_system_OpenGL_fixScreen(shader_program, "RGFW_PROJECTION");
+    RGFW_platform_OpenGL_rotateScreen(shader_program, "RGFW_PROJECTION");
     #endif
 
     while (!RGFW_window_shouldClose(win)) {
         RGFW_window_checkEvent(win);
 
-        if (RGFW_isPressed(RGFW_controllerGet(0), RGFW_Start)) {
+        if (RGFW_isPressed(win->event->controller, BUTTON_START)) {
             RGFW_window_setShouldClose(win, true);
             continue;
         }
 
         glClear(GL_COLOR_BUFFER_BIT);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
-        
+
         RGFW_window_swapBuffers(win);
     }
 

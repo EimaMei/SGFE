@@ -1,12 +1,11 @@
 #define RGFW_IMPLEMENTATION
 #define RGFW_BUFFER
 #include <RGFW_embedded.h>
+#include <resources/controls.h>
 
 #if RGFW_3DS
 	#define SILK_PIXELBUFFER_WIDTH  400
     #define SILK_PIXELBUFFER_HEIGHT 240
-
-    #define BUTTON_QUIT   RGFW_Start
 #endif
 
 #define SILK_IMPLEMENTATION
@@ -25,7 +24,7 @@ int main(void) {
     RGFW_bool running = RGFW_TRUE;
     while (running) {
         while (RGFW_window_checkEvent(win)) {
-            if (win->event->type == RGFW_quit || RGFW_isPressed(win->event->controller, BUTTON_QUIT)) {
+            if (win->event->type == RGFW_quit || RGFW_isPressed(win->event->controller, BUTTON_START)) {
                 running = 0;
                 break;
             }   

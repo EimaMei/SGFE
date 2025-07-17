@@ -3,9 +3,14 @@
 
 
 #ifndef RGFW_BUFFER_NATIVE
-typedef struct CPU_Color { u8 r, g, b, a; } CPU_Color;
-#else
-typedef u32 CPU_Color;
+    typedef struct CPU_Color { u8 r, g, b, a; } CPU_Color;
+    typedef RGFW_rect CPU_DirtyRect;
+#elif defined(RGFW_3DS)
+    typedef u32 CPU_Color;
+    typedef struct {
+        RGFW_rect r;
+        i32 slider_offset;
+    }  CPU_DirtyRect;
 #endif
 
 #ifndef CPU_colorMake
@@ -15,19 +20,18 @@ typedef u32 CPU_Color;
 
 typedef struct CPU_Surface {
     RGFW_window* win;
-
     CPU_Color clear_color;
-    
+
     ssize_t dirty_rect_count[2];
-    RGFW_rect dirty_rects[2][16];
+    CPU_DirtyRect dirty_rects[2][16];
 } CPU_Surface;
 
 
 /* */
 CPU_Surface surface_make(RGFW_window* win, CPU_Color clear_color);
+
 /* */
 void surface_flush(CPU_Surface* surface);
-
 /* */
 void surface_clearBuffers(CPU_Surface* surface);
 
@@ -37,12 +41,20 @@ void surface_rect(CPU_Surface* surface, RGFW_rect r, CPU_Color clear_color);
 /* */
 void surface_bitmap(CPU_Surface* surface, RGFW_rect r, u8* bitmap);
 
+/* */
+void surface_add_dirty_rect(CPU_Surface* surface, RGFW_rect r);
+
 
 #ifdef RGFW_BUFFER_NATIVE
 /* */
 void surface_rect_platform(CPU_Surface* surface, RGFW_rect r, CPU_Color clear_color);
 /* */
 void surface_bitmap_platform(CPU_Surface* surface, RGFW_rect r, u8* bitmap);
+
+/* */
+void surface_add_dirty_rect_platform(CPU_Surface* surface, RGFW_rect r);
+/* */
+void surface_clear_dirty_rect_platform(CPU_Surface* surface, CPU_DirtyRect* dirty_rect);
 #endif
 
 /* */
@@ -73,24 +85,29 @@ void surface_clearBuffers(CPU_Surface* surface) {
                 RGFW_MEMCPY(&win->buffer[index], &surface->clear_color, (size_t)bpp);
             }
         }
-        RGFW_window_swapBuffers_software(win);
+        RGFW_window_swapBuffers_buffer(win);
     }
 }
 
 
-static
-void _surface_add_dirty_rect(CPU_Surface* surface, RGFW_rect r) {
+void surface_add_dirty_rect(CPU_Surface* surface, RGFW_rect r) {
     ssize_t cur_buf = surface->win->src.current_buffer;
-    if (surface->dirty_rect_count[cur_buf] >= (ssize_t)sizeof(surface->dirty_rects) / (ssize_t)sizeof(*surface->dirty_rects)) {
+    ssize_t* count = &surface->dirty_rect_count[cur_buf];
+    if (*count >= RGFW_COUNTOF(surface->dirty_rects)) {
         surface_flush(surface);
     }
 
-    surface->dirty_rects[cur_buf][surface->dirty_rect_count[cur_buf]] = r;
-    surface->dirty_rect_count[cur_buf] += 1;
+#ifndef RGFW_BUFFER_NATIVE
+    surface->dirty_rects[cur_buf][*count] = r;
+#else
+    surface_add_dirty_rect_platform(surface, r);
+#endif
+
+    *count += 1;
 }
 
 void surface_rect(CPU_Surface* surface, RGFW_rect r, CPU_Color clear_color) {
-    _surface_add_dirty_rect(surface, r);
+    surface_add_dirty_rect(surface, r);
 
 #ifndef RGFW_BUFFER_NATIVE
     RGFW_window* win = surface->win;
@@ -104,12 +121,12 @@ void surface_rect(CPU_Surface* surface, RGFW_rect r, CPU_Color clear_color) {
 		}
 	}
 #else
-	surface_rect_platform(surface, r, clear_color); 
+	surface_rect_platform(surface, r, clear_color);
 #endif
 }
 
 void surface_bitmap(CPU_Surface* surface, RGFW_rect r, u8* bitmap) {
-    _surface_add_dirty_rect(surface, r);
+    surface_add_dirty_rect(surface, r);
 
 #ifndef RGFW_BUFFER_NATIVE
     RGFW_window* win = surface->win;
@@ -123,18 +140,18 @@ void surface_bitmap(CPU_Surface* surface, RGFW_rect r, u8* bitmap) {
 		}
 	}
 #else
-	surface_bitmap_platform(surface, r, bitmap); 
+	surface_bitmap_platform(surface, r, bitmap);
 #endif
 }
 
 void surface_flush(CPU_Surface* surface) {
     RGFW_window* win = surface->win;
-    RGFW_window_swapBuffers_software(win);
+    RGFW_window_swapBuffers_buffer(win);
 
     ssize_t cur_buf = win->src.current_buffer;
     for (ssize_t i = 0; i < surface->dirty_rect_count[cur_buf]; i += 1) {
-        RGFW_rect r = surface->dirty_rects[cur_buf][i];
         #ifndef RGFW_BUFFER_NATIVE
+            RGFW_rect r = surface->dirty_rects[cur_buf][i];
             i32 bpp = RGFW_pixelFormatBPP(win->format);
 
             for (ssize_t y = r.y; y < r.y + r.h; y += 1) {
@@ -145,13 +162,7 @@ void surface_flush(CPU_Surface* surface) {
                 }
             }
         #else
-            ssize_t width = r.x + r.w, height = r.y + r.h;
-            for (ssize_t i = r.x; i < width; i += 1) {
-                for (ssize_t j = height - 1; j >= r.y; j -= 1) {
-                    ssize_t src = 4 * (i * 240 + (240 - j));
-                    RGFW_MEMCPY(&win->buffer[src], &surface->clear_color, 4);
-                }
-            }
+            surface_clear_dirty_rect_platform(surface, &surface->dirty_rects[cur_buf][i]);
         #endif
     }
 
@@ -159,7 +170,7 @@ void surface_flush(CPU_Surface* surface) {
 }
 
 #ifndef RGFW_BUFFER_NATIVE
- 
+
 CPU_Color CPU_colorRGBA(u8 r, u8 g, u8 b, u8 a) {
     CPU_Color res;
     res.r = r;

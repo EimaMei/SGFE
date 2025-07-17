@@ -4,10 +4,7 @@
 #define RGFW_BUFFER
 #define RGFW_IMPLEMENTATION
 #include <RGFW_embedded.h>
-
-#if RGFW_3DS
-    #define BUTTON_QUIT   RGFW_Start
-#endif
+#include <resources/controls.h>
 
 
 typedef struct My_Uniforms
@@ -57,7 +54,7 @@ int main() {
 
 	while (running) {
 		while (RGFW_window_checkEvent(win)) {
-			if (win->event->type == RGFW_quit || RGFW_isPressed(RGFW_controllerGet(0), BUTTON_QUIT)) {
+			if (win->event->type == RGFW_quit || RGFW_isPressed(win->event->controller, BUTTON_START)) {
 				running = 0;
 				break;
 			}

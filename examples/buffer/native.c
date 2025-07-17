@@ -4,17 +4,9 @@
 #define RGFW_BUFFER
 
 #include <RGFW_embedded.h>
+#include <resources/controls.h>
 #include <resources/lonic_bin.h>
 #include <resources/cpu_renderer.h>
-
-
-#if RGFW_3DS
-	#define BUTTON_QUIT   RGFW_Start
-	#define BUTTON_LEFT   RGFW_DpadLeft
-	#define BUTTON_RIGHT  RGFW_DpadRight
-	#define BUTTON_UP     RGFW_DpadUp
-	#define BUTTON_DOWN   RGFW_DpadDown
-#endif
 
 
 int main(void) {
@@ -25,13 +17,13 @@ int main(void) {
 	#endif
 	RGFW_rect r = RGFW_RECT(100, 100, img_lonic_width, img_lonic_height);
 
-	/* NOTE(EimaMei): 'RGFW_windowGetSize(win)' may actually differ to 'win->bufferSize' 
-	 * in certain situations where the viewport for the window is actually smaller 
-	 * than the rendered buffer. 
+	/* NOTE(EimaMei): 'RGFW_windowGetSize(win)' may actually differ to 'win->bufferSize'
+	 * in certain situations where the viewport for the window is actually smaller
+	 * than the rendered buffer.
 	 *
 	 * Platforms where it differs:
-	 * - 3DS (when using RGFW_videoMode3D) - internally the buffer is 800x240, 
-	 * however the viewport is still set to 400x240 as the second half of the 
+	 * - 3DS (when using RGFW_videoMode3D) - internally the buffer is 800x240,
+	 * however the viewport is still set to 400x240 as the second half of the
 	 * resolution is used for the 3D effect. */
 	RGFW_area win_res = RGFW_windowGetSize(win);
 
@@ -42,7 +34,7 @@ int main(void) {
 	RGFW_bool running = RGFW_TRUE;
 	while (running) {
 		while (RGFW_window_checkEvent(win)) {
-			if (win->event->type == RGFW_quit || RGFW_isPressed(RGFW_controllerGet(0), BUTTON_QUIT)) {
+			if (win->event->type == RGFW_quit || RGFW_isPressed(win->event->controller, BUTTON_START)) {
 				running = 0;
 				break;
 			}
@@ -88,9 +80,6 @@ CPU_Color CPU_colorRGBA(u8 r, u8 g, u8 b, u8 a) {
 void surface_bitmap_platform(CPU_Surface* surface, RGFW_rect r, u8* bitmap) {
 	RGFW_window* win = surface->win;
 
-	float slider = RGFW_systemGet3DSlider();
-	RGFW_bool skip = (slider == 0.0f);
-
 	ssize_t width = r.x + r.w, height = r.y + r.h;
 	for (ssize_t i = r.x; i < width; i += 1) {
 		for (ssize_t j = height - 1; j >= r.y; j -= 1) {
@@ -101,12 +90,21 @@ void surface_bitmap_platform(CPU_Surface* surface, RGFW_rect r, u8* bitmap) {
 			win->buffer[pixel_left + 1] = bitmap[opixel + 2];
 			win->buffer[pixel_left + 2] = bitmap[opixel + 1];
 			win->buffer[pixel_left + 3] = bitmap[opixel + 0];
+		}
+	}
 
-			if (skip) {
-				continue;
-			}
+	ssize_t cur_buf = surface->win->src.current_buffer;
+	CPU_DirtyRect* dirty_rect = &surface->dirty_rects[cur_buf][surface->dirty_rect_count[cur_buf] - 1];
+	if (dirty_rect->slider_offset == 0) { return; }
 
-			pixel_left = 4 * ((i + 400 - (i32)(slider * 5)) * 240 + (240 - j));
+
+	r.x += 400 - dirty_rect->slider_offset;
+	width = r.x + r.w;
+	for (ssize_t i = r.x; i < width; i += 1) {
+		for (ssize_t j = height - 1; j >= r.y; j -= 1) {
+			ssize_t pixel_left = 4 * (i * 240 + (240 - j));
+
+			ssize_t opixel = 4 * ((j - r.y) * r.w + (i - r.x));
 			win->buffer[pixel_left + 0] = bitmap[opixel + 3];
 			win->buffer[pixel_left + 1] = bitmap[opixel + 2];
 			win->buffer[pixel_left + 2] = bitmap[opixel + 1];
@@ -126,18 +124,50 @@ void surface_rect_platform(CPU_Surface* surface, RGFW_rect r, CPU_Color clear_co
 		}
 	}
 
-	float slider = RGFW_systemGet3DSlider();
+	ssize_t cur_buf = surface->win->src.current_buffer;
+	CPU_DirtyRect* dirty_rect = &surface->dirty_rects[cur_buf][surface->dirty_rect_count[cur_buf] - 1];
+	if (dirty_rect->slider_offset == 0) { return; }
 
-	if (slider == 0.0f) {
-		return;
-	}
-
-	r.x += 400 - (i32)(slider * 5);
+	r.x += 400 - dirty_rect->slider_offset;
 	width = r.x + r.w;
 	for (ssize_t i = r.x; i < width; i += 1) {
 		for (ssize_t j = height - 1; j >= r.y; j -= 1) {
 			ssize_t src = 4 * (i * 240 + (240 - j));
 			RGFW_MEMCPY(&win->buffer[src], &clear_color, 4);
+		}
+	}
+}
+
+void surface_add_dirty_rect_platform(CPU_Surface* surface, RGFW_rect r) {
+	ssize_t cur_buf = surface->win->src.current_buffer;
+
+	CPU_DirtyRect* dirty_rect = &surface->dirty_rects[cur_buf][surface->dirty_rect_count[cur_buf]];
+	dirty_rect->r = r;
+	dirty_rect->slider_offset = (i32)(RGFW_platformGet3DSlider() * 5);
+}
+
+void surface_clear_dirty_rect_platform(CPU_Surface* surface, CPU_DirtyRect* dirty_rect) {
+	RGFW_window* win = surface->win;
+
+	RGFW_rect r = dirty_rect->r;
+	ssize_t width = r.x + r.w, height = r.y + r.h;
+	for (ssize_t i = r.x; i < width; i += 1) {
+		for (ssize_t j = height - 1; j >= r.y; j -= 1) {
+			ssize_t src = 4 * (i * 240 + (240 - j));
+			RGFW_MEMCPY(&win->buffer[src], &surface->clear_color, 4);
+		}
+	}
+
+	if (dirty_rect->slider_offset == 0) {
+		return;
+	}
+
+	r.x += 400 - dirty_rect->slider_offset;
+	width = r.x + r.w, height = r.y + r.h;
+	for (ssize_t i = r.x; i < width; i += 1) {
+		for (ssize_t j = height - 1; j >= r.y; j -= 1) {
+			ssize_t src = 4 * (i * 240 + (240 - j));
+			RGFW_MEMCPY(&win->buffer[src], &surface->clear_color, 4);
 		}
 	}
 }
