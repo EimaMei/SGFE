@@ -3,7 +3,7 @@
 #define RGFW_IMPLEMENTATION
 #include <RGFW_embedded.h>
 #include <resources/controls.h>
-#include "gles1_vshader.h"
+#include "../gles/gles1_vshader.h"
 
 static
 GLuint load_shader(GLenum shader_type, GLenum binary_format, const u8* binary_source, ssize_t binary_size) {
@@ -18,12 +18,8 @@ typedef struct {
 	float color[4];
 } vertex;
 
-int main(void) {
-	RGFW_setGLHint(RGFW_glMajor, 1);
-	RGFW_setGLHint(RGFW_glMinor, 0);
-	RGFW_setGLHint(RGFW_glProfile, RGFW_glES);
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), 0);
-
+static
+void scene_setup(vertex* allocated_vertices) {
 	/* OpenGL setup. */
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -47,18 +43,6 @@ int main(void) {
 	}
 	glUseProgram(shader_program);
 
-	/* NOTE(EimaMei): On some embedded platforms video graphics must be allocated
-	 * from a specific memory address, otherwise you'll just only see a blank screen.
-	 * We copy over our vertices to a valid buffer for this. */
-	vertex vertices[] = {
-		{{-0.5f, -0.5f},  {1, 0, 0, 1}},
-		{{ 0.5f, -0.5f},  {0, 1, 0, 1}},
-		{{ 0.0f, 0.5f},  {0, 0, 1, 1}},
-	};
-
-	vertex* allocated_vertices = RGFW_ALLOC_SYS(sizeof(vertices));
-	memcpy(allocated_vertices, vertices, sizeof(vertices));
-
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)allocated_vertices->pos);
 	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)&allocated_vertices->color);
 
@@ -73,15 +57,55 @@ int main(void) {
 	 * by inputting a mat4 uniform variable and calling the "fixScreen" function. */
 	RGFW_platform_OpenGL_rotateScreen(shader_program, "RGFW_PROJECTION");
 	#endif
+}
 
-	while (RGFW_window_checkEvents(win, 0)) {
+int main(void) {
+	RGFW_setGLHint(RGFW_glMajor, 1);
+	RGFW_setGLHint(RGFW_glMinor, 0);
+	RGFW_setGLHint(RGFW_glProfile, RGFW_glES);
+
+	/* NOTE(EimaMei): On some embedded platforms video graphics must be allocated
+	 * from a specific memory address, otherwise you'll just only see a blank screen.
+	 * We copy over our vertices to a valid buffer for this. */
+	vertex vertices[] = {
+		{{-1,  1},  {1, 0, 0, 1}},
+		{{ 1,  1},  {0, 1, 0, 1}},
+		{{ 1, -1},  {0, 0, 1, 1}},
+	};
+	vertex* allocated_vertices = RGFW_ALLOC_SYS(sizeof(vertices));
+	memcpy(allocated_vertices, vertices, sizeof(vertices));
+
+#ifdef RGFW_3DS
+	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowDualScreen);
+
+	RGFW_window_makeCurrent(RGFW_SCREEN_TOP);
+	scene_setup(allocated_vertices);
+
+	RGFW_window_makeCurrent(RGFW_SCREEN_BOTTOM);
+	scene_setup(allocated_vertices);
+#else
+	#error "This platform does not support multiple screens."
+#endif
+
+	while (!RGFW_window_shouldClose(win)) {
+		RGFW_window_checkEvents(win, 0);
+
 		if (RGFW_isPressed(RGFW_controllerGet(0), BUTTON_START)) {
 			RGFW_window_setShouldClose(win, RGFW_TRUE);
 			continue;
 		}
 
-		glClear(GL_COLOR_BUFFER_BIT);
-		glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
+#ifdef RGFW_3DS
+		RGFW_window_makeCurrent(RGFW_SCREEN_TOP); {
+			glClear(GL_COLOR_BUFFER_BIT);
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
+		}
+
+		RGFW_window_makeCurrent(RGFW_SCREEN_BOTTOM); {
+			glClear(GL_COLOR_BUFFER_BIT);
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
+		}
+#endif
 
 		RGFW_window_swapBuffers(win);
 	}

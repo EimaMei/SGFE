@@ -1,7 +1,5 @@
 #define RGFW_IMPLEMENTATION
 #define RGFW_DEBUG
-
-#define RGFW_BUFFER_NATIVE
 #define RGFW_BUFFER
 
 #include <RGFW_embedded.h>
@@ -11,7 +9,21 @@
 
 
 int main(void) {
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), 0);
+#ifdef RGFW_3DS
+	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowDualScreen);
+
+	CPU_Surface top = surface_make(win, CPU_colorMake(255, 255, 255, 255)),
+				bottom = surface_make(win, CPU_colorMake(43, 184, 0, 255));
+
+	RGFW_window_makeCurrent(RGFW_SCREEN_BOTTOM);
+	surface_clearBuffers(&bottom);
+
+	RGFW_window_makeCurrent(RGFW_SCREEN_TOP);
+	surface_clearBuffers(&top);
+#else
+    #error "This platform does not support multiple screens."
+#endif
+
 	RGFW_rect r = RGFW_RECT(100, 100, img_lonic_width, img_lonic_height);
 
 	/* NOTE(EimaMei): 'RGFW_windowGetSize(win)' may actually differ to 'win->bufferSize'
@@ -23,9 +35,6 @@ int main(void) {
 	 * however the viewport is still set to 400x240 as the second half of the
 	 * resolution is used for the 3D effect. */
 	RGFW_area win_res = RGFW_windowGetSize(win);
-
-	CPU_Surface s = surface_make(win, CPU_colorMake(255, 255, 255, 255));
-	surface_clearBuffers(&s);
 
 	while (!RGFW_window_shouldClose(win)) {
 		while (RGFW_TRUE) {
@@ -54,11 +63,20 @@ int main(void) {
 			r.y += 1;
 		}
 
-		surface_rect(&s, RGFW_RECT(15, 15, 64, 64), CPU_colorMake(0, 255, 0, 255));
-		surface_bitmap(&s, r, img_lonic_data);
+		#ifdef RGFW_3DS
+		RGFW_window_makeCurrent(RGFW_SCREEN_TOP); {
+			surface_clearDirtyRects(&top);
+			surface_rect(&top, RGFW_RECT(15, 15, 64, 64), CPU_colorMake(0, 255, 0, 255));
+			surface_bitmap(&top, r, img_lonic_data);
+		}
+
+		RGFW_window_makeCurrent(RGFW_SCREEN_BOTTOM); {
+			surface_clearDirtyRects(&bottom);
+			surface_rect(&bottom, RGFW_RECT(15, 15, 64, 64), CPU_colorMake(15, 129, 216, 255));
+		}
+		#endif
 
 		RGFW_window_swapBuffers_buffer(win);
-		surface_clearDirtyRects(&s);
 	}
 
 	RGFW_window_close(win);

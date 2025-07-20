@@ -5,7 +5,7 @@
 
 #if RGFW_3DS
 	#define SILK_PIXELBUFFER_WIDTH  400
-    #define SILK_PIXELBUFFER_HEIGHT 240
+	#define SILK_PIXELBUFFER_HEIGHT 240
 #endif
 
 #define SILK_IMPLEMENTATION
@@ -19,52 +19,54 @@ typedef int64_t    i64;
 
 
 int main(void) {
-    RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), 0);
+	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), 0);
 
-    RGFW_bool running = RGFW_TRUE;
-    while (running) {
-        while (RGFW_window_checkEvent(win)) {
-            if (win->event->type == RGFW_quit || RGFW_isPressed(win->event->controller, BUTTON_START)) {
-                running = 0;
-                break;
-            }   
-        } 
-        
-        silkClearPixelBufferColor((pixel*)win->buffer, 0x11AA0033);
+	while (!RGFW_window_shouldClose(win)) {
+		while (RGFW_TRUE) {
+			const RGFW_event* event = RGFW_window_checkEvent(win);
+			if (event == NULL) { break; }
 
-        i32 buf_width = win->bufferSize.w,
-            buf_height = win->bufferSize.h;
+			if (event->type == RGFW_buttonPressed && event->button == BUTTON_START) {
+				RGFW_window_setShouldClose(win, RGFW_TRUE);
+				break;
+			}
+		}
 
-        silkDrawRect(
-            (pixel*)win->buffer, 
-            (vec2i) { SILK_PIXELBUFFER_WIDTH, SILK_PIXELBUFFER_HEIGHT },
-            SILK_PIXELBUFFER_WIDTH,
-            (vec2i) { (i32)((f32)buf_width * 0.3f), (i32)((f32)buf_height * 0.2f) }, 
-            (vec2i) { (i32)((f32)buf_width * 0.4f), (i32)((f32)buf_height * 0.4f) },
-            0xff0000ff
-        );
+		silkClearPixelBufferColor((pixel*)win->buffer, 0x11AA0033);
 
-        const char* text = "Hello, RGFW!";
-        const size_t text_size = 8;
-        const i32 text_spacing = 1;
+		i32 buf_width = win->bufferSize.w,
+			buf_height = win->bufferSize.h;
 
-        silkDrawTextDefault(
-            (pixel*)win->buffer, 
-            (vec2i) { SILK_PIXELBUFFER_WIDTH, SILK_PIXELBUFFER_HEIGHT },
-            SILK_PIXELBUFFER_WIDTH,
-            text, 
-            (vec2i) { 
-                buf_width / 2 - silkMeasureText(text, text_size, text_spacing).x / 2, 
-                buf_height / 2 - silkMeasureText(text, text_size, text_spacing).y / 2 + buf_height / 4 
-            }, 
-            text_size,
-            text_spacing,
-            0xff000000
-        );
-        
+		silkDrawRect(
+			(pixel*)win->buffer,
+			(vec2i) { SILK_PIXELBUFFER_WIDTH, SILK_PIXELBUFFER_HEIGHT },
+			SILK_PIXELBUFFER_WIDTH,
+			(vec2i) { (i32)((f32)buf_width * 0.3f), (i32)((f32)buf_height * 0.2f) },
+			(vec2i) { (i32)((f32)buf_width * 0.4f), (i32)((f32)buf_height * 0.4f) },
+			0xff0000ff
+		);
 
-        RGFW_window_swapBuffers(win);
-    }
+		const char* text = "Hello, RGFW!";
+		const size_t text_size = 8;
+		const i32 text_spacing = 1;
 
-    RGFW_window_close(win);
+		silkDrawTextDefault(
+			(pixel*)win->buffer,
+			(vec2i) { SILK_PIXELBUFFER_WIDTH, SILK_PIXELBUFFER_HEIGHT },
+			SILK_PIXELBUFFER_WIDTH,
+			text,
+			(vec2i) {
+				buf_width / 2 - silkMeasureText(text, text_size, text_spacing).x / 2,
+				buf_height / 2 - silkMeasureText(text, text_size, text_spacing).y / 2 + buf_height / 4
+			},
+			text_size,
+			text_spacing,
+			0xff000000
+		);
+
+
+		RGFW_window_swapBuffers(win);
+	}
+
+	RGFW_window_close(win);
 }

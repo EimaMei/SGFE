@@ -50,12 +50,13 @@ int main() {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glClearColor(1, 1, 1, 1);
 
-	i32 running = 1;
+	while (!RGFW_window_shouldClose(win)) {
+		while (RGFW_TRUE) {
+			const RGFW_event* event = RGFW_window_checkEvent(win);
+			if (event == NULL) { break; }
 
-	while (running) {
-		while (RGFW_window_checkEvent(win)) {
-			if (win->event->type == RGFW_quit || RGFW_isPressed(win->event->controller, BUTTON_START)) {
-				running = 0;
+			if (event->type == RGFW_buttonPressed && event->button == BUTTON_START) {
+				RGFW_window_setShouldClose(win, RGFW_TRUE);
 				break;
 			}
 		}

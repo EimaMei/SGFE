@@ -313,6 +313,9 @@ int main() {
 	#define RGFW_ALLOC_SYS(size) linearAlloc((size_t)(size))
 	#define RGFW_FREE_SYS(ptr) linearFree(ptr)
 	#endif
+
+	#define RGFW_SCREEN_TOP    0
+	#define RGFW_SCREEN_BOTTOM 1
 #endif
 
 /*
@@ -352,7 +355,7 @@ typedef RGFW_ENUM(u8, RGFW_eventType) {
 	RGFW_quit, /*!< the user clicked the quit button */
 };
 
-#define RGFW_BIT(x) (1 << x)
+#define RGFW_BIT(x) (1 << (x))
 
 /* for RGFW_event.lockstate */
 typedef RGFW_ENUM(u8, RGFW_keymod) {
@@ -523,7 +526,6 @@ typedef RGFW_ENUM(i32, RGFW_videoMode) {
 	RGFW_videoMode2D,
 	RGFW_videoMode3D,
 	RGFW_videoModeWide, /* NOTE(EimaMei): Doesn't work on regular 2DS consoles. TODO(EimaMei): Add an error if you select this on 2DS consoles.*/
-	RGFW_videoModeBottomScreen,
 #endif
 
 	RGFW_videoModeCount
@@ -567,18 +569,19 @@ typedef struct RGFW_window_src {
 	angularRate gyro;
 
 	#ifdef RGFW_OPENGL
-		GLASSCtx ctx;
-		GLuint framebuffer;
-		GLuint renderbuffer;
+		GLASSCtx ctx[2];
+		GLuint gl_framebuffer[2];
+		GLuint gl_renderbuffer[2];
 	#endif
 
 	#ifdef RGFW_BUFFER
-		u8* buffers[2];
+		u8* buffers[2][2];
 		#ifndef RGFW_BUFFER_NATIVE
-		u8* buffers_native[2];
+		u8* buffers_native[2][2];
 		#endif
-		ssize_t current_buffer;
-		ssize_t buffer_size;
+		RGFW_bool is_double_buffered[2];
+		ssize_t current_buffer[2];
+		ssize_t buffer_size[2];
 	#endif
 } RGFW_window_src;
 
@@ -589,18 +592,22 @@ typedef RGFW_ENUM(u32, RGFW_windowFlags) {
 	RGFW_windowNoInitAPI      = RGFW_BIT(0), /* do NOT init an API (including the software rendering buffer) (mostly for bindings. you can also use `#define RGFW_NO_API`) */
 	RGFW_windowConsoleInit    = RGFW_BIT(1), /* TODO(EimaMei): New enum. */
 	RGFW_windowFreeOnClose    = RGFW_BIT(15), /*!< free (RGFW_window_close) the RGFW_window struct when the window is closed (by the end user) */
+
+	#ifdef RGFW_3DS
+	RGFW_windowTopScreen      = RGFW_BIT(16), /* TODO(EimaMei): New enum. */
+	RGFW_windowBottomScreen   = RGFW_BIT(17), /* TODO(EimaMei): New enum. */
+	RGFW_windowDualScreen     = RGFW_windowTopScreen | RGFW_windowBottomScreen, /* TODO(EimaMei): New enum. */
+	#endif 
 };
 
 typedef struct RGFW_window {
 	RGFW_window_src src; /*!< src window data */
 
-#ifdef RGFW_BUFFER
-	u8* buffer; /*!< buffer for software rendering */
-	RGFW_area bufferSize;
-#endif
+	#ifdef RGFW_BUFFER
+		u8* buffer; /*!< buffer for software rendering */
+		RGFW_area bufferSize;
+	#endif
 	void* userPtr; /* ptr for usr data */
-
-	RGFW_event* event; /*!< current event */
 
 	RGFW_videoMode mode; /* TODO(EimaMei): document */
 	RGFW_pixelFormat format; /* TODO(EimaMei): document */
@@ -627,9 +634,26 @@ RGFWDEF RGFW_window* RGFW_createWindowPtr(
 	RGFW_window* win /* ptr to the window struct you want to use */
 ); /*!< function to create a window (without allocating a window struct) */
 
-RGFWDEF bool RGFW_window_initBuffer(RGFW_window* win);
-RGFWDEF bool RGFW_window_initBufferSize(RGFW_window* win, RGFW_videoMode mode, RGFW_pixelFormat format);
-RGFWDEF bool RGFW_window_initBufferPtr(RGFW_window* win, u8* buffer, RGFW_videoMode mode, RGFW_pixelFormat format);
+#ifdef RGFW_BUFFER
+
+RGFWDEF RGFW_bool RGFW_window_initBuffer(RGFW_window* win);
+RGFWDEF RGFW_bool RGFW_window_initBufferSize(RGFW_window* win, RGFW_videoMode mode, RGFW_pixelFormat format);
+RGFWDEF RGFW_bool RGFW_window_initBufferPtr(RGFW_window* win, u8* buffer, RGFW_videoMode mode, RGFW_pixelFormat format);
+
+/*!< free buffers used for software rendering within the window */
+RGFWDEF void RGFW_window_freeBuffer(RGFW_window* win);
+
+/* supports OpenGL and software rendering */
+RGFWDEF void RGFW_window_swapBuffers_buffer(RGFW_window* win); /*!< swap the rendering buffer */
+/* TODO(EimaMei): New function. */
+RGFWDEF void RGFW_window_makeCurrent_buffer(ssize_t screen);
+
+/* TODO(EimaMei): New function. */
+RGFWDEF RGFW_bool RGFW_window_bufferSetFormat(RGFW_window* win, RGFW_pixelFormat format);
+/* TODO(EimaMei): New function. */
+RGFWDEF void RGFW_window_bufferSetDoubleBuffering(RGFW_window* win, RGFW_bool enable);
+
+#endif
 
 /*! set the window flags (will undo flags if they don't match the old ones) */
 RGFWDEF void RGFW_window_setFlags(RGFW_window* win, RGFW_windowFlags flags);
@@ -660,7 +684,7 @@ RGFWDEF RGFW_event* RGFW_window_checkEvent(RGFW_window* win); /*!< check current
 			  if waitMS == -1 or waitMS == the max size of an unsigned 32-bit int, the loop will not return until it gets another event
 */
 typedef RGFW_ENUM(i32, RGFW_eventWait) {
-	RGFW_eventNoWait = 0,
+	RGFW_eventWaitNone = 0,
 	RGFW_eventWaitNext = -1
 };
 
@@ -669,9 +693,9 @@ RGFWDEF void RGFW_window_eventWait(RGFW_window* win, i32 waitMS);
 
 /*!
 	check all the events until there are none left.
-	This should only be used if you're using callbacks only
+	Return true if the window should close, otherwise false.
 */
-RGFWDEF void RGFW_window_checkEvents(RGFW_window* win, i32 waitMS);
+RGFWDEF RGFW_bool RGFW_window_checkEvents(RGFW_window* win, RGFW_eventWait waitMS);
 
 /*!
 	tell RGFW_window_eventWait to stop waiting (to be ran from another thread)
@@ -702,8 +726,10 @@ RGFWDEF void RGFW_window_setShouldClose(RGFW_window* win, RGFW_bool shouldClose)
 /*! if the window should close (RGFW_close was sent or escape was pressed) */
 RGFWDEF RGFW_bool RGFW_window_shouldClose(RGFW_window* win);
 
+#ifdef RGFW_BUFFER
 /* TODO(EimaMei): new function. */
-RGFWDEF void RGFW_window_consoleInit(RGFW_window* win);
+RGFWDEF RGFW_bool RGFW_window_consoleInit(RGFW_window* win);
+#endif
 
 /** @} */
 
@@ -824,17 +850,11 @@ RGFWDEF RGFW_controllerfunc RGFW_setControllerCallback(RGFW_controllerfunc func)
 /** * @defgroup graphics_API
 * @{ */
 
-/*!< make the window the current OpenGL drawing context
+/*!< make the screen the current drawing context */
+RGFWDEF void RGFW_window_makeCurrent(ssize_t screen);
 
-	NOTE:
- 	if you want to switch the graphics context's thread,
-	you have to run RGFW_window_makeCurrent(NULL); on the old thread
-	then RGFW_window_makeCurrent(valid_window) on the new thread
-*/
-RGFWDEF void RGFW_window_makeCurrent(RGFW_window* win);
-
-/*! get current RGFW window graphics context */
-RGFWDEF RGFW_window* RGFW_getCurrent(void);
+/*! get the screen used for the current drawing context */
+RGFWDEF ssize_t RGFW_getCurrent(void);
 
 /* supports OpenGL and software rendering */
 RGFWDEF void RGFW_window_swapBuffers(RGFW_window* win); /*!< swap the rendering buffer */
@@ -847,7 +867,7 @@ typedef void (*RGFW_proc)(void); /* function pointer equivalent of void* */
 /*! native API functions */
 #if defined(RGFW_OPENGL) || defined(RGFW_EGL)
 /*!< create an OpenGL context for the RGFW window, run by createWindow by default (unless the RGFW_windowNoInitAPI is included) */
-RGFWDEF bool RGFW_window_initOpenGL(RGFW_window* win);
+RGFWDEF RGFW_bool RGFW_window_initOpenGL(RGFW_window* win);
 /*!< called by `RGFW_window_close` by default (unless the RGFW_windowNoInitAPI is set) */
 RGFWDEF void RGFW_window_freeOpenGL(RGFW_window* win);
 
@@ -880,7 +900,7 @@ typedef RGFW_ENUM(i32, RGFW_glValue)  {
 RGFWDEF void RGFW_setGLHint(RGFW_glHints hint, i32 value);
 RGFWDEF i32 RGFW_getGLHint(RGFW_glHints hint);
 
-RGFWDEF void RGFW_window_makeCurrent_OpenGL(RGFW_window* win); /*!< to be called by RGFW_window_makeCurrent */
+RGFWDEF void RGFW_window_makeCurrent_OpenGL(ssize_t screen); /*!< to be called by RGFW_window_makeCurrent */
 RGFWDEF void RGFW_window_swapBuffers_OpenGL(RGFW_window* win); /*!< swap opengl buffer (only) called by RGFW_window_swapInterval  */
 
 RGFWDEF void* RGFW_getCurrent_OpenGL(void); /*!< get the current context (OpenGL backend (3DS))*/
@@ -1034,6 +1054,7 @@ RGFWDEF RGFW_button RGFW_apiKeyToRGFW(u32 keycode);
 RGFWDEF u32 RGFW_rgfwToApiKey(RGFW_button keycode);
 
 
+#ifdef RGFW_3DS
 /* TODO(EimaMei): Move these somewhere more appropriate. */
 /* TODO(EimaMei): Explain 'RGFW_platform' functions. */
 
@@ -1044,11 +1065,10 @@ RGFWDEF float RGFW_platformGet3DSlider(void);
 
 #ifdef RGFW_OPENGL
 /* TODO(EimaMei): new function */
-RGFWDEF bool RGFW_platform_OpenGL_rotateScreen(GLuint shader_program, const char* mat4_uniform_name);
+RGFWDEF RGFW_bool RGFW_platform_OpenGL_rotateScreen(GLuint shader_program, const char* mat4_uniform_name);
 #endif
 
-/* TODO(EimaMei): new function */
-RGFWDEF void RGFW_system_window_swapBuffers(RGFW_window* top, RGFW_window* bottom);
+#endif
 
 /* Returns a video mode that's considered to be the most optimal for the system
  * by the library. Usually this returns a mode that has a standard resolution,
@@ -1083,7 +1103,7 @@ RGFWDEF void RGFW_deinit_heap(void); /*!< deinits the heap instance */
 #if !defined(RGFW_NO_INFO) || defined(RGFW_IMPLEMENTATION)
 typedef struct RGFW_info {
     RGFW_window* root;
-    RGFW_window* current;
+	ssize_t current;
     ssize_t windowCount;
     ssize_t eventLen;
 	RGFW_systemModel model;
@@ -1099,7 +1119,6 @@ typedef struct RGFW_info {
 	RGFW_bool kygx_initialized;
 	#endif
 	#endif
-
 } RGFW_info;
 
 RGFWDEF i32 RGFW_init_ptr(RGFW_info* info); /*!< init RGFW, storing the data at the pointer */
@@ -1130,7 +1149,7 @@ This is the start of keycode data
 
 
 
-/* var - VARIABLE | mask - UINT | set - bool
+/* var - VARIABLE | mask - UINT | set - RGFW_bool
  * Sets/unsets the mask for the variable. */
 #define RGFW_MASK_SET(var, mask, set) do { \
 	if (set) (var) |=  (mask); \
@@ -1152,7 +1171,7 @@ void RGFW_resetKeyPrev(void) {
 		}
 
 		for (j = controller->button_start; j < controller->button_end; j += 1) {
-			RGFW_MASK_SET(_RGFW->controllers[i].buttons[j], RGFW_buttonStatePrevious, false);
+			RGFW_MASK_SET(_RGFW->controllers[i].buttons[j], RGFW_buttonStatePrevious, RGFW_FALSE);
 		}
 	}
 }
@@ -1225,12 +1244,17 @@ void RGFW_sendDebugInfo(RGFW_debugType type, RGFW_errorCode err, RGFW_debugConte
 	#endif
 }
 
-void RGFW_window_checkEvents(RGFW_window* win, i32 waitMS) {
+RGFW_bool RGFW_window_checkEvents(RGFW_window* win, i32 waitMS) {
 	RGFW_window_eventWait(win, waitMS);
 
-	while (RGFW_window_checkEvent(win) != NULL && RGFW_window_shouldClose(win) == 0) {
-		if (win->event->type == RGFW_quit) return;
+	while (!RGFW_window_shouldClose(win)) {
+		RGFW_event* ev = RGFW_window_checkEvent(win);
+		if (ev == NULL) {
+			break;
+		}
 	}
+
+	return !RGFW_window_shouldClose(win);
 }
 
 
@@ -1246,11 +1270,9 @@ no more event call back defines
 
 /* RGFW_BIT(24) */
 #define RGFW_EVENT_QUIT 		RGFW_BIT(25) /* the window close button was pressed */
-#define RGFW_MOUSE_LEFT 		RGFW_BIT(27) /* if mouse left the window */
 #define RGFW_WINDOW_ALLOC 		RGFW_BIT(28) /* if window was allocated by RGFW */
 #define RGFW_BUFFER_ALLOC 		RGFW_BIT(29) /* if window.buffer was allocated by RGFW */
-#define RGFW_WINDOW_INIT 		RGFW_BIT(30) /* if window.buffer was allocated by RGFW */
-#define RGFW_INTERNAL_FLAGS (RGFW_EVENT_QUIT | RGFW_MOUSE_LEFT | RGFW_WINDOW_ALLOC | RGFW_BUFFER_ALLOC)
+#define RGFW_INTERNAL_FLAGS (RGFW_EVENT_QUIT | RGFW_WINDOW_ALLOC | RGFW_BUFFER_ALLOC)
 
 
 RGFW_window* RGFW_createWindow(RGFW_videoMode mode, RGFW_windowFlags flags) {
@@ -1288,7 +1310,7 @@ i32 RGFW_init_ptr(RGFW_info* info) {
 	RGFW_setInfo(info);
 
 	_RGFW->root = NULL;
-	_RGFW->current = NULL;
+	_RGFW->current = 0;
 	_RGFW->windowCount = -1;
 	_RGFW->eventLen = 0;
 	_RGFW->windowCount = 0;
@@ -1343,31 +1365,6 @@ RGFW_event* RGFW_eventQueuePop(RGFW_window* win) {
 	return ev;
 }
 
-RGFW_event* RGFW_window_checkEventCore(RGFW_window* win);
-RGFW_event* RGFW_window_checkEventCore(RGFW_window* win) {
-	RGFW_event* ev;
-    RGFW_ASSERT(win != NULL);
-
-    if (win->event->type == 0 && _RGFW->eventLen == 0) {
-        RGFW_resetKeyPrev();
-    }
-
-	/* check queued events */
-	ev = RGFW_eventQueuePop(win);
-	if (ev != NULL) {
-		if (ev->type == RGFW_quit) {
-			RGFW_window_setShouldClose(win, RGFW_TRUE);
-			if (win->_flags & RGFW_windowFreeOnClose) {
-				RGFW_window_close(win);
-			}
-		}
-		win->event = ev;
-    }
-	else return NULL;
-
-	return win->event;
-}
-
 
 RGFWDEF void RGFW_window_basic_init(RGFW_window* win, RGFW_videoMode mode, RGFW_windowFlags flags);
 void RGFW_setRootWindow(RGFW_window* win) { _RGFW->root = win; }
@@ -1385,12 +1382,17 @@ void RGFW_window_basic_init(RGFW_window* win, RGFW_videoMode mode, RGFW_windowFl
 	}
 
 	if (!(win->_flags & RGFW_WINDOW_ALLOC)) win->_flags = 0;
+	if ((flags & RGFW_windowDualScreen) == 0) { flags |= RGFW_windowTopScreen; }
 
 	/* set and init the new window's data */
 	win->mode = mode;
 	win->format = -1;
 	win->_flags = (win->_flags & RGFW_WINDOW_ALLOC) | flags;
-	win->event = NULL;
+	#ifdef RGFW_BUFFER 
+	win->buffer = NULL;
+	win->bufferSize = RGFW_AREA(0, 0);
+	#endif
+	_RGFW->current = (flags & RGFW_windowTopScreen) ? 0 : 1;
 
 	if ((flags & (RGFW_windowNoInitAPI | RGFW_windowConsoleInit)) == 0) {
 		#ifdef RGFW_OPENGL
@@ -1405,28 +1407,41 @@ void RGFW_window_basic_init(RGFW_window* win, RGFW_videoMode mode, RGFW_windowFl
 }
 
 void RGFW_window_setFlags(RGFW_window* win, RGFW_windowFlags flags) {
+	#ifdef RGFW_BUFFER
 	if (flags & RGFW_windowConsoleInit) RGFW_window_consoleInit(win);
+	#endif 
 
 	win->_flags = flags | (win->_flags & RGFW_INTERNAL_FLAGS);
 }
 
-bool RGFW_window_initBuffer(RGFW_window* win) {
+#ifdef RGFW_BUFFER
+
+RGFW_bool RGFW_window_initBuffer(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
 	return RGFW_window_initBufferSize(win, win->mode, RGFW_pixelFormatRGBA8);
 }
 
-bool RGFW_window_initBufferSize(RGFW_window* win, RGFW_videoMode mode, RGFW_pixelFormat format) {
+RGFW_bool RGFW_window_initBufferSize(RGFW_window* win, RGFW_videoMode mode, RGFW_pixelFormat format) {
+	RGFW_ASSERT(win != NULL);
+	#ifndef RGFW_3DS
 	RGFW_area res = RGFW_videoModeResolution(mode);
+	#else
+	RGFW_area res;
+	res.w = (win->_flags & RGFW_windowTopScreen) ? RGFW_videoModeResolution(mode).w : 320;
+	res.h = 240;
+	#endif
 
 	u8* buffer = (u8*)RGFW_ALLOC_SYS(res.w * res.h * RGFW_pixelFormatBPP(format));
 	if (buffer == NULL) {
-		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOutOfMemory, RGFW_DEBUG_CTX(NULL, 0), "Ran out of memory when allocating framebuffers.");
-		return false;
+		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOutOfMemory, RGFW_DEBUG_CTX(NULL, 0), "Ran out of memory when allocating a buffer.");
+		return RGFW_FALSE;
 	}
 
 	win->_flags |= RGFW_BUFFER_ALLOC;
 	return RGFW_window_initBufferPtr(win, buffer, mode, format);
 }
+
+#endif
 
 RGFW_bool RGFW_isPressed(RGFW_controller* controller, RGFW_button button) {
 	RGFW_ASSERT(controller != NULL);
@@ -1454,14 +1469,22 @@ ssize_t RGFW_controllerGetCount(void) {
 
 
 
-void RGFW_window_makeCurrent(RGFW_window* win) {
-    _RGFW->current = win;
-#if defined(RGFW_OPENGL) || defined(RGFW_EGL)
-    RGFW_window_makeCurrent_OpenGL(win);
-#endif
+void RGFW_window_makeCurrent(ssize_t screen) {
+	if (_RGFW->current == screen) { return; }
+
+	#ifdef RGFW_BUFFER
+	if (_RGFW->root->buffer) {
+		RGFW_window_makeCurrent_buffer(screen);
+	}
+	#endif
+	#ifdef RGFW_OPENGL
+	if (_RGFW->root->src.ctx[0] || _RGFW->root->src.ctx[1]) {
+		RGFW_window_makeCurrent_OpenGL(screen);
+	}
+	#endif
 }
 
-RGFW_window* RGFW_getCurrent(void) {
+ssize_t RGFW_getCurrent(void) {
     return _RGFW->current;
 }
 
@@ -1473,8 +1496,12 @@ void RGFW_window_swapBuffers(RGFW_window* win) {
 		RGFW_window_swapBuffers_buffer(win);
 	}
 	#endif
-	#if defined(RGFW_OPENGL) || defined(RGFW_EGL)
-	RGFW_window_swapBuffers_OpenGL(win);
+	#ifdef RGFW_OPENGL
+	if (win->src.ctx[0] || win->src.ctx[1]) {
+		RGFW_window_swapBuffers_OpenGL(win);
+	}
+	#elif !defined(RGFW_BUFFER)
+	gspWaitForVBlank();
 	#endif
 }
 
@@ -1487,7 +1514,8 @@ void RGFW_window_setShouldClose(RGFW_window* win, RGFW_bool shouldClose) {
 	if (shouldClose)  {
 		win->_flags |= RGFW_EVENT_QUIT;
 		RGFW_windowQuitCallback(win);
-	} else {
+	}
+	else {
 		win->_flags &= ~(u32)RGFW_EVENT_QUIT;
 	}
 }
@@ -1556,6 +1584,8 @@ Start of 3DS
 */
 
 #ifdef RGFW_3DS
+
+#include <stdio.h>
 
 #define RGFW_ACCEPTED_CTRU_INPUTS \
 	(KEY_A | KEY_B | KEY_SELECT | KEY_START | KEY_DRIGHT | KEY_DLEFT | KEY_DUP | KEY_DDOWN | \
@@ -1730,45 +1760,39 @@ u32 RGFW_rgfwToApiKey(RGFW_button button) {
 
 #ifdef RGFW_BUFFER
 
-void _RGFW__gfxPresentFramebuffer(RGFW_window* win, bool has_stereo);
-void _RGFW__gfxPresentFramebuffer(RGFW_window* win, bool has_stereo) {
+/* NOTE(EimaMei): Taken from libctru gfx.c */
+void _RGFW__gspPresentFramebuffer(RGFW_window* win, ssize_t screen, u8* buffer);
+void _RGFW__gspPresentFramebuffer(RGFW_window* win, ssize_t screen, u8* buffer) {
 	u32 stride = GSP_SCREEN_WIDTH * (u32)RGFW_pixelFormatBPP(win->format);
 	u32 pixel_format = (u32)win->format | (1 << 8);
+	ssize_t current_buffer = win->src.current_buffer[screen];
 
-#ifndef RGFW_BUFFER_NATIVE
-	u8* fb_a = win->src.buffers_native[win->src.current_buffer];
-#else
-	u8* fb_a = win->buffer;
-#endif
-	u8* fb_b = fb_a;
-
-	switch (win->mode) {
+	u8* fb_b = buffer;
+	if (screen == 0) {
+		switch (win->mode) {
 		case RGFW_videoMode2D: {
 			pixel_format |= BIT(6);
 		} break;
 
 		case RGFW_videoMode3D: {
 			pixel_format |= BIT(5);
-			if (has_stereo) fb_b += win->src.buffer_size / 2;
+			if (RGFW_platformGet3DSlider() > 0.0f) fb_b += win->src.buffer_size[screen] / 2;
 		} break;
+		}
 	}
 
-	gspPresentBuffer(
-		win->mode == RGFW_videoModeBottomScreen, (u32)win->src.current_buffer,
-		fb_a, fb_b, stride, pixel_format
-	);
+	gspPresentBuffer((u32)screen, (u32)current_buffer, buffer, fb_b, stride, pixel_format);
 }
 
 #ifndef RGFW_BUFFER_NATIVE
 
-/* TODO(EimaMei): Add support for other 3 formats. */
-u8* RGFW_window_bufferToNative(RGFW_window* win);
-u8* RGFW_window_bufferToNative(RGFW_window* win) {
-	u8* dst = win->src.buffers_native[win->src.current_buffer];
-	u8* src = win->buffer;
+u8* RGFW_window_bufferToNative(RGFW_window* win, ssize_t screen);
+u8* RGFW_window_bufferToNative(RGFW_window* win, ssize_t screen) {
+	u8* dst = win->src.buffers_native[screen][win->src.current_buffer[screen]];
+	u8* src = win->src.buffers[screen][win->src.current_buffer[screen]];
 
-	i32 bpp = RGFW_pixelFormatBPP(win->mode);
-	const ssize_t width  = win->bufferSize.w,
+	const i32 bpp = RGFW_pixelFormatBPP(win->mode);
+	const ssize_t width  = (screen == 0) ? RGFW_videoModeResolution(win->mode).w : 320,
 				  height = 240;
 	for (ssize_t i = 0; i < width; i += 1) {
 		for (ssize_t j = height - 1; j >= 0; j -= 1) {
@@ -1800,77 +1824,243 @@ u8* RGFW_window_bufferToNative(RGFW_window* win) {
 }
 #endif
 
+RGFW_bool _RGFW_window_initGspFramebuffer(RGFW_window* win, ssize_t screen, u8* buffer);
+void _RGFW_window_freeGspFramebuffer(RGFW_window* win, ssize_t screen);
 
-bool RGFW_window_initBufferPtr(RGFW_window* win, u8* buffer, RGFW_videoMode mode,
+RGFW_bool _RGFW_window_initGspFramebuffer(RGFW_window* win, ssize_t screen, u8* buffer) {
+	RGFW_window_src* src = &win->src;
+	ssize_t width = (screen == 0) ? RGFW_videoModeResolution(win->mode).w : 320;
+
+	src->current_buffer[screen] = 0;
+	src->buffer_size[screen] = width * 240 * RGFW_pixelFormatBPP(win->format);
+
+	#ifdef RGFW_BUFFER_NATIVE
+		src->buffers[screen][0] = buffer;
+		src->buffers[screen][1] = RGFW_ALLOC_SYS(src->buffer_size[screen]);
+	#else
+		src->buffers[screen][0] = buffer;
+		src->buffers[screen][1] = RGFW_ALLOC((size_t)src->buffer_size[screen]);
+
+		src->buffers_native[screen][0] = RGFW_ALLOC_SYS(src->buffer_size[screen]);
+		src->buffers_native[screen][1] = RGFW_ALLOC_SYS(src->buffer_size[screen]);
+
+		if (src->buffers_native[screen][0] == NULL || src->buffers_native[screen][1] == NULL) {
+			RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOutOfMemory, RGFW_DEBUG_CTX(NULL, 0), "Ran out of memory allocating the native buffers.");
+			return RGFW_FALSE;
+		}
+	#endif
+
+	if (src->buffers[screen][1] == NULL) {
+		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOutOfMemory, RGFW_DEBUG_CTX(win, 0), "Ran out of memory allocating the 2nd buffer.");
+		return RGFW_FALSE;
+	}
+
+	win->buffer = buffer;
+	win->bufferSize = RGFW_AREA(width, 240);
+
+	#ifdef RGFW_BUFFER_NATIVE
+	_RGFW__gspPresentFramebuffer(win, screen, src->buffers[screen][0]);
+	#else
+	_RGFW__gspPresentFramebuffer(win, screen, src->buffers_native[screen][0]);
+	#endif
+	return RGFW_TRUE;
+}
+
+void _RGFW_window_freeGspFramebuffer(RGFW_window* win, ssize_t screen) {
+	if (win->_flags & RGFW_BUFFER_ALLOC) {
+		RGFW_FREE_SYS(win->src.buffers[screen][0]);
+		win->_flags &= (u32)~RGFW_BUFFER_ALLOC;
+	}
+	#ifdef RGFW_BUFFER_NATIVE
+	RGFW_FREE_SYS(win->src.buffers[screen][1]);
+	#else
+	RGFW_FREE(win->src.buffers[screen][1]);
+	#endif
+
+	#ifndef RGFW_BUFFER_NATIVE
+	RGFW_FREE_SYS(win->src.buffers_native[screen][0]);
+	RGFW_FREE_SYS(win->src.buffers_native[screen][1]);
+	#endif
+}
+
+
+RGFW_bool RGFW_window_initBufferPtr(RGFW_window* win, u8* buffer, RGFW_videoMode mode,
 		RGFW_pixelFormat format) {
 	RGFW_ASSERT(win != NULL);
 	RGFW_ASSERT(buffer != NULL);
 
-	win->buffer = buffer;
-	win->bufferSize = RGFW_videoModeResolution(mode);
 	win->mode = mode;
 	win->format = format;
 
-	win->src.current_buffer = 0;
-	win->src.buffer_size = win->bufferSize.w * win->bufferSize.h * RGFW_pixelFormatBPP(format);
-	#ifdef RGFW_BUFFER_NATIVE
-	win->src.buffers[0] = buffer;
-	win->src.buffers[1] = RGFW_ALLOC_SYS(win->src.buffer_size);
-	#else
-	win->src.buffers[0] = buffer;
-	win->src.buffers[1] = RGFW_ALLOC((size_t)win->src.buffer_size);
+	ssize_t width = (win->_flags & RGFW_windowTopScreen) ? 320 : RGFW_videoModeResolution(win->mode).w;
 
-	win->src.buffers_native[0] = RGFW_ALLOC_SYS(win->src.buffer_size);
-	win->src.buffers_native[1] = RGFW_ALLOC_SYS(win->src.buffer_size);
-
-	if (win->src.buffers_native[0] == NULL || win->src.buffers_native[1] == NULL) {
-		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOutOfMemory, RGFW_DEBUG_CTX(NULL, 0), "Ran out of memory allocating the native buffers.");
-		return false;
-	}
-	#endif
-	if (win->src.buffers[1] == NULL) {
-		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOutOfMemory, RGFW_DEBUG_CTX(NULL, 0), "Ran out of memory allocating the 2nd buffer.");
-		return false;
+	u8* other_buffer = RGFW_ALLOC_SYS(width * 240 * RGFW_pixelFormatBPP(mode));
+	if (other_buffer == NULL) {
+		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOutOfMemory, RGFW_DEBUG_CTX(win, 0), "Ran out of memory allocating the 2nd buffer.");
+		return RGFW_FALSE;
 	}
 
-	_RGFW__gfxPresentFramebuffer(win, false);
+	RGFW_bool res = 0;
+	if (win->_flags & RGFW_windowTopScreen) {
+		res |= _RGFW_window_initGspFramebuffer(win, RGFW_SCREEN_BOTTOM, other_buffer);
+		res |= _RGFW_window_initGspFramebuffer(win, RGFW_SCREEN_TOP, buffer);
+	}
+	else {
+		res |= _RGFW_window_initGspFramebuffer(win, RGFW_SCREEN_TOP, other_buffer);
+		res |= _RGFW_window_initGspFramebuffer(win, RGFW_SCREEN_BOTTOM, buffer);
+	}
+	win->src.is_double_buffered[0] = RGFW_TRUE;
+	win->src.is_double_buffered[1] = RGFW_TRUE;
+
+	if (!res) { return RGFW_FALSE; }
+
 	gspWaitForVBlank();
 	GSPGPU_SetLcdForceBlack(RGFW_FALSE);
+	RGFW_sendDebugInfo(RGFW_typeInfo, RGFW_infoBuffer, RGFW_DEBUG_CTX(win, 0), "Creating framebuffers");
 
-	RGFW_sendDebugInfo(RGFW_typeInfo, RGFW_infoBuffer, RGFW_DEBUG_CTX(win, 0), "Creating two framebuffers");
-	return true;
+	return RGFW_TRUE;
+}
+
+void RGFW_window_freeBuffer(RGFW_window* win) {
+	RGFW_ASSERT(win != NULL);
+	if (win->buffer == NULL) { return ; }
+
+	_RGFW_window_freeGspFramebuffer(win, RGFW_SCREEN_TOP);
+	_RGFW_window_freeGspFramebuffer(win, RGFW_SCREEN_BOTTOM);
+
+	win->buffer = NULL;
 }
 
 void RGFW_window_swapBuffers_buffer(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
+	RGFW_window_src* src = &win->src;
 
-	#ifndef RGFW_BUFFER_NATIVE
-	u8* buffer = RGFW_window_bufferToNative(win);
-	#else
-	u8* buffer = win->buffer;
-	#endif
-	GSPGPU_FlushDataCache(buffer, (u32)win->src.buffer_size);
+	for (ssize_t screen = 0; screen < 2; screen += 1) {
+		/* NOTE(EimaMei): It's 16 because RGFW_windowTopScreen is RGFW_BIT(16). */
+		if ((win->_flags & RGFW_BIT(screen + 16)) == 0) {
+			continue;
+		}
 
-	_RGFW__gfxPresentFramebuffer(win, (RGFW_platformGet3DSlider() != 0.0f));
+		#ifdef RGFW_BUFFER_NATIVE
+		u8* buffer = src->buffers[screen][src->current_buffer[screen]];
+		#else
+		u8* buffer = RGFW_window_bufferToNative(win, screen);
+		#endif
+		GSPGPU_FlushDataCache(buffer, (u32)src->buffer_size[screen]);
+
+		_RGFW__gspPresentFramebuffer(win, screen, buffer);
+		src->current_buffer[screen] ^= src->is_double_buffered[screen];
+	}
+
+	ssize_t screen = _RGFW->current;
+	win->buffer = src->buffers[screen][src->current_buffer[screen]];
+
 	gspWaitForVBlank();
+}
 
-	win->src.current_buffer ^= 1;
-	win->buffer = win->src.buffers[win->src.current_buffer];
+void RGFW_window_makeCurrent_buffer(ssize_t screen) {
+	RGFW_window* win = _RGFW->root;
+	RGFW_window_src* src = &win->src;
+	_RGFW->current = screen;
+
+    win->buffer = src->buffers[screen][win->src.current_buffer[screen]];
+    win->bufferSize.w = (screen == 0) ? RGFW_videoModeResolution(win->mode).w : 320;
+}
+
+RGFW_bool RGFW_window_bufferSetFormat(RGFW_window* win, RGFW_pixelFormat format) {
+	RGFW_ASSERT(win != NULL);
+	RGFW_ASSERT(format >= 0 && format < RGFW_pixelFormatCount);
+	if (win->buffer == NULL) { return RGFW_FALSE; }
+
+	/* TODO(EimaMei): Make this cross-platform. */
+	i32 target_bpp = RGFW_pixelFormatBPP(format);
+	if (RGFW_pixelFormatBPP(win->mode) < target_bpp) {
+		_RGFW_window_freeGspFramebuffer(win, _RGFW->current);
+		win->_flags |= RGFW_BUFFER_ALLOC;
+
+		RGFW_area res;
+		res.w = (_RGFW->current) ? RGFW_videoModeResolution(format).w : 320;
+		res.h = 240;
+
+		u8* buffer = (u8*)RGFW_ALLOC_SYS(res.w * res.h * RGFW_pixelFormatBPP(format));
+		if (buffer == NULL) {
+			RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOutOfMemory, RGFW_DEBUG_CTX(NULL, 0), "Ran out of memory when allocating a buffer.");
+			return RGFW_FALSE;
+		}
+
+		win->mode = format;
+		win->buffer = buffer;
+		_RGFW_window_initGspFramebuffer(win, _RGFW->current, buffer);
+	}
+	else {
+		win->mode = format;
+	}
+
+	return RGFW_TRUE;
+}
+
+void RGFW_window_bufferSetDoubleBuffering(RGFW_window* win, RGFW_bool enable) {
+	RGFW_ASSERT(win != NULL);
+	win->src.is_double_buffered[_RGFW->current] = RGFW_BOOL(enable);
 }
 
 #endif
 
 #ifdef RGFW_OPENGL
 
-bool RGFW_window_initOpenGL(RGFW_window* win) {
+RGFW_bool _RGFW_window_initGlassCtx(RGFW_window* win, GLASSScreen screen, GLuint internal_format);
+void _RGFW_window_freeGlassCtx(RGFW_window* win, GLASSScreen screen);
+
+RGFW_bool _RGFW_window_initGlassCtx(RGFW_window* win, GLASSScreen screen, GLuint internal_format) {
+	GLASSCtxParams param;
+	glassGetDefaultContextParams(&param, GLASS_VERSION_ES_2);
+	param.targetScreen = screen;
+
+	win->src.ctx[screen] = glassCreateContext(&param);
+	if (win->src.ctx[screen] == NULL) {
+		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Failed to create a GLASS context.");
+		return RGFW_FALSE;
+	}
+	glassBindContext(win->src.ctx[screen]);
+
+	GLint width = (screen == GLASS_SCREEN_TOP) ? RGFW_videoModeResolution(win->mode).w : 320;
+	glGenRenderbuffers(1, &win->src.gl_renderbuffer[screen]);
+	glBindRenderbuffer(GL_RENDERBUFFER, win->src.gl_renderbuffer[screen]);
+	glRenderbufferStorage(GL_RENDERBUFFER, internal_format, width, 240);
+
+	glGenFramebuffers(1, &win->src.gl_framebuffer[screen]);
+	glBindFramebuffer(GL_FRAMEBUFFER, win->src.gl_framebuffer[screen]);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, win->src.gl_renderbuffer[screen]);
+
+	glViewport(0, 0, width, 240);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+	return RGFW_FALSE;
+}
+
+void _RGFW_window_freeGlassCtx(RGFW_window* win, GLASSScreen screen) {
+	RGFW_ASSERT(win != NULL);
+	if (win->src.ctx[screen] == NULL) { return ; }
+
+	glassBindContext(win->src.ctx[screen]);
+	glDeleteRenderbuffers(1, &win->src.gl_renderbuffer[screen]);
+	glDeleteFramebuffers(1, &win->src.gl_framebuffer[screen]);
+
+	glassDestroyContext(win->src.ctx[screen]);
+	win->src.ctx[screen] = NULL;
+
+	glassBindContext(NULL);
+}
+
+RGFW_bool RGFW_window_initOpenGL(RGFW_window* win) {
 	if (RGFW_getGLHint(RGFW_glProfile) != RGFW_glES) {
 		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS only supports GLES.");
-		return false;
+		return RGFW_FALSE;
 	}
 
 	if (RGFW_getGLHint(RGFW_glMajor) != 1 || (RGFW_getGLHint(RGFW_glMinor) != 0 && RGFW_getGLHint(RGFW_glMinor) != 1)) {
 		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS can only support up to GLES 1.1.");
-		return false;
+		return RGFW_FALSE;
 	}
 
 	i32 stencil = RGFW_getGLHint(RGFW_glStencil);
@@ -1890,21 +2080,9 @@ bool RGFW_window_initOpenGL(RGFW_window* win) {
 		_RGFW->kygx_initialized = kygxInit();
 		if (!_RGFW->kygx_initialized) {
 			RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "Failed to initialize KYGX.");
-			return false;
+			return RGFW_FALSE;
 		}
 	}
-
-	GLASSCtxParams params;
-    glassGetDefaultContextParams(&params, GLASS_VERSION_ES_2);
-	params.targetScreen = (win->mode == RGFW_videoModeBottomScreen) ? GLASS_SCREEN_BOTTOM : GLASS_SCREEN_TOP;
-
-	win->src.ctx = glassCreateContext(&params);
-	if (win->src.ctx == NULL) {
-		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "Failed to create a GLASS context.");
-		return false;
-	}
-	glassBindContext(win->src.ctx);
-
 
 	i32 r = RGFW_getGLHint(RGFW_glRed),
 		g = RGFW_getGLHint(RGFW_glGreen),
@@ -1947,64 +2125,55 @@ bool RGFW_window_initOpenGL(RGFW_window* win) {
 	}
 
 	if (RGFW_getGLHint(RGFW_glStereo)) {
-		if (win->mode == RGFW_videoModeBottomScreen) {
-			RGFW_sendDebugInfo(RGFW_typeWarning, RGFW_errOpenGLContext, RGFW_DEBUG_CTX(win, 0), "Cannot enable 3D for the bottom screen.");
-		}
-		else {
-			win->mode = RGFW_videoMode3D;
-		}
+		win->mode = RGFW_videoMode3D;
 	}
 
-	GLint width = RGFW_videoModeResolution(win->mode).w;
-	glGenRenderbuffers(1, &win->src.renderbuffer);
-	glBindRenderbuffer(GL_RENDERBUFFER, win->src.renderbuffer);
-	glRenderbufferStorage(GL_RENDERBUFFER, internal_format, width, 240);
+	switch (win->_flags & RGFW_windowDualScreen) {
+		case RGFW_windowTopScreen:    return _RGFW_window_initGlassCtx(win, GLASS_SCREEN_TOP, internal_format);
+		case RGFW_windowBottomScreen: return _RGFW_window_initGlassCtx(win, GLASS_SCREEN_BOTTOM, internal_format);
+		case RGFW_windowDualScreen: {
+			RGFW_bool res = 0;
+			res |= _RGFW_window_initGlassCtx(win, GLASS_SCREEN_BOTTOM, internal_format);
+			res |= _RGFW_window_initGlassCtx(win, GLASS_SCREEN_TOP, internal_format);
+			return res;
+		} break;
+	}
 
-	glGenFramebuffers(1, &win->src.framebuffer);
-	glBindFramebuffer(GL_FRAMEBUFFER, win->src.framebuffer);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, win->src.renderbuffer);
-
-	glViewport(0, 0, width, 240);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-
-	return true;
+	return RGFW_FALSE;
 }
 
 void RGFW_window_freeOpenGL(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
-	if (win->src.ctx == NULL) { return ; }
 
-	RGFW_window_makeCurrent_OpenGL(win);
-	glDeleteRenderbuffers(1, &win->src.renderbuffer);
-	glDeleteFramebuffers(1, &win->src.framebuffer);
+	switch (win->_flags & RGFW_windowDualScreen) {
+		case RGFW_windowTopScreen:    _RGFW_window_freeGlassCtx(win, GLASS_SCREEN_TOP); break;
+		case RGFW_windowBottomScreen: _RGFW_window_freeGlassCtx(win, GLASS_SCREEN_BOTTOM); break;
+		case RGFW_windowDualScreen: {
+			_RGFW_window_freeGlassCtx(win, GLASS_SCREEN_TOP);
+			_RGFW_window_freeGlassCtx(win, GLASS_SCREEN_BOTTOM);
+		} break;
+	}
 
-	glassDestroyContext(win->src.ctx);
-	win->src.ctx = NULL;
-
-	RGFW_window_makeCurrent_OpenGL(_RGFW->root);
+	RGFW_sendDebugInfo(RGFW_typeInfo, RGFW_infoOpenGL, RGFW_DEBUG_CTX(win, 0), "OpenGL context freed.");
 }
 
-void RGFW_window_makeCurrent_OpenGL(RGFW_window* win) {
-	glassBindContext(win ? win->src.ctx : NULL);
+void RGFW_window_makeCurrent_OpenGL(ssize_t screen) {
+	RGFW_window* win = _RGFW->root;
+	_RGFW->current = screen;
+	glassBindContext(win ? win->src.ctx[screen] : NULL);
 }
-
 void* RGFW_getCurrent_OpenGL(void) {
 	return glassGetBoundContext();
 }
 
 void RGFW_window_swapBuffers_OpenGL(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
-	if (win->mode != RGFW_videoModeBottomScreen) {
-		glassSwapContextBuffers(win->src.ctx, NULL);
-	}
-	else {
-		glassSwapContextBuffers(NULL, win->src.ctx);
-	}
+	glassSwapContextBuffers(win->src.ctx[0], win->src.ctx[1]);
 }
 
 void RGFW_window_swapInterval(RGFW_window* win, i32 swapInterval) {
 	RGFW_ASSERT(win != NULL);
-	glassSetVSync(win->src.ctx, RGFW_BOOL(swapInterval));
+	glassSetVSync(win->src.ctx[_RGFW->current], RGFW_BOOL(swapInterval));
 }
 
 #endif
@@ -2029,7 +2198,7 @@ RGFW_videoMode RGFW_videoModeHighest(void) {
 RGFW_area RGFW_videoModeResolution(RGFW_videoMode mode) {
 	RGFW_ASSERT(mode >= 0 && mode <= RGFW_videoModeCount);
 
-	static const i32 WIDTH_LUT[RGFW_videoModeCount] = {400, 800, 800, 320};
+	static const i32 WIDTH_LUT[RGFW_videoModeCount] = {400, 800, 800};
 	return RGFW_AREA(WIDTH_LUT[mode], 240);
 }
 
@@ -2039,8 +2208,7 @@ const char* RGFW_videoModeStr(RGFW_videoMode mode) {
 	static const char* NAMES_LUT[RGFW_videoModeCount] = {
 		"RGFW_videoMode2D",
 		"RGFW_videoMode3D",
-		"RGFW_videoModeWide",
-		"RGFW_videoModeBottomScreen",
+		"RGFW_videoModeWide"
 	};
 	return NAMES_LUT[mode];
 }
@@ -2079,23 +2247,37 @@ i32 RGFW_initPlatform(void) {
 	_RGFW->controller_count = 1;
 
 	RGFW_controller* controller = &_RGFW->controllers[0];
-	controller->connected = true;
-	controller->enabled_pointers[RGFW_pointerTouchscreen] = true;
+	controller->connected = RGFW_TRUE;
+	controller->enabled_pointers[RGFW_pointerTouchscreen] = RGFW_TRUE;
 	controller->button_start = 0;
 	controller->button_end = RGFW_controllerButtonCount - 1;
 
+	#ifdef RGFW_BUFFER
+	gspInit();
+	#endif
+
+	#ifdef RGFW_OPENGL
 	gfxInitDefault();
+	#endif
 
     return 0;
 }
 
 void RGFW_deinitPlatform(void) {
-	gfxExit();
+	#ifdef RGFW_BUFFER
+	if (gspHasGpuRight()) {
+		gspWaitForVBlank();
+		GSPGPU_SetLcdForceBlack(RGFW_TRUE);
+	}
+
+	gspExit();
+	#endif
 
 	#ifdef RGFW_OPENGL
+	gfxExit();
 	if (_RGFW->kygx_initialized) {
 		kygxExit();
-		_RGFW->kygx_initialized = false;
+		_RGFW->kygx_initialized = RGFW_FALSE;
 	}
 	#endif
 }
@@ -2106,12 +2288,81 @@ RGFW_window* RGFW_createWindowPtr(RGFW_videoMode mode, RGFW_windowFlags flags,
 	return win;
 }
 
-void RGFW_window_consoleInit(RGFW_window* win) {
-	RGFW_init();
-	consoleInit(win->mode != RGFW_videoModeBottomScreen ? GFX_TOP : GFX_BOTTOM, NULL);
+#ifdef RGFW_BUFFER
+RGFW_bool RGFW_window_consoleInit(RGFW_window* win) {
+	/* NOTE(EimaMei): Taken from libctru console.c */
+	static RGFW_bool console_initialized = RGFW_FALSE;
+
+	if (win->buffer == NULL) {
+		RGFW_bool res = RGFW_window_initBufferSize(win, win->mode, RGFW_pixelFormatRGB565);
+		if (res == RGFW_FALSE) {
+			return RGFW_FALSE;
+		}
+	}
+	RGFW_window_bufferSetFormat(win, RGFW_pixelFormatRGB565);
+	RGFW_window_bufferSetDoubleBuffering(win, RGFW_FALSE);
+
+
+	if (!console_initialized) {
+		/* NOTE(EimaMei): sys/iosupport.h stuff alongside some initialization stuff
+		 * from consoleInit. The reason why we define everything is so that we
+		 * wouldn't have to include it.  */
+		extern ssize_t con_write(struct _reent *r,void *fd,const char *ptr, size_t len);
+		struct _RGFW_devoptab_t {
+			const char *name;
+			size_t structSize; void *open_r; void *close_r;
+			ssize_t (*write_r)(struct _reent *r,
+			void *fd, const char *ptr, size_t len); void *read_r; void *seek_r;  void *fstat_r;
+			void *stat_r; void *link_r; void *unlink_r; void *chdir_r; void *rename_r;
+			void *mkdir_r; size_t dirStateSize; void *diropen_r; void *dirreset_r;
+			void *dirnext_r; void *dirclose_r; void *statvfs_r; void *ftruncate_r;
+			void *fsync_r; void *deviceData; void *chmod_r; void *fchmod_r; void *rmdir_r;
+			void *lstat_r; void *utimes_r; void *fpathconf_r; void *pathconf_r; void *symlink_r;
+			void *readlink_r;
+		};
+		extern const struct _RGFW_devoptab_t* devoptab_list[];
+
+		/* NOTE(EimaMei): Taken from libctru console.c */
+		static struct _RGFW_devoptab_t dotab_stdout;
+		dotab_stdout.name = "con";
+		dotab_stdout.write_r = con_write;
+
+		devoptab_list[1] = &dotab_stdout;
+		devoptab_list[2] = &dotab_stdout;
+
+		setvbuf(stdout, NULL, _IONBF, 0);
+		setvbuf(stderr, NULL, _IONBF, 0);
+
+		console_initialized = RGFW_TRUE;
+	}
+
+	extern PrintConsole* currentConsole;
+	extern PrintConsole defaultConsole;
+	*currentConsole = defaultConsole;
+	currentConsole->consoleInitialised = RGFW_TRUE;
+	currentConsole->frameBuffer = (u16*)(void*)win->buffer;
+
+	/* NOTE(EimaMei): Taken from libctru console.c */
+	if (_RGFW->current == RGFW_SCREEN_TOP) {
+		RGFW_bool is_wide = (win->mode == RGFW_videoModeWide);
+		currentConsole->consoleWidth = is_wide ? 100 : 50;
+		currentConsole->windowWidth = is_wide ? 100 : 50;
+	}
+
+	if ((win->_flags & RGFW_windowDualScreen) == RGFW_windowDualScreen) {
+		_RGFW->current ^= 1;
+	}
+
+	consoleClear();
+	RGFW_window_swapBuffers_buffer(win);
+	return RGFW_TRUE;
 }
+#endif
 
 void RGFW_window_eventWait(RGFW_window* win, i32 waitMS) {
+	if (waitMS == -1) {
+		gspWaitForVBlank();
+	}
 	return;
 	RGFW_UNUSED(win); RGFW_UNUSED(waitMS);
 }
@@ -2131,14 +2382,13 @@ RGFW_event* RGFW_window_checkEvent(RGFW_window* win) {
 				RGFW_window_close(win);
 			}
 		}
-		win->event = ev;
-		return win->event;
-    }
+
+		return ev;
+	}
 
 	RGFW_window_src* src = &win->src;
-	if (src->has_checked_events == true) {
-		win->event = NULL;
-		src->has_checked_events = false;
+	if (src->has_checked_events == RGFW_TRUE) {
+		src->has_checked_events = RGFW_FALSE;
 		return NULL;
 	}
 
@@ -2150,7 +2400,7 @@ RGFW_event* RGFW_window_checkEvent(RGFW_window* win) {
 	 * a better look at it. */
 	if (!aptMainLoop()) {
 		ev->type = RGFW_quit;
-		src->has_checked_events = true;
+		src->has_checked_events = RGFW_TRUE;
 		return ev;
 	}
 
@@ -2241,11 +2491,11 @@ RGFW_event* RGFW_window_checkEvent(RGFW_window* win) {
 
 		RGFW_buttonState* state = &ev->controller->buttons[ev->button];
 		RGFW_MASK_SET(*state, RGFW_buttonStatePrevious, *state & RGFW_buttonStateCurrent);
-		RGFW_MASK_SET(*state, RGFW_buttonStateCurrent, true);
+		RGFW_MASK_SET(*state, RGFW_buttonStateCurrent, RGFW_TRUE);
 		pressed &= ~RGFW_rgfwToApiKey(button);
 
 		RGFW_eventQueuePush(*ev);
-		RGFW_buttonCallback(win, ev->controller, ev->button, true);
+		RGFW_buttonCallback(win, ev->controller, ev->button, RGFW_TRUE);
 	}
 
 	while (released & RGFW_ACCEPTED_CTRU_INPUTS) {
@@ -2256,11 +2506,11 @@ RGFW_event* RGFW_window_checkEvent(RGFW_window* win) {
 
 		RGFW_buttonState* state = &ev->controller->buttons[ev->button];
 		RGFW_MASK_SET(*state, RGFW_buttonStatePrevious, *state & RGFW_buttonStateCurrent);
-		RGFW_MASK_SET(*state, RGFW_buttonStateCurrent, false);
+		RGFW_MASK_SET(*state, RGFW_buttonStateCurrent, RGFW_FALSE);
 		released &= ~RGFW_rgfwToApiKey(button);
 
 		RGFW_eventQueuePush(*ev);
-		RGFW_buttonCallback(win, ev->controller, ev->button, false);
+		RGFW_buttonCallback(win, ev->controller, ev->button, RGFW_FALSE);
 	}
 
 	if (ev->controller->enabled_pointers[RGFW_pointerTouchscreen] && pressed & KEY_TOUCH) {
@@ -2275,10 +2525,9 @@ RGFW_event* RGFW_window_checkEvent(RGFW_window* win) {
 		RGFW_pointerMoveCallback(win, ev->controller, RGFW_pointerTouchscreen);
 	}
 
-	src->has_checked_events = true;
+	src->has_checked_events = RGFW_TRUE;
 	if (_RGFW->eventLen > 0) {
-		win->event = RGFW_eventQueuePop(win);
-		return win->event;
+		return RGFW_eventQueuePop(win);
 	}
 
 	return NULL;
@@ -2288,28 +2537,12 @@ void RGFW_window_close(RGFW_window* win) {
 	/* NOTE(EimaMei): Only do gfxExit if win is the last window. */
 	// TODO(EimaMei: ("riley has to fix this.\n");
 
-	#ifdef RGFW_OPENGL
-	RGFW_window_freeOpenGL(win);
+	#ifdef RGFW_BUFFER
+	RGFW_window_freeBuffer(win);
 	#endif
 
-	#ifdef RGFW_BUFFER
-	if (win->buffer != NULL) {
-		win->buffer = NULL;
-
-		if ((win->_flags & RGFW_BUFFER_ALLOC)) {
-			RGFW_FREE_SYS(win->src.buffers[0]);
-		}
-
-		#ifdef RGFW_BUFFER_NATIVE
-		RGFW_FREE_SYS(win->src.buffers[1]);
-
-		#else
-		RGFW_FREE(win->src.buffers[1]);
-
-		RGFW_FREE_SYS(win->src.buffers_native[0]);
-		RGFW_FREE_SYS(win->src.buffers_native[1]);
-		#endif
-		}
+	#ifdef RGFW_OPENGL
+	RGFW_window_freeOpenGL(win);
 	#endif
 
 	_RGFW->windowCount -= 1;
@@ -2324,50 +2557,32 @@ void RGFW_window_close(RGFW_window* win) {
 
 RGFW_area RGFW_windowGetSize(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
-	static const i32 WIDTH_LUT[RGFW_videoModeCount] = {400, 400, 800, 320};
-	return RGFW_AREA(WIDTH_LUT[win->mode], 240);
+	static const i32 WIDTH_LUT[RGFW_videoModeCount] = {400, 400, 800};
+	return RGFW_AREA(_RGFW->current == 0 ? WIDTH_LUT[win->mode] : 320, 240);
 }
 
 
 #ifdef RGFW_OPENGL
 
-bool RGFW_platform_OpenGL_rotateScreen(GLuint shader_program, const char* mat4_uniform_name) {
-    static const float deg90_rotation_matrix[4][4] = {
-        { 0.0f,  1.0f, 0.0f, 0.0f },
-        {-1.0f,  0.0f, 0.0f, 0.0f },
-        { 0.0f,  0.0f, 1.0f, 0.0f },
-        { 0.0f,  0.0f, 0.0f, 1.0f }
-    };
+RGFW_bool RGFW_platform_OpenGL_rotateScreen(GLuint shader_program, const char* mat4_uniform_name) {
+	static const float deg90_rotation_matrix[4][4] = {
+		{ 0.0f,  1.0f, 0.0f, 0.0f },
+		{-1.0f,  0.0f, 0.0f, 0.0f },
+		{ 0.0f,  0.0f, 1.0f, 0.0f },
+		{ 0.0f,  0.0f, 0.0f, 1.0f }
+	};
 
 	GLint uniform = glGetUniformLocation(shader_program, mat4_uniform_name);
 	if (uniform == -1) {
 		RGFW_sendDebugInfo(RGFW_typeError, RGFW_errOpenGLContext,  RGFW_DEBUG_CTX(NULL, 0), "Invalid uniform name.");
-		return false;
+		return RGFW_FALSE;
 	}
 
-    glUniformMatrix4fv(uniform, 1, GL_FALSE, (const float*)deg90_rotation_matrix);
-	return true;
+	glUniformMatrix4fv(uniform, 1, GL_FALSE, (const float*)deg90_rotation_matrix);
+	return RGFW_TRUE;
 }
 
 #endif
-
-void RGFW_system_window_swapBuffers(RGFW_window* top, RGFW_window* bottom) {
-	RGFW_ASSERT(top != NULL);
-	RGFW_ASSERT(bottom != NULL);
-
-#ifdef RGFW_OPENGL
-	if (top->src.ctx && bottom->src.ctx) {
-		glassSwapContextBuffers(top->src.ctx, bottom->src.ctx);
-		return ;
-	}
-#endif
-#ifdef RGFW_BUFFER
-	if (top->buffer && bottom->buffer) {
-		RGFW_window_swapBuffers_buffer(top);
-		RGFW_window_swapBuffers_buffer(bottom);
-	}
-#endif
-}
 
 #endif
 
