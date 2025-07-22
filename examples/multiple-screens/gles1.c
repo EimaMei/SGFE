@@ -76,32 +76,30 @@ int main(void) {
 	memcpy(allocated_vertices, vertices, sizeof(vertices));
 
 #ifdef RGFW_3DS
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowDualScreen);
+	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowOpenGL | RGFW_windowDualScreen);
 
-	RGFW_window_makeCurrent(RGFW_SCREEN_TOP);
+	RGFW_window_makeCurrent(win, RGFW_screenTop);
 	scene_setup(allocated_vertices);
 
-	RGFW_window_makeCurrent(RGFW_SCREEN_BOTTOM);
+	RGFW_window_makeCurrent(win, RGFW_screenBottom);
 	scene_setup(allocated_vertices);
 #else
 	#error "This platform does not support multiple screens."
 #endif
 
-	while (!RGFW_window_shouldClose(win)) {
-		RGFW_window_checkEvents(win, 0);
-
-		if (RGFW_isPressed(RGFW_controllerGet(0), BUTTON_START)) {
+	while (RGFW_window_checkEvents(win, 0)) {
+		if (RGFW_isPressed(RGFW_controllerGet(win, 0), BUTTON_START)) {
 			RGFW_window_setShouldClose(win, RGFW_TRUE);
 			continue;
 		}
 
 #ifdef RGFW_3DS
-		RGFW_window_makeCurrent(RGFW_SCREEN_TOP); {
+		RGFW_window_makeCurrent(win, RGFW_screenTop); {
 			glClear(GL_COLOR_BUFFER_BIT);
 			glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
 		}
 
-		RGFW_window_makeCurrent(RGFW_SCREEN_BOTTOM); {
+		RGFW_window_makeCurrent(win, RGFW_screenBottom); {
 			glClear(GL_COLOR_BUFFER_BIT);
 			glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
 		}

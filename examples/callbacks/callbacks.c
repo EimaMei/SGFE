@@ -23,8 +23,6 @@ void myFree(void* ptr, int line, const char* file) {
 #define RGFW_ALLOC(size) myAlloc(size, __LINE__, __FILE__)
 #define RGFW_FREE(size) myFree(size, __LINE__, __FILE__)
 
-#define RGFW_BUFFER
-#define RGFW_BUFFER_NATIVE
 #define RGFW_DEBUG
 #define RGFW_IMPLEMENTATION
 #include <RGFW_embedded.h>
@@ -59,6 +57,13 @@ void buttonfunc(RGFW_window* win, RGFW_controller* controller, RGFW_button butto
 		button, RGFW_buttonName(button)
 	);
 
+	switch (button) {
+		case BUTTON_START: RGFW_window_setShouldClose(win, RGFW_TRUE); break;
+		case BUTTON_BACK:  {
+			RGFW_videoMode new_mode = win->mode + 1;
+			if (new_mode >= RGFW_videoModeCount) { new_mode = 0; } /* Wrap back around. */
+		};
+	}
 	if (button == BUTTON_START) {
 		RGFW_window_setShouldClose(win, RGFW_TRUE);
 	}

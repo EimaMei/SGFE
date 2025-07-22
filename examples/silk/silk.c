@@ -1,5 +1,4 @@
 #define RGFW_IMPLEMENTATION
-#define RGFW_BUFFER
 #include <RGFW_embedded.h>
 #include <resources/controls.h>
 
@@ -11,34 +10,27 @@
 #define SILK_IMPLEMENTATION
 #include "silk.h"
 
-typedef int8_t      i8;
-typedef uint16_t   u16;
-typedef int16_t    i16;
-typedef uint64_t   u64;
-typedef int64_t    i64;
-
 
 int main(void) {
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), 0);
+	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowBuffer);
 
 	while (!RGFW_window_shouldClose(win)) {
-		while (RGFW_TRUE) {
-			const RGFW_event* event = RGFW_window_checkEvent(win);
-			if (event == NULL) { break; }
-
+		const RGFW_event* event;
+		while (RGFW_window_checkEvent(win, &event)) {
 			if (event->type == RGFW_buttonPressed && event->button == BUTTON_START) {
 				RGFW_window_setShouldClose(win, RGFW_TRUE);
 				break;
 			}
 		}
 
-		silkClearPixelBufferColor((pixel*)win->buffer, 0x11AA0033);
+		pixel* buffer = (pixel*)(void*)win->buffer;
+		silkClearPixelBufferColor(buffer, 0x11AA0033);
 
 		i32 buf_width = win->bufferSize.w,
 			buf_height = win->bufferSize.h;
 
 		silkDrawRect(
-			(pixel*)win->buffer,
+			buffer,
 			(vec2i) { SILK_PIXELBUFFER_WIDTH, SILK_PIXELBUFFER_HEIGHT },
 			SILK_PIXELBUFFER_WIDTH,
 			(vec2i) { (i32)((f32)buf_width * 0.3f), (i32)((f32)buf_height * 0.2f) },
@@ -51,7 +43,7 @@ int main(void) {
 		const i32 text_spacing = 1;
 
 		silkDrawTextDefault(
-			(pixel*)win->buffer,
+			buffer,
 			(vec2i) { SILK_PIXELBUFFER_WIDTH, SILK_PIXELBUFFER_HEIGHT },
 			SILK_PIXELBUFFER_WIDTH,
 			text,
@@ -63,7 +55,6 @@ int main(void) {
 			text_spacing,
 			0xff000000
 		);
-
 
 		RGFW_window_swapBuffers(win);
 	}

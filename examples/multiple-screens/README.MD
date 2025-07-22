@@ -21,11 +21,13 @@ the API differences better, however said changes are applicable on every platfor
 ### Binding contexts,  current "window"
 On Desktop `RGFW_window_makeCurrent` requires a window handle to set the current
 graphical context, however on Embedded the argument is replaced with an integer
-that denotes a specific screen. Each representing integer value will also be
-accompanied by a macro following the naming scheme of `RGFW_SCREEN_<name>`. This 
-also means that `RGFW_getCurrent` returns an integer to current screen instead of
-a window. `RGFW_window_swapInterval` is also effected by the currently selected
-context.
+enum type `RGFW_screen` whose each value represent a sepcific screen. Each one
+is also accompanied by an enumerator following the naming scheme of `RGFW_screen<Name>`.
+Platforms that only have one screen instead have `RGFW_screenPrimary` as the only option.
+
+NOTE: due to this change `RGFW_getCurrent` returns an integer also to current screen
+instead of a window. `RGFW_window_swapInterval` as well is effected by the currently
+selected context.
 
 ```c
 // Desktop
@@ -33,8 +35,8 @@ RGFWDEF void RGFW_window_makeCurrent(RGFW_window* win);
 RGFWDEF RGFW_window* RGFW_getCurrent(void);
 
 // Embedded
-RGFWDEF void RGFW_window_makeCurrent(ssize_t screen);
-RGFWDEF ssize_t RGFW_getCurrent(void);
+RGFWDEF void RGFW_window_makeCurrent(RGFW_window* win, RGFW_screen screen);
+RGFWDEF RGFW_screen RGFW_getCurrent(RGFW_window* win);
 
 
 // Usage:
@@ -42,12 +44,12 @@ RGFWDEF ssize_t RGFW_getCurrent(void);
 // Current graphical context is now set to the top screen of the 3DS. Every
 // backend will have their human-readable version of the screen IDs following
 // the format of 'RGFW_SCREEN_<name>'.
-RGFW_window_makeCurrent(RGFW_SCREEN_TOP);
+RGFW_window_makeCurrent(RGFW_screenTop);
 // The top screen is going to always run at 60 fps.
 RGFW_window_swapInterval(win, RGFW_TRUE);
 
 // Now the graphical context is set to the bottom screen. 
-RGFW_window_makeCurrent(RGFW_SCREEN_BOTTOM);
+RGFW_window_makeCurrent(RGFW_screenBottom);
 // The bottom screen will run at an uncapped FPS, independent of the upper screen.
 RGFW_window_swapInterval(win, RGFW_TRUE);
 ```
@@ -65,19 +67,19 @@ If all screens are specified, the default screen (from point 1) is choosen as th
 current graphical context.
 
 ```c
-// Applies the 'RGFW_windowTopScreen' flag automatically. RGFW_getCurrent() == RGFW_SCREEN_TOP.
+// Applies the 'RGFW_windowTopScreen' flag automatically. RGFW_getCurrent() == RGFW_screenTop.
 RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), 0);
-// Applies the 'RGFW_windowTopScreen' flag automatically. RGFW_getCurrent() == RGFW_SCREEN_TOP.
+// Applies the 'RGFW_windowTopScreen' flag automatically. RGFW_getCurrent() == RGFW_screenTop.
 RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowInitNoAPI);
-// You can manually apply the 'RGFW_windowTopScreen' flag if you wish. RGFW_getCurrent() == RGFW_SCREEN_TOP.
+// You can manually apply the 'RGFW_windowTopScreen' flag if you wish. RGFW_getCurrent() == RGFW_screenTop.
 RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowTopScreen);
 
-// Now only the `RGFW_windowBottomScreen` flag is applied. RGFW_getCurrent() == RGFW_SCREEN_BOTTOM.
-RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowBottomScreen);
+// Now only the `RGFW_windowBottomScreen` flag is applied. RGFW_getCurrent() == RGFW_screenBottom.
+RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowBottomScreen);a
 
-// All screens have been specified so that the window could render both at the same time. RGFW_getCurrent() == RGFW_SCREEN_TOP.
+// All screens have been specified so that the window could render both at the same time. RGFW_getCurrent() == RGFW_screenTop.
 RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowTopScreen | RGFW_windowBottomScreen);
-// Same thing as the previous declaration. RGFW_getCurrent() == RGFW_SCREEN_TOP.
+// Same thing as the previous declaration. RGFW_getCurrent() == RGFW_screenTop.
 RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowDualScreen);
 ```
 
@@ -89,13 +91,13 @@ as flushing the graphics per screen is very not efficient.
 
 ```c
 // Draw on the top screen.
-RGFW_window_makeCurrent(RGFW_SCREEN_TOP); {
+RGFW_window_makeCurrent(RGFW_screenTop); {
 	glClear(GL_COLOR_BUFFER_BIT);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
 }
 
 // Draw on the bottom screen.
-RGFW_window_makeCurrent(RGFW_SCREEN_BOTTOM); {
+RGFW_window_makeCurrent(RGFW_screenBottom); {
 	glClear(GL_COLOR_BUFFER_BIT);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
 }

@@ -1,7 +1,6 @@
 #define PORTABLEGL_IMPLEMENTATION
 #include "portablegl.h"
 
-#define RGFW_BUFFER
 #define RGFW_IMPLEMENTATION
 #include <RGFW_embedded.h>
 #include <resources/controls.h>
@@ -23,7 +22,7 @@ void uniform_color_fs(float* fs_input, Shader_Builtins* builtins, void* uniforms
 }
 
 int main() {
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), 0);
+	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowBuffer);
 
 	glContext context;
 	init_glContext(&context, (u32**)&win->buffer, win->bufferSize.w, win->bufferSize.h, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
@@ -51,10 +50,8 @@ int main() {
 	glClearColor(1, 1, 1, 1);
 
 	while (!RGFW_window_shouldClose(win)) {
-		while (RGFW_TRUE) {
-			const RGFW_event* event = RGFW_window_checkEvent(win);
-			if (event == NULL) { break; }
-
+		const RGFW_event* event;
+		while (RGFW_window_checkEvent(win, &event)) {
 			if (event->type == RGFW_buttonPressed && event->button == BUTTON_START) {
 				RGFW_window_setShouldClose(win, RGFW_TRUE);
 				break;

@@ -1,9 +1,6 @@
 #define RGFW_IMPLEMENTATION
 #define RGFW_DEBUG
 
-#define RGFW_BUFFER_NATIVE
-#define RGFW_BUFFER
-
 #include <RGFW_embedded.h>
 #include <resources/controls.h>
 #include <resources/lonic_bin.h>
@@ -25,20 +22,18 @@ int main(void) {
 	RGFW_area win_res = RGFW_windowGetSize(win);
 
 	CPU_Surface s = surface_make(win, CPU_colorMake(255, 255, 255, 255));
-	surface_clearBuffers(&s);
+	surface_clear_buffers(&s);
 
 	while (!RGFW_window_shouldClose(win)) {
-		while (RGFW_TRUE) {
-			const RGFW_event* event = RGFW_window_checkEvent(win);
-			if (event == NULL) { break; }
-
+		const RGFW_event* event;
+		while (RGFW_window_checkEvent(win, &event)) {
 			if (event->type == RGFW_buttonPressed && event->button == BUTTON_START) {
 				RGFW_window_setShouldClose(win, RGFW_TRUE);
 				break;
 			}
 		}
 
-		RGFW_controller* p1 = RGFW_controllerGet(0);
+		RGFW_controller* p1 = RGFW_controllerGet(win, 0);
 
 		if (RGFW_isPressed(p1, BUTTON_LEFT) && r.x > 0) {
 			r.x -= 1;
@@ -58,7 +53,7 @@ int main(void) {
 		surface_bitmap(&s, r, img_lonic_data);
 
 		RGFW_window_swapBuffers_buffer(win);
-		surface_clearDirtyRects(&s);
+		surface_clear_dirty_rects(&s);
 	}
 
 	RGFW_window_close(win);

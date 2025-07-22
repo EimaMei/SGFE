@@ -1,6 +1,5 @@
 #define RGFW_IMPLEMENTATION
 #define RGFW_DEBUG
-#define RGFW_BUFFER
 
 #include <RGFW_embedded.h>
 #include <resources/controls.h>
@@ -10,16 +9,16 @@
 
 int main(void) {
 #ifdef RGFW_3DS
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowDualScreen);
+	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowBuffer | RGFW_windowDualScreen);
 
 	CPU_Surface top = surface_make(win, CPU_colorMake(255, 255, 255, 255)),
 				bottom = surface_make(win, CPU_colorMake(43, 184, 0, 255));
 
-	RGFW_window_makeCurrent(RGFW_SCREEN_BOTTOM);
-	surface_clearBuffers(&bottom);
+	RGFW_window_makeCurrent(win, RGFW_screenBottom);
+	surface_clear_buffers(&bottom);
 
-	RGFW_window_makeCurrent(RGFW_SCREEN_TOP);
-	surface_clearBuffers(&top);
+	RGFW_window_makeCurrent(win, RGFW_screenTop);
+	surface_clear_buffers(&top);
 #else
     #error "This platform does not support multiple screens."
 #endif
@@ -37,17 +36,15 @@ int main(void) {
 	RGFW_area win_res = RGFW_windowGetSize(win);
 
 	while (!RGFW_window_shouldClose(win)) {
-		while (RGFW_TRUE) {
-			const RGFW_event* event = RGFW_window_checkEvent(win);
-			if (event == NULL) { break; }
-
+		const RGFW_event* event;
+		while (RGFW_window_checkEvent(win, &event)) {
 			if (event->type == RGFW_buttonPressed && event->button == BUTTON_START) {
 				RGFW_window_setShouldClose(win, RGFW_TRUE);
 				break;
 			}
 		}
 
-		RGFW_controller* p1 = RGFW_controllerGet(0);
+		RGFW_controller* p1 = RGFW_controllerGet(win, 0);
 
 		if (RGFW_isPressed(p1, BUTTON_LEFT) && r.x > 0) {
 			r.x -= 1;
@@ -64,14 +61,14 @@ int main(void) {
 		}
 
 		#ifdef RGFW_3DS
-		RGFW_window_makeCurrent(RGFW_SCREEN_TOP); {
-			surface_clearDirtyRects(&top);
+		RGFW_window_makeCurrent(win, RGFW_screenTop); {
+			surface_clear_dirty_rects(&top);
 			surface_rect(&top, RGFW_RECT(15, 15, 64, 64), CPU_colorMake(0, 255, 0, 255));
 			surface_bitmap(&top, r, img_lonic_data);
 		}
 
-		RGFW_window_makeCurrent(RGFW_SCREEN_BOTTOM); {
-			surface_clearDirtyRects(&bottom);
+		RGFW_window_makeCurrent(win, RGFW_screenBottom); {
+			surface_clear_dirty_rects(&bottom);
 			surface_rect(&bottom, RGFW_RECT(15, 15, 64, 64), CPU_colorMake(15, 129, 216, 255));
 		}
 		#endif

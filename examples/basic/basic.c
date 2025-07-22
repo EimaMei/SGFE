@@ -23,8 +23,6 @@ void myFree(void* ptr, int line, const char* file) {
 #define RGFW_ALLOC(size) myAlloc(size, __LINE__, __FILE__)
 #define RGFW_FREE(size) myFree(size, __LINE__, __FILE__)
 
-#define RGFW_BUFFER
-#define RGFW_BUFFER_NATIVE
 #define RGFW_DEBUG
 #define RGFW_IMPLEMENTATION
 #include <RGFW_embedded.h>
@@ -36,9 +34,9 @@ int main(void) {
 	RGFW_bool motion_enabled = false;
 
 	ssize_t i, j;
-	for (i = 0; i < RGFW_controllerGetCount(); i += 1) {
+	for (i = 0; i < RGFW_controllerGetCount(win); i += 1) {
 		printf("\n\n");
-		RGFW_controller* controller = RGFW_controllerGet(i);
+		RGFW_controller* controller = RGFW_controllerGet(win, i);
 
 		/* NOTE(EimaMei): More often than not motion capabilities are disabled
 		 * by default as they chew up a lot of resources and you usually don't
@@ -72,8 +70,8 @@ int main(void) {
 	}
 
 	while (!RGFW_window_shouldClose(win)) {
-		RGFW_event* event = NULL;
-		while ((event = RGFW_window_checkEvent(win)) != NULL) {
+		const RGFW_event* event = NULL;
+		while (RGFW_window_checkEvent(win, &event)) {
 			switch (event->type) {
 				case RGFW_quit:
 					RGFW_window_setShouldClose(win, RGFW_TRUE);
@@ -119,7 +117,7 @@ int main(void) {
 			}
 		}
 
-		RGFW_controller* controller = RGFW_controllerGet(0);
+		RGFW_controller* controller = RGFW_controllerGet(win, 0);
 		if (controller->connected) {
 			if (RGFW_isPressed(controller, BUTTON_BACK)) {
 				if (RGFW_isHeld(controller, BUTTON_WEST)) {

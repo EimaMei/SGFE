@@ -22,7 +22,9 @@ int main(void) {
 	RGFW_setGLHint(RGFW_glMajor, 1);
 	RGFW_setGLHint(RGFW_glMinor, 0);
 	RGFW_setGLHint(RGFW_glProfile, RGFW_glES);
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), 0);
+	/* NOTE(EimaMei): Specifying 'RGFW_windowOpenGL' is not necessary for most platforms
+	 * as OpenGL (if available) is the default API choosen for rendering. */
+	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowOpenGL);
 
 	/* OpenGL setup. */
 	glEnable(GL_BLEND);
@@ -75,7 +77,7 @@ int main(void) {
 	#endif
 
 	while (RGFW_window_checkEvents(win, 0)) {
-		if (RGFW_isPressed(RGFW_controllerGet(0), BUTTON_START)) {
+		if (RGFW_isPressed(RGFW_controllerGet(win, 0), BUTTON_START)) {
 			RGFW_window_setShouldClose(win, RGFW_TRUE);
 			continue;
 		}
