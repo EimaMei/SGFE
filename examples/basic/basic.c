@@ -83,7 +83,7 @@ int main(void) {
 					printf("released %s\n", RGFW_buttonName(event->button));
 					break;
 
-				case RGFW_controllerAxisMove: {
+				case RGFW_axisMove: {
 					RGFW_axis* axis = &event->controller->axes[event->axis];
 					printf(
 						"%s: value (%f); deadzone (%f)\n",

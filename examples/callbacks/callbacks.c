@@ -30,27 +30,41 @@ void myFree(void* ptr, int line, const char* file) {
 
 
 static
-void errorfunc(RGFW_debugType type, RGFW_errorCode err, RGFW_debugContext ctx, const char* msg) {
-	if (type != RGFW_typeError || err == RGFW_noError) return; /* disregard non-errors */
-	/* only care about errors for this window
-		If there were two windows and the error uses the root window it will also be ignored,
-			this may ignore important errors
-	*/
+void callback_error(RGFW_debugType type, RGFW_error error, RGFW_debugContext ctx, const char* msg) {
+	if (type != RGFW_debugTypeError || error == RGFW_errorNone) {
+		return;
+	}
+
 	printf("RGFW ERROR: %s\n", msg);
 }
 
 static
-void windowresizefunc(RGFW_window* win, RGFW_rect r) {
-	printf("window resized %i %i\n", r.w, r.h);
+void callback_sleep(RGFW_window* win, RGFW_bool is_sleeping) {
+	printf("Device %s\n", is_sleeping ? "sleeps" : "wakes up");
 }
 
 static
-void windowquitfunc(RGFW_window* win) {
+void callback_focus(RGFW_window* win, RGFW_bool is_focused) {
+	printf("Device %s\n", is_focused ? "is focused" : "isn't focused");
+}
+
+static
+void callback_quit(RGFW_window* win) {
 	printf("window quit\n");
 }
 
 static
-void buttonfunc(RGFW_window* win, RGFW_controller* controller, RGFW_button button, RGFW_bool pressed) {
+void callback_videoMode(RGFW_window* win, RGFW_videoMode video_mode) {
+	printf("TODO\n");
+}
+
+static
+void callback_controller(RGFW_window* win, RGFW_controller* controller, RGFW_bool connected) {
+	printf("'%s' has been %s\n", RGFW_controllerName(controller->type), connected ? "connected" : "disconnected");
+}
+
+static
+void callback_button(RGFW_window* win, RGFW_controller* controller, RGFW_button button, RGFW_bool pressed) {
 	printf(
 		"key %s: %i (%s)\n",
 		pressed ? "pressed" : "released",
@@ -59,18 +73,15 @@ void buttonfunc(RGFW_window* win, RGFW_controller* controller, RGFW_button butto
 
 	switch (button) {
 		case BUTTON_START: RGFW_window_setShouldClose(win, RGFW_TRUE); break;
-		case BUTTON_BACK:  {
+		case BUTTON_BACK: {
 			RGFW_videoMode new_mode = win->mode + 1;
 			if (new_mode >= RGFW_videoModeCount) { new_mode = 0; } /* Wrap back around. */
-		};
-	}
-	if (button == BUTTON_START) {
-		RGFW_window_setShouldClose(win, RGFW_TRUE);
+		} break;
 	}
 }
 
 static
-void axisfunc(RGFW_window* win, RGFW_controller* controller, RGFW_axisType axis_type) {
+void callback_axis(RGFW_window* win, RGFW_controller* controller, RGFW_axisType axis_type) {
 	RGFW_axis* axis = &controller->axes[axis_type];
 	printf(
 		"%s: value (%f); deadzone (%f)\n",
@@ -80,7 +91,7 @@ void axisfunc(RGFW_window* win, RGFW_controller* controller, RGFW_axisType axis_
 }
 
 static
-void pointerfunc(RGFW_window* win, RGFW_controller* controller, RGFW_pointerType pointer_type) {
+void callback_pointer(RGFW_window* win, RGFW_controller* controller, RGFW_pointerType pointer_type) {
 	RGFW_point point = controller->pointers[pointer_type];
 	printf(
 		"%s: %ix%i\n",
@@ -90,7 +101,7 @@ void pointerfunc(RGFW_window* win, RGFW_controller* controller, RGFW_pointerType
 }
 
 static
-void motionfunc(RGFW_window* win, RGFW_controller* controller, RGFW_motionType motion_type) {
+void callback_motion(RGFW_window* win, RGFW_controller* controller, RGFW_motionType motion_type) {
 	RGFW_point3D vector = controller->motions[motion_type];
 	printf(
 		"%s: %fx%fx%f\n",
@@ -99,22 +110,19 @@ void motionfunc(RGFW_window* win, RGFW_controller* controller, RGFW_motionType m
 	);
 }
 
-static
-void controllerfunc(RGFW_window* win, RGFW_controller* controller, RGFW_bool connected) {
-	printf("'%s' has been %s\n", RGFW_controllerName(controller->type), connected ? "connected" : "disconnected");
-}
 
 int main(void) {
 	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowConsoleInit);
 
-	RGFW_setDebugCallback(errorfunc);
-	//RGFW_setWindowResizedCallback(windowresizefunc);
-	RGFW_setWindowQuitCallback(windowquitfunc);
-	RGFW_setControllerAxisCallback(axisfunc);
-	RGFW_setPointerMoveCallback(pointerfunc);
-	RGFW_setMotionMoveCallback(motionfunc);
-	RGFW_setButtonCallback(buttonfunc);
-	RGFW_setControllerCallback(controllerfunc);
+	RGFW_setDebugCallback(callback_error);
+	RGFW_setDeviceSleepCallback(win, callback_sleep);
+	RGFW_setWindowQuitCallback(win, callback_quit);
+	RGFW_setWindowFocusCallback(win, callback_focus);
+	RGFW_setControllerCallback(win, callback_controller);
+	RGFW_setButtonCallback(win, callback_button);
+	RGFW_setAxisCallback(win, callback_axis);
+	RGFW_setPointerCallback(win, callback_pointer);
+	RGFW_setMotionCallback(win, callback_motion);
 
 	while (RGFW_window_checkEvents(win, RGFW_eventWaitNext)) {}
 	RGFW_window_close(win);

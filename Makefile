@@ -123,7 +123,7 @@ ifeq ($(PLATFORM),3DS)
 
 	DESCRIPTION = RGFW examples for the Nintendo 3DS
 	AUTHOR      = EimaMei
-	ICON        = ../../res/default_icon.png
+	ICON        = resources/3DS/default_icon.png
 
 	FLAGS = $(GNU_FLAGS) -specs=3dsx.specs -D __3DS__ -mword-relocations -ffunction-sections -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 	INCLUDES = -I"resources/3DS/include" $(GNU_INCLUDES) -I"$(CURDIR)" -I"$(DEVKITPRO)/libctru/include" -I"$(DEVKITARM)/include"

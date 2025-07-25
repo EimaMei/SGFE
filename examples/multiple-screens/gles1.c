@@ -94,7 +94,8 @@ int main(void) {
 		}
 
 #ifdef RGFW_3DS
-		RGFW_window_makeCurrent(win, RGFW_screenTop); {
+		RGFW_window_makeCurrent(win, RGFW_screenTop);
+		{
 			glClear(GL_COLOR_BUFFER_BIT);
 			glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
 		}
@@ -105,7 +106,7 @@ int main(void) {
 		}
 #endif
 
-		RGFW_window_swapBuffers(win);
+		RGFW_window_swapBuffers_OpenGL(win);
 	}
 
 	RGFW_FREE_SYS(allocated_vertices);
