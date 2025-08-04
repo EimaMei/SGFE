@@ -30,7 +30,8 @@ void myFree(void* ptr, int line, const char* file) {
 
 
 int main(void) {
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowConsoleInit);
+	RGFW_window* win = RGFW_createWindowContextless(RGFW_windowFlagsNone);
+	RGFW_window_consoleInit(win);
 	RGFW_bool motion_enabled = false;
 
 	ssize_t i, j;
@@ -140,7 +141,7 @@ int main(void) {
 			}
 		}
 
-		RGFW_window_swapBuffers(win);
+		RGFW_window_swapBuffers_buffer(win);
 	}
 	RGFW_window_close(win);
 

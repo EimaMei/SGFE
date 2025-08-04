@@ -22,28 +22,37 @@
 
 int main(void) {
 	#ifndef RGFW_3DS
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowNoInitAPI);
+	RGFW_videoMode mode = RGFW_videoModeOptimal();
 	#else
-	/* On the 3DS basic 3D rendering is implemented in the CPU renderer. */
-	RGFW_window* win = RGFW_createWindow(RGFW_videoMode3D, RGFW_windowNoInitAPI);
+	/* cpu_renderer.h implements basic stereoscopic rendering for the 3DS. */
+	RGFW_videoMode mode = RGFW_videoMode3D;
 	#endif
-	RGFW_bool res = RGFW_window_initBufferNative(win, RGFW_pixelFormatOptimal());
+
+	RGFW_window* win = RGFW_createWindowContextless(RGFW_windowFlagsNone);
+	RGFW_bool res = RGFW_window_createContext_buffer(
+		win, mode, RGFW_pixelFormatOptimal(), RGFW_TRUE
+	);
 	if (res == RGFW_FALSE) { return 1; }
 
-	RGFW_rect r = RGFW_RECT(100, 100, img_lonic_width, img_lonic_height);
-
-	/* NOTE(EimaMei): 'RGFW_windowGetSize(win)' may actually differ to 'win->bufferSize'
-	 * in certain situations where the viewport for the window is actually smaller
-	 * than the rendered buffer.
-	 *
-	 * Platforms where it differs:
-	 * - 3DS (when using RGFW_videoMode3D) - internally the buffer is 800x240,
-	 * however the viewport is still set to 400x240 as the second half of the
-	 * resolution is used for the 3D effect. */
-	RGFW_area win_res = RGFW_windowGetSize(win);
-
-	CPU_Surface s = surface_make(win, CPU_colorMake(255, 255, 255, 255));
+	CPU_Surface s = surface_make(RGFW_window_getContext_buffer(win), CPU_colorMake(255, 255, 255, 255));
 	surface_clear_buffers(&s);
+
+	RGFW_area win_res = RGFW_context_bufferGetResolution(s.ctx);
+	#ifdef RGFW_3DS
+	/* NOTE(EimaMei): Native buffers have their resolution flipped as internally 
+	 * the 3DS framebuffers are treated as "portraits" that are rotated by 90 degrees
+	 * clockwise. */
+	i32 old_width = win_res.w;
+	win_res.w = win_res.h;
+	win_res.h = old_width;
+	#endif
+	/* NOTE(EimaMei): For stereoscopic images we have to divide the width in half
+	 * since we don't want Lonic (from the left eye image) moving to the right one
+	 * since that'll create a distorted view. */
+	if (RGFW_context_bufferIsStereoscopic(win->buffer)) {
+		win_res.w /= 2;
+	}
+	RGFW_rect r = RGFW_RECT(100, 100, img_lonic_width, img_lonic_height);
 
 	while (!RGFW_window_shouldClose(win)) {
 		const RGFW_event* event;

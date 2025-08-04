@@ -74,8 +74,8 @@ void callback_button(RGFW_window* win, RGFW_controller* controller, RGFW_button 
 	switch (button) {
 		case BUTTON_START: RGFW_window_setShouldClose(win, RGFW_TRUE); break;
 		case BUTTON_BACK: {
-			RGFW_videoMode new_mode = win->mode + 1;
-			if (new_mode >= RGFW_videoModeCount) { new_mode = 0; } /* Wrap back around. */
+			// RGFW_videoMode new_mode = win->mode + 1;
+			// if (new_mode >= RGFW_videoModeCount) { new_mode = 0; } /* Wrap back around. */
 		} break;
 	}
 }
@@ -112,7 +112,8 @@ void callback_motion(RGFW_window* win, RGFW_controller* controller, RGFW_motionT
 
 
 int main(void) {
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowConsoleInit);
+	RGFW_window* win = RGFW_createWindowContextless(RGFW_windowFlagsNone);
+	RGFW_window_consoleInit(win);
 
 	RGFW_setDebugCallback(callback_error);
 	RGFW_setDeviceSleepCallback(win, callback_sleep);
@@ -124,6 +125,6 @@ int main(void) {
 	RGFW_setPointerCallback(win, callback_pointer);
 	RGFW_setMotionCallback(win, callback_motion);
 
-	while (RGFW_window_checkEvents(win, RGFW_eventWaitNext)) {}
+	while (RGFW_window_checkEvents(win, RGFW_eventWaitNext)) { RGFW_window_swapBuffers_buffer(win); }
 	RGFW_window_close(win);
 }

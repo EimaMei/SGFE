@@ -23,11 +23,13 @@ int main(void) {
 			}
 		}
 
-		pixel* buffer = (pixel*)(void*)win->buffer;
+		RGFW_context_buffer* ctx = RGFW_window_getContext_buffer(win);
+		pixel* buffer = (pixel*)(void*)RGFW_context_bufferGetBuffer(ctx);
 		silkClearPixelBufferColor(buffer, 0x11AA0033);
 
-		i32 buf_width = win->bufferSize.w,
-			buf_height = win->bufferSize.h;
+		RGFW_area res = RGFW_context_bufferGetResolution(ctx);
+		i32 buf_width = res.w,
+			buf_height = res.h;
 
 		silkDrawRect(
 			buffer,
@@ -56,7 +58,7 @@ int main(void) {
 			0xff000000
 		);
 
-		RGFW_window_swapBuffers(win);
+		RGFW_window_swapBuffers_buffer(win);
 	}
 
 	RGFW_window_close(win);

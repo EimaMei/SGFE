@@ -33,8 +33,7 @@
 /*
 	#define RGFW_IMPLEMENTATION - (required) makes it so the source code is included
 	#define RGFW_DEBUG - (optional) makes it so RGFW prints debug messages and errors when they're found
-	#define RGFW_EGL - (optional) use EGL for loading an OpenGL context (instead of the system's OpenGL api)
-	#define RGFW_NO_API - (optional) don't use any rendering API (no OpenGL, no vulkan, no directX)
+	#define RGFW_NO_INFO - do not define the RGFW_info struct (without RGFW_IMPLEMENTATION)
 
 	#define RGFW_ALLOC x  - choose the default allocation function (defaults to standard malloc)
 	#define RGFW_FREE x  - choose the default deallocation function (defaults to standard free)
@@ -42,7 +41,6 @@
 	#define RGFW_EXPORT - use when building RGFW
 	#define RGFW_IMPORT - use when linking with RGFW (not as a single-header)
 
-	#define RGFW_USE_INT - force the use c-types rather than stdint.h (for systems that might not have stdint.h (msvc))
 	#define RGFW_bool x - choose what type to use for bool, by default u32 is used
 */
 
@@ -67,25 +65,25 @@
 		@Easymode -> support, testing/debugging, bug fixes and reviews
 		Joshua Rowe (omnisci3nce) - bug fix, review (macOS)
 		@lesleyrs -> bug fix, review (OpenGL)
-        Nick Porcino (@meshula) - testing, organization, review (MacOS, examples)
-        @therealmarrakesh -> documentation
-        @DarekParodia -> code review (X11) (C++)
-        @NishiOwO -> fix BSD support, fix OSMesa example
-        @BaynariKattu -> code review and documentation
-        Miguel Pinto (@konopimi) -> code review, fix vulkan example
-        @m-doescode -> code review (wayland)
-        Robert Gonzalez (@uni-dos) -> code review (wayland)
-        @TheLastVoyager -> code review
-        @yehoravramenko -> code review (winapi)
-        @halocupcake -> code review (OpenGL)
-        @GideonSerf -> documentation
-        Alexandre Almeida (@M374LX) -> code review (keycodes)
-        Vũ Xuân Trường (@wanwanvxt) -> code review (winapi)
-        Lucas (@lightspeedlucas) -> code review (msvc++)
-        Jeffery Myers (@JeffM2501) -> code review (msvc)
-        Zeni (@zenitsuyo) -> documentation
-        TheYahton (@TheYahton) -> documentation
-        nonexistant_object (@DiarrheaMcgee
+		Nick Porcino (@meshula) - testing, organization, review (MacOS, examples)
+		@therealmarrakesh -> documentation
+		@DarekParodia -> code review (X11) (C++)
+		@NishiOwO -> fix BSD support, fix OSMesa example
+		@BaynariKattu -> code review and documentation
+		Miguel Pinto (@konopimi) -> code review, fix vulkan example
+		@m-doescode -> code review (wayland)
+		Robert Gonzalez (@uni-dos) -> code review (wayland)
+		@TheLastVoyager -> code review
+		@yehoravramenko -> code review (winapi)
+		@halocupcake -> code review (OpenGL)
+		@GideonSerf -> documentation
+		Alexandre Almeida (@M374LX) -> code review (keycodes)
+		Vũ Xuân Trường (@wanwanvxt) -> code review (winapi)
+		Lucas (@lightspeedlucas) -> code review (msvc++)
+		Jeffery Myers (@JeffM2501) -> code review (msvc)
+		Zeni (@zenitsuyo) -> documentation
+		TheYahton (@TheYahton) -> documentation
+		nonexistant_object (@DiarrheaMcgee
 */
 
 #ifndef RGFW_UNUSED
@@ -124,18 +122,18 @@
 #endif
 
 #if !defined(RGFW_PRINTF) && ( defined(RGFW_DEBUG) || defined(RGFW_WAYLAND) )
-    /* required when using RGFW_DEBUG */
-    #include <stdio.h>
-    #define RGFW_PRINTF printf
+	/* required when using RGFW_DEBUG */
+	#include <stdio.h>
+	#define RGFW_PRINTF printf
 #endif
 
 #if defined(RGFW_EXPORT) || defined(RGFW_IMPORT)
 	#if defined(RGFW_EXPORT)
 		#define RGFWDEF __attribute__((visibility("default")))
 	#endif
-    #ifndef RGFWDEF
-        #define RGFWDEF
-    #endif
+	#ifndef RGFWDEF
+		#define RGFWDEF
+	#endif
 #endif
 
 #ifndef RGFWDEF
@@ -151,7 +149,7 @@
 #endif
 
 
-#if defined(__cplusplus) && !defined(__EMSCRIPTEN__)
+#if defined(__cplusplus)
 	extern "C" {
 #endif
 
@@ -162,34 +160,26 @@
 
 #include <stddef.h>
 #ifndef RGFW_INT_DEFINED
-	#ifdef RGFW_USE_INT /* optional for any system that might not have stdint.h */
-		typedef unsigned char       u8;
-		typedef signed char         i8;
-		typedef unsigned short     u16;
-		typedef signed short 	   i16;
-		typedef unsigned long int  u32;
-		typedef signed long int    i32;
-		typedef unsigned long long u64;
-		typedef signed long long   i64;
-	#else /* use stdint standard types instead of c "standard" types */
-		#include <stdint.h>
+	#include <stdint.h>
 
-		typedef uint8_t     u8;
-		typedef int8_t      i8;
-		typedef uint16_t   u16;
-		typedef int16_t    i16;
-		typedef uint32_t   u32;
-		typedef int32_t    i32;
-		typedef uint64_t   u64;
-		typedef int64_t    i64;
-	#endif
+	typedef uint8_t     u8;
+	typedef int8_t      i8;
+	typedef uint16_t   u16;
+	typedef int16_t    i16;
+	typedef uint32_t   u32;
+	typedef int32_t    i32;
+	typedef uint64_t   u64;
+	typedef int64_t    i64;
 
 	#define RGFW_INT_DEFINED
 #endif
 
 #ifndef RGFW_BOOL_DEFINED
-    #define RGFW_BOOL_DEFINED
-    typedef u8 RGFW_bool;
+	typedef u8 RGFW_bool;
+#endif
+
+#if !defined(RGFW_SSIZE_T_DEFINED) && !defined(_SYS_TYPES_H) && !defined(_SSIZE_T_DECLARED)
+	typedef ptrdiff_t ssize_t;
 #endif
 
 #define RGFW_BOOL(x) (RGFW_bool)((x) ? RGFW_TRUE : RGFW_FALSE) /* force an value to be 0 or 1 */
@@ -200,15 +190,9 @@
 	#ifndef RGFW_3DS
 	#define RGFW_3DS 1
 	#endif
+
 	#ifndef RGFW_MAX_CONTROLLER_DEVICES
 	#define RGFW_MAX_CONTROLLER_DEVICES 1
-	#endif
-
-	#include <3ds.h>
-
-	#ifdef RGFW_OPENGL
-	#define RIP_BACKEND RIP_BACKEND_KYGX
-	#include <GLES/gl2.h>
 	#endif
 
 	/* TODO(EimaMei): comment. */
@@ -223,11 +207,10 @@
 */
 
 typedef RGFW_ENUM(ssize_t, RGFW_screen) {
-	#ifdef RGFW_3DS
-	RGFW_screenTop,
-	RGFW_screenBottom,
-	#else
 	RGFW_screenPrimary,
+	#ifdef RGFW_3DS
+	RGFW_screenTop = RGFW_screenPrimary,
+	RGFW_screenBottom,
 	#endif
 
 	RGFW_screenCount
@@ -385,7 +368,7 @@ typedef struct RGFW_controller {
 	/* Current button states. */
 	RGFW_buttonState buttons[RGFW_controllerButtonCount];
 	/* Current axes states. */
-    RGFW_axis axes[RGFW_axisTypeCount];
+	RGFW_axis axes[RGFW_axisTypeCount];
 	/* Current pointer states. */
 	RGFW_point pointers[RGFW_pointerTypeCount];
 	/* Current motion states. */
@@ -413,7 +396,7 @@ typedef struct RGFW_event {
 
 /* TODO(EimaMei): document */
 typedef RGFW_ENUM(i32, RGFW_videoMode) {
-#ifdef RGFW_3DS
+	#ifdef RGFW_3DS
 	/* Sets the video resolution to 400x240 with stereoscopy disabled. Works on
 	 * all models. */
 	RGFW_videoMode2D,
@@ -427,7 +410,7 @@ typedef RGFW_ENUM(i32, RGFW_videoMode) {
 	 * on 3DS consoles and New 2DS XL. */
 	RGFW_videoModeWide,
 	/* TODO(EimaMei): Add an error if you select this on 2DS consoles.*/
-#endif
+	#endif
 
 	RGFW_videoModeCount
 };
@@ -440,12 +423,12 @@ typedef RGFW_ENUM(ssize_t, RGFW_pixelFormat) {
 	 * 'RGFW_window_initBuffer' picks this as the pixel format. */
 	RGFW_pixelFormatRGBA8,
 
-#ifdef RGFW_3DS
+	#ifdef RGFW_3DS
 	RGFW_pixelFormatBGR8,
 	RGFW_pixelFormatRGB565,
 	RGFW_pixelFormatRGB5_A1,
 	RGFW_pixelFormatRGBA4,
-#endif
+	#endif
 
 	RGFW_pixelFormatCount,
 };
@@ -454,95 +437,65 @@ typedef RGFW_ENUM(ssize_t, RGFW_pixelFormat) {
 /* TODO(EimaMei): document */
 typedef RGFW_ENUM(i32, RGFW_systemModel) {
 	RGFW_systemModelUnknown,
-#if RGFW_3DS
+	#if RGFW_3DS
 	RGFW_systemModel3DS,
 	RGFW_systemModel3DSXL,
 	RGFW_systemModelN3DS,
 	RGFW_systemModel2DS,
 	RGFW_systemModelN3DSXL,
 	RGFW_systemModelN2DSXL,
-#endif
+	#endif
 
 	RGFW_systemModelCount,
 };
 
-/*! source data for the window (used by the APIs) */
-#if defined(RGFW_3DS)
-
-typedef struct RGFW_window_src {
-	RGFW_bool has_checked_events, lcd_is_on;
-	accelVector accel;
-	angularRate gyro;
-	aptHookCookie apt_hook;
-
-	u8* buffers[RGFW_screenCount][2];
-	RGFW_pixelFormat format[RGFW_screenCount];
-	ssize_t current_buffer[RGFW_screenCount];
-	u32 buffer_size[RGFW_screenCount];
-
-	RGFW_bool is_buffer_allocated[RGFW_screenCount];
-	RGFW_bool is_double_buffered[RGFW_screenCount];
-	RGFW_bool is_native[RGFW_screenCount];
-
-	#ifndef RGFW_BUFFER_NO_CONVERSION
-		u8* buffers_native[RGFW_screenCount][2];
-	#endif
-
-	#ifdef RGFW_OPENGL
-		RGFW_bool kygx_initialized;
-		GLASSCtx ctx[RGFW_screenCount];
-		GLuint gl_framebuffer[RGFW_screenCount];
-		GLuint gl_renderbuffer[RGFW_screenCount];
-	#endif
-} RGFW_window_src;
-
-#endif
-
 /*! Optional arguments for making a windows */
 typedef RGFW_ENUM(u32, RGFW_windowFlags) {
-	RGFW_windowNoInitAPI      = RGFW_BIT(0), /* do NOT init an API (including the software rendering buffer) (mostly for bindings. you can also use `#define RGFW_NO_API`) */
-	/* Initializes an OpenGL context for the window. If a context cannot be created
-	 * NULL is returned and the window (if allocated via RGFW_createWindow) is 
-	 * automatically freed. */
-	RGFW_windowOpenGL         = RGFW_BIT(1),
-	RGFW_windowBuffer         = RGFW_BIT(2), /* TODO(EimaMei): New enum. */
-	RGFW_windowConsoleInit    = RGFW_BIT(3), /* TODO(EimaMei): New enum. */
-	RGFW_windowFreeOnClose    = RGFW_BIT(15), /*!< free (RGFW_window_close) the RGFW_window struct when the window is closed (by the end user) */
+	RGFW_windowFlagsNone      = 0,
+
+	RGFW_windowFreeOnClose    = RGFW_BIT(15),
+	RGFW_windowBuffer         = RGFW_BIT(16),
+	RGFW_windowOpenGL         = RGFW_BIT(17),
+	RGFW_windowEGL            = RGFW_BIT(18),
 
 	#ifdef RGFW_3DS
-	RGFW_windowTopScreen      = RGFW_BIT(16), /* TODO(EimaMei): New enum. */
-	RGFW_windowBottomScreen   = RGFW_BIT(17), /* TODO(EimaMei): New enum. */
+	RGFW_windowTopScreen      = RGFW_BIT(29), /* TODO(EimaMei): New enum. */
+	RGFW_windowBottomScreen   = RGFW_BIT(30), /* TODO(EimaMei): New enum. */
 	RGFW_windowDualScreen     = RGFW_windowTopScreen | RGFW_windowBottomScreen, /* TODO(EimaMei): New enum. */
 	#endif
-
-	RGFW_windowInitAllAPIs    = RGFW_windowOpenGL | RGFW_windowBuffer
 };
 
-struct RGFW_window;
+/* TODO */
+typedef struct RGFW_window RGFW_window;
+/* TODO */
+typedef struct RGFW_window_src RGFW_window_src;
+
+/* TODO */
+typedef struct RGFW_context_buffer RGFW_context_buffer;
 
 /* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*RGFW_deviceSleepFunc)(struct RGFW_window* win, RGFW_bool is_sleeping);
+typedef void (*RGFW_deviceSleepFunc)(RGFW_window* win, RGFW_bool is_sleeping);
 
 /*! RGFW_quit, the window that was closed */
-typedef void (*RGFW_quitFunc)(struct RGFW_window* win);
+typedef void (*RGFW_quitFunc)(RGFW_window* win);
 /* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*RGFW_windowRefreshFunc)(struct RGFW_window* win);
+typedef void (*RGFW_windowRefreshFunc)(RGFW_window* win);
 /* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*RGFW_windowVideoModeFunc)(struct RGFW_window* win, RGFW_videoMode mode);
+typedef void (*RGFW_windowVideoModeFunc)(RGFW_window* win, RGFW_videoMode mode);
 /* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*RGFW_windowFocusFunc)(struct RGFW_window* win, RGFW_bool is_focused);
+typedef void (*RGFW_windowFocusFunc)(RGFW_window* win, RGFW_bool is_focused);
 
 /*! RGFW_controllerConnected / RGFW_controllerDisconnected, the window that got the event, the controller in question, if the controller was connected (else it was disconnected) */
-typedef void (*RGFW_controllerFunc)(struct RGFW_window* win, RGFW_controller* controller, RGFW_bool is_connected);
+typedef void (*RGFW_controllerFunc)(RGFW_window* win, RGFW_controller* controller, RGFW_bool is_connected);
 
 /*! RGFW_buttonPressed, the window that got the event, the button that was pressed, the scroll value, if it was a press (else it's a release) */
-typedef void (*RGFW_buttonFunc)(struct RGFW_window* win, RGFW_controller* controller, RGFW_button button, RGFW_bool pressed);
+typedef void (*RGFW_buttonFunc)(RGFW_window* win, RGFW_controller* controller, RGFW_button button, RGFW_bool pressed);
 /*! RGFW_axisMove, the window that got the event, the controller in question, the axis values and the axis count */
-typedef void (*RGFW_axisFunc)(struct RGFW_window* win, RGFW_controller* controller, RGFW_axisType axis);
+typedef void (*RGFW_axisFunc)(RGFW_window* win, RGFW_controller* controller, RGFW_axisType axis);
 /* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*RGFW_pointerFunc)(struct RGFW_window* win, RGFW_controller* controller, RGFW_pointerType pointer);
+typedef void (*RGFW_pointerFunc)(RGFW_window* win, RGFW_controller* controller, RGFW_pointerType pointer);
 /* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*RGFW_motionFunc)(struct RGFW_window* win, RGFW_controller* controller, RGFW_motionType motion);
+typedef void (*RGFW_motionFunc)(RGFW_window* win, RGFW_controller* controller, RGFW_motionType motion);
 
 
 typedef struct RGFW_callbacks {
@@ -562,14 +515,65 @@ typedef struct RGFW_callbacks {
 } RGFW_callbacks;
 
 
+#if !defined(RGFW_NO_WINDOW_SRC) || defined(RGFW_IMPLEMENTATION)
 
-typedef struct RGFW_window {
-	RGFW_screen current;
+#include <3ds.h>
+
+#ifdef RGFW_OPENGL
+#define RIP_BACKEND RIP_BACKEND_KYGX
+#include <GLES/gl2.h>
+#endif
+
+struct RGFW_context_buffer {
+	RGFW_screen screen;
+	RGFW_videoMode mode;
+	RGFW_pixelFormat format;
+	u8* buffers[2];
+
+	ssize_t current;
+	u32 size;
+
+	RGFW_bool is_buffer_allocated;
+	RGFW_bool is_double_buffered;
+	RGFW_bool is_native;
+
+	#ifndef RGFW_BUFFER_NO_CONVERSION
+	u8* buffers_native[2];
+	#endif
+};
+
+#ifdef RGFW_OPENGL
+struct RGFW_context_OpenGL {
+	RGFW_screen screen;
+	RGFW_videoMode mode;
+	RGFW_pixelFormat format;
+	GLASSCtx ctx;
+
+	GLuint framebuffer;
+	GLuint renderbuffer;
+};
+#endif
+
+struct RGFW_window_src {
+	RGFW_bool has_checked_events, lcd_is_on;
+	accelVector accel;
+	angularRate gyro;
+	aptHookCookie apt_hook;
+
+	RGFW_context_buffer buffer[RGFW_screenCount];
+	#ifdef RGFW_OPENGL
+	struct RGFW_context_OpenGL gl[RGFW_screenCount];
+	#endif
+};
+
+struct RGFW_window {
 	RGFW_window_src src; /*!< src window data */
 
-	u8* buffer; /*!< buffer for software rendering */
-	RGFW_area bufferSize;
-	RGFW_videoMode mode; /* TODO(EimaMei): document */
+	/* TODO */
+	RGFW_context_buffer* buffer;
+	#ifdef RGFW_OPENGL
+	struct RGFW_context_OpenGL* gl;
+	#endif
 
 	/* struct RGFW_info */
 	RGFW_event events[32];
@@ -583,11 +587,35 @@ typedef struct RGFW_window {
 
 	RGFW_callbacks callbacks;
 	void* userPtr;
-} RGFW_window; /*!< window structure for managing the window */
+}; /*!< window structure for managing the window */
 
+#endif /* !defined(RGFW_NO_WINDOW_SRC) || defined(RGFW_IMPLEMENTATION) */
 
-/** * @defgroup Window_management
-* @{ */
+/* TODO */
+RGFWDEF size_t RGFW_sizeofWindow(void);
+/* TODO */
+RGFWDEF size_t RGFW_sizeofWindowSrc(void);
+
+/* TODO */
+RGFWDEF RGFW_context_buffer* RGFW_window_getCurrent_buffer(RGFW_window* win);
+/* TODO */
+RGFWDEF RGFW_context_buffer* RGFW_window_getContext_buffer(RGFW_window* win);
+/* TODO */
+RGFWDEF RGFW_context_buffer* RGFW_window_getContextEx_buffer(RGFW_window* win, RGFW_screen screen);
+
+#ifdef RGFW_OPENGL
+/* TODO */
+RGFWDEF struct RGFW_context_OpenGL* RGFW_window_getCurrent_OpenGL(RGFW_window* win);
+/* TODO */
+RGFWDEF struct RGFW_context_OpenGL* RGFW_window_getContext_OpenGL(RGFW_window* win);
+/* TODO */
+RGFWDEF struct RGFW_context_OpenGL* RGFW_window_getContextEx_OpenGL(RGFW_window* win, RGFW_screen screen);
+#endif
+
+RGFWDEF void* RGFW_window_getUserPtr(RGFW_window* win); /*!< gets the userPtr of the window | returns RGFW_window.userPtr */
+RGFWDEF void RGFW_window_setUserPtr(RGFW_window* win, void* ptr); /*!< sets the userPtr of the window | writes to RGFW_window.userPtr */
+
+RGFWDEF RGFW_window_src* RGFW_window_getSrc(RGFW_window* win); /*!< returns fat pointer of window, which is sourced from the window casted to the fast pointer */
 
 
 RGFWDEF RGFW_window* RGFW_createWindow(
@@ -601,48 +629,70 @@ RGFWDEF RGFW_window* RGFW_createWindowPtr(
 	RGFW_window* win /* ptr to the window struct you want to use */
 ); /*!< function to create a window (without allocating a window struct) */
 
+/* TODO */
+RGFWDEF RGFW_window* RGFW_createWindowContextless(RGFW_windowFlags flags);
+/* TODO */
+RGFWDEF RGFW_window* RGFW_createWindowPtrContextless(RGFW_windowFlags flags, RGFW_window* win);
 
-RGFWDEF RGFW_bool RGFW_window_initBuffer(RGFW_window* win);
-RGFWDEF RGFW_bool RGFW_window_initBufferFormat(RGFW_window* win, RGFW_pixelFormat format);
-RGFWDEF RGFW_bool RGFW_window_initBufferNative(RGFW_window* win, RGFW_pixelFormat format);
-RGFWDEF RGFW_bool RGFW_window_initBufferScreen(RGFW_window* win, RGFW_screen screen,
-	u8* buffers[2], RGFW_pixelFormat format, RGFW_bool is_native);
 
-/*!< free buffers used for software rendering within the window */
-RGFWDEF void RGFW_window_freeBuffer(RGFW_window* win);
-RGFWDEF void RGFW_window_freeBufferScreen(RGFW_window* win, RGFW_screen screen);
+/* TODO */
+RGFWDEF RGFW_bool RGFW_window_createContext_buffer(RGFW_window* win, RGFW_videoMode mode,
+	RGFW_pixelFormat format, RGFW_bool is_native);
+
+/* TODO */
+RGFWDEF void RGFW_window_freeContext_buffer(RGFW_window* win);
+
 
 /* supports OpenGL and software rendering */
 RGFWDEF void RGFW_window_swapBuffers_buffer(RGFW_window* win); /*!< swap the rendering buffer */
 /* TODO(EimaMei): New function. */
-RGFWDEF void RGFW_window_makeCurrent_buffer(RGFW_window* win, RGFW_screen screen);
+RGFWDEF void RGFW_window_makeCurrent_buffer(RGFW_window* win, RGFW_context_buffer* buffer);
+
+
+
+/* TODO */
+RGFWDEF RGFW_bool RGFW_createContext_buffer(RGFW_screen screen, RGFW_videoMode mode,
+	RGFW_pixelFormat format, RGFW_bool is_native, RGFW_context_buffer* out_b);
+/* TODO */
+RGFWDEF RGFW_bool RGFW_createContextPtr_buffer(u8* buffers[2], RGFW_screen screen,
+	RGFW_videoMode mode, RGFW_pixelFormat format, RGFW_bool is_native, RGFW_context_buffer* out_b);
+/* TODO */
+RGFWDEF void RGFW_context_free_buffer(RGFW_context_buffer* buffer);
 
 
 /* TODO(EimaMei): New function. */
-RGFWDEF RGFW_bool RGFW_window_bufferSetFormat(RGFW_window* win, RGFW_pixelFormat format);
+RGFWDEF RGFW_bool RGFW_context_bufferSetFormat(RGFW_context_buffer* b, RGFW_pixelFormat format);
 /* TODO(EimaMei): New function. */
-RGFWDEF void RGFW_window_bufferSetNative(RGFW_window* win, RGFW_bool is_native);
+RGFWDEF void RGFW_context_bufferSetNative(RGFW_context_buffer* b, RGFW_bool is_native);
 /* TODO(EimaMei): New function. */
-RGFWDEF void RGFW_window_bufferSetDoubleBuffering(RGFW_window* win, RGFW_bool enable);
+RGFWDEF void RGFW_context_bufferSetDoubleBuffering(RGFW_context_buffer* b, RGFW_bool enable);
 /* TODO(EimaMei): New function. */
-RGFWDEF void RGFW_window_bufferFlipBuffers(RGFW_window* win);
+RGFWDEF void RGFW_context_bufferFlipBuffers(RGFW_context_buffer* b);
+
+/* TODO */
+RGFWDEF RGFW_screen RGFW_context_bufferGetScreen(RGFW_context_buffer* b);
+/* TODO(EimaMei): New function. */
+RGFWDEF u8* RGFW_context_bufferGetBuffer(RGFW_context_buffer* b);
+/* TODO */
+RGFWDEF ssize_t RGFW_context_bufferGetBufferCount(RGFW_context_buffer* b);
+/* TODO(EimaMei): New function. */
+RGFWDEF ssize_t RGFW_context_bufferGetCurrent(RGFW_context_buffer* b);
+/* TODO */
+RGFWDEF RGFW_area RGFW_context_bufferGetResolution(RGFW_context_buffer* b);
 
 /* TODO(EimaMei): New function. */
-RGFWDEF RGFW_pixelFormat RGFW_window_bufferGetFormat(RGFW_window* win);
+RGFWDEF RGFW_pixelFormat RGFW_context_bufferGetFormat(RGFW_context_buffer* b);
 /* TODO(EimaMei): New function. */
-RGFWDEF RGFW_bool RGFW_window_bufferIsNative(RGFW_window* win);
+RGFWDEF RGFW_bool RGFW_context_bufferIsNative(RGFW_context_buffer* b);
 /* TODO(EimaMei): New function. */
-RGFWDEF RGFW_bool RGFW_window_bufferIsDoubleBuffered(RGFW_window* win);
-/* TODO(EimaMei): New function. */
-RGFWDEF ssize_t RGFW_window_bufferGetCurrent(RGFW_window* win);
+RGFWDEF RGFW_bool RGFW_context_bufferIsDoubleBuffered(RGFW_context_buffer* b);
+/* TODO */
+RGFWDEF RGFW_bool RGFW_context_bufferIsStereoscopic(RGFW_context_buffer* b);
 
 
 
 /*! set the window flags (will undo flags if they don't match the old ones) */
 RGFWDEF void RGFW_window_setFlags(RGFW_window* win, RGFW_windowFlags flags);
-
-/* TODO(EimaMei): New function. */
-RGFWDEF RGFW_area RGFW_windowGetSize(RGFW_window* win);
 
 
 /*!
@@ -803,70 +853,199 @@ RGFWDEF RGFW_motionFunc RGFW_setMotionCallback(RGFW_window* win, RGFW_motionFunc
 RGFWDEF RGFW_debugFunc RGFW_setDebugCallback(RGFW_debugFunc func);
 
 
-/** * @defgroup graphics_API
-* @{ */
 
-/*!< make the screen the current drawing context */
-RGFWDEF void RGFW_window_makeCurrent(RGFW_window* win, RGFW_screen screen);
+#if defined(RGFW_OPENGL)
 
-/*! get the screen used for the current drawing context */
-RGFWDEF RGFW_screen RGFW_getCurrent(RGFW_window* win);
+/**
+ * # OpenGL
+ *
+ *
+ * ## Description
+ * This section covers OpenGL context creation, management and cleanup to enable
+ * and help with OpenGL window rendering.
+ *
+ * ## Support
+ * Current OpenGL support for all platforms:
+ * - Nintendo 3DS - OpenGL ES 1.1* (see remarks).
+ *
+ * ## Remarks
+ * TODO: Multiple screens 
+ * ### Nintendo 3DS
+ * TODO: GLASS, libctru fork.
+*/
 
-/* supports OpenGL and software rendering */
-RGFWDEF void RGFW_window_swapBuffers(RGFW_window* win); /*!< swap the rendering buffer */
-RGFWDEF void RGFW_window_swapInterval(RGFW_window* win, i32 swapInterval);
+/**
+ * OpenGL Context type
+ *
+ * The structure is used as an opaque data type to an OpenGL context. 
+ *
+ * \sa RGFW_createContext_OpenGL
+ */
+typedef struct RGFW_context_OpenGL RGFW_context_OpenGL;
 
-typedef void (*RGFW_proc)(void); /* function pointer equivalent of void* */
+/**
+ * OpenGL context initializiation integer values 
+ *
+ * OpenGL hints are used to set desired parameters for when creating a new OpenGL
+ * context. These are treated as 'hints' since the OpenGL driver is only obligated
+ * to fufill the "minimum" requirements for some parameters (e.g., specifying a
+ * 16-bit color buffer could yield a 24 or even 32 bit one). Other parameters may
+ * require specific values to function (e.g., RGFW_glProfile).
+ *
+ * Settings hints must be done before calling RGFW_createContext_OpenGL() or
+ * RGFW_createWindow().
+ *
+ * Most warnings and errors are implementation-defined, however some basic ones
+ * are guaranteed. A warning is emitted when the specified hint value is not
+ * supported but its minimum value is (e.g., user specified a 16-bit color buffer -
+ * the context can only supply a 24-bit one, resulting in a warning). An error is
+ * emitted when the minimum hint value cannot be provided.
+ *
+ * When a specific hint value is not supported but its minimum value is, the hint
+ * value is changed to its minimum after the context has been created.
+ * 
+ * \sa RGFW_setHint_OpenGL
+ * \sa RGFW_getHint_OpenGL
+ */
+typedef RGFW_ENUM(i32, RGFW_glHint)  {
+	/* Type of OpenGL API context (RGFW_glProfile_Core by default). */
+	RGFW_glProfile,
+	/* OpenGL context major version (1 by default). */
+	RGFW_glMajor,
+	/* OpenGL context minor version (0 by default). */
+	RGFW_glMinor,
 
-/*! native API functions */
-#if defined(RGFW_OPENGL) || defined(RGFW_EGL)
-/*!< create an OpenGL context for the RGFW window, run by createWindow by default (unless the RGFW_windowNoInitAPI is included) */
-RGFWDEF RGFW_bool RGFW_window_initOpenGL(RGFW_window* win);
-RGFWDEF RGFW_bool RGFW_window_initOpenGLScreen(RGFW_window* win, RGFW_screen screen);
-/*!< called by `RGFW_window_close` by default (unless the RGFW_windowNoInitAPI is set) */
-RGFWDEF void RGFW_window_freeOpenGL(RGFW_window* win);
+	/* Minimum number of bits for the red channel of the color buffer (8 by default). */
+	RGFW_glRed,
+	/* Minimum number of bits for the green channel of the color buffer (8 by default). */
+	RGFW_glGreen,
+	/* Minimum number of bits for the blue channel of the color buffer (8 by default). */
+	RGFW_glBlue,
+	/* Minimum number of bits for the alpha channel of the color buffer (8 by default). */
+	RGFW_glAlpha,
 
-/*! OpenGL init hints */
-typedef RGFW_ENUM(i32, RGFW_glHints)  {
-	RGFW_glStencil = 0,  /*!< set stencil buffer bit size (0 by default) */
-	RGFW_glSamples, /*!< set number of sample buffers (0 by default) */
-	RGFW_glStereo, /*!< hint the context to use stereoscopic frame buffers for 3D (false by default) */
-	RGFW_glAuxBuffers, /*!< number of aux buffers (0 by default) */
-	RGFW_glDoubleBuffer, /*!< request double buffering (true by default) */
-	RGFW_glRed, RGFW_glGreen, RGFW_glBlue, RGFW_glAlpha, /*!< set color bit sizes (all 8 by default) */
-	RGFW_glDepth, /*!< set depth buffer bit size (24 by default) */
-	RGFW_glAccumRed, RGFW_glAccumGreen, RGFW_glAccumBlue,RGFW_glAccumAlpha, /*!< set accumulated RGBA bit sizes (all 0 by default) */
-	RGFW_glSRGB, /*!< request sRGA format (false by default) */
-	RGFW_glRobustness, /*!< request a "robust" (as in memory-safe) context (false by default). For more information check the overview section: https://registry.khronos.org/OpenGL/extensions/EXT/EXT_robustness.txt */
-	RGFW_glDebug, /*!< request OpenGL debugging (false by default). */
-	RGFW_glNoError, /*!< request no OpenGL errors (false by default). This causes OpenGL errors to be undefined behavior. For more information check the overview section: https://registry.khronos.org/OpenGL/extensions/KHR/KHR_no_error.txt */
-	RGFW_glReleaseBehavior, /*!< hint how the OpenGL driver should behave when changing contexts (RGFW_glReleaseNone by default). For more information check the overview section: https://registry.khronos.org/OpenGL/extensions/KHR/KHR_context_flush_control.txt */
-	RGFW_glProfile, /*!< set OpenGL API profile (RGFW_glCore by default) */
-	RGFW_glMajor, RGFW_glMinor,  /*!< set the OpenGL API profile version (by default RGFW_glMajor is 1, RGFW_glMinor is 0) */
+	/* Boolean if double buffering is used (true by defult). */
+	RGFW_glDoubleBuffer,
+	/* Minimum number of bits for the depth buffer (24 by default). */
+	RGFW_glDepth,
+	/* Minimum number of bits in the stencil buffer (0 by default). */
+	RGFW_glStencil,
 
-	RGFW_glHintsCount,
+
+	/* Minimum number of bits for the red channel of the accumulation buffer (0 by default). */
+	RGFW_glAccumRed,
+	/* Minimum number of bits for the green channel of the accumulation buffer (0 by default). */
+	RGFW_glAccumGreen,
+	/* Minimum number of bits for the blue channel of the accumulation buffer (0 by default). */
+	RGFW_glAccumBlue,
+	/* Minimum number of bits for the alpha channel of the accumulation buffer (0 by default). */
+	RGFW_glAccumAlpha,
+
+	/* Number of samples used for multiplesample anti-alisaing (0 by default). */
+	RGFW_glSamples,
+	/* Number of auxiliary buffers. (0 by default). Deprecated OpenGL feature, do not use for new code. */
+	RGFW_glAuxBuffers,
+
+	/* Boolean if the renderering is done on the CPU (false by defult). */
+	RGFW_glSoftwareRenderer,
+	/* Boolean if the context is stereosopic 3D (false by default). */
+	RGFW_glStereo,
+	/* Boolean if sRGB framebuffer is used (false by default). */
+	RGFW_glSRGB,
+	/* Boolean if the context is robust (memory-safe) (false by default). For more information: https://registry.khronos.org/OpenGL/extensions/EXT/EXT_robustness.txt. */
+	RGFW_glRobustness,
+	/* Boolean if the context has additional debugging features (false by default). */
+	RGFW_glDebug,
+	/* Boolean if OpenGL errors have undefined behavior (false by default). Fore more information: https://registry.khronos.org/OpenGL/extensions/KHR/KHR_no_error.txt. */
+	RGFW_glNoError,
+	/* Boolean if the OpenGL driver should flush the graphics when changing contexts (false by default). */
+	RGFW_glFlushOnContextChange,
+	/* Boolean if OpenGL context sharing is enabled (false by default). */
+	RGFW_glShareWithCurrentContext,
+
+	/* Number of OpenGL hints that RGFW supports. */
+	RGFW_glHintCount,
 };
 
+/**
+ * OpenGL context hint values 
+ *
+ * Certain RGFW_glHint require a specific value instead of a regular number or
+ * boolean. Any specific value follows the naming scheme of `RGFW_<glHint>_<value>`.
+ * 
+ * \sa RGFW_glHint
+ */
 typedef RGFW_ENUM(i32, RGFW_glValue)  {
-	RGFW_releaseFlush = 0, RGFW_glReleaseNone, /* RGFW_glReleaseBehavior options */
-	RGFW_glCore = 0, RGFW_glCompatibility, RGFW_glES /*!< RGFW_glProfile options */
+	/* Nothing is done when a context is changed. */
+	RGFW_glReleaseBehavior_None = 0,
+	/* OpenGL flushes the previous context when changing contexts. */
+	RGFW_glReleaseBehavior_Flush,
+
+	/* OpenGL Core (OpenGL 3.2-4.6). */
+	RGFW_glProfile_Core = 0,
+	/* OpenGL Compatibility (OpenGL 1.0-3.1). */
+	RGFW_glProfile_Compatibility,
+	/* OpenGL ES. */
+	RGFW_glProfile_ES
 };
 
-RGFWDEF void RGFW_setGLHint(RGFW_glHints hint, i32 value);
-RGFWDEF i32 RGFW_getGLHint(RGFW_glHints hint);
+/**
+ * Sets an OpenGL hint before creating the context.
+ *
+ * \param hint An OpenGL hint. If the hint is negative or surpasses RGFW_glHintCount,
+ * the function panics.
+ * \param value The desired value for the hint. No checking is done for the parameter.
+ *
+ * \sa RGFW_getHint_OpenGL
+ */
+RGFWDEF void RGFW_setHint_OpenGL(RGFW_glHint hint, i32 value);
 
-RGFWDEF void RGFW_window_makeCurrent_OpenGL(RGFW_window* win, RGFW_screen screen); /*!< to be called by RGFW_window_makeCurrent */
-RGFWDEF void RGFW_window_swapBuffers_OpenGL(RGFW_window* win); /*!< swap opengl buffer (only) called by RGFW_window_swapInterval  */
+/**
+ * Returns the value of an OpenGL hint from the current context.
+ *
+ * \param hint An OpenGL hint. If the hint is negative or surpasses RGFW_glHintCount,
+ * the function panics.
+ *
+ * \returns The value associated with the OpenGL hint.
+ *
+ * \sa RGFW_setHint_OpenGL
+ */
+RGFWDEF i32 RGFW_getHint_OpenGL(RGFW_glHint hint);
 
-RGFWDEF void* RGFW_getCurrent_OpenGL(void); /*!< get the current context (OpenGL backend (3DS))*/
+/**
+ * Returns the currently binded OpenGL context.
+ *
+ * This function differs from RGFW_getCurrent_OpenGL()
+ *
+ * \returns The currently binded OpenGL context.
+ */
+RGFWDEF void* RGFW_getCurrentContext_OpenGL(void);
+
+/* === RGFW_context_OpenGL === */
+
+/* TODO */
+RGFWDEF RGFW_bool RGFW_createContext_OpenGL(RGFW_screen screen, RGFW_videoMode mode, RGFW_context_OpenGL* out_gl);
+/* TODO */
+RGFWDEF void RGFW_context_free_OpenGL(RGFW_context_OpenGL* gl);
+
+/* TODO */
+RGFWDEF void RGFW_context_swapInterval_OpenGL(RGFW_context_OpenGL* gl, i32 swap_interval);
+
+/* === */
+
+/*!< create an OpenGL context for the RGFW window, run by createWindow by default (unless the RGFW_windowNoInitAPI is included) */
+RGFWDEF RGFW_bool RGFW_window_createContext_OpenGL(RGFW_window* win, RGFW_videoMode mode);
+/* TODO */
+RGFWDEF void RGFW_window_freeContext_OpenGL(RGFW_window* win);
+
+/* TODO */
+RGFWDEF void RGFW_window_swapInterval_OpenGL(RGFW_window* win, i32 swap_interval);
+/* TODO */
+RGFWDEF void RGFW_window_swapBuffers_OpenGL(RGFW_window* win); /*!< swap the rendering buffer */
+/* TODO(EimaMei): New function. */
+RGFWDEF void RGFW_window_makeCurrent_OpenGL(RGFW_window* win, RGFW_context_OpenGL* out_gl);
 
 #endif
-
-
-/** @} */
-
-/** * @defgroup Supporting
-* @{ */
 
 
 /* TODO(EimaMei): Explain the differences between Desktop and Embedded. */
@@ -933,8 +1112,8 @@ typedef RGFW_ENUM(u8, RGFW_key) {
 	RGFW_keyComma = ',',
 	RGFW_keySlash = '/',
 	RGFW_keyBracket = '[',
-    RGFW_keyCloseBracket = ']',
-    RGFW_keySemicolon = ';',
+	RGFW_keyCloseBracket = ']',
+	RGFW_keySemicolon = ';',
 	RGFW_keyApostrophe = '\'',
 	RGFW_keyBackSlash = '\\',
 	RGFW_keyReturn = '\n',
@@ -991,9 +1170,9 @@ typedef RGFW_ENUM(u8, RGFW_key) {
 	RGFW_keyKP_Period,
 	RGFW_keyKP_Return,
 	RGFW_keyscrollLock,
-    RGFW_keyprintScreen,
-    RGFW_keypause,
-    RGFW_keyLast = 256 /* padding for alignment ~(175 by default) */
+	RGFW_keyprintScreen,
+	RGFW_keypause,
+	RGFW_keyLast = 256 /* padding for alignment ~(175 by default) */
  };
 
 
@@ -1018,9 +1197,6 @@ RGFWDEF RGFW_bool RGFW_platform_OpenGL_rotateScreen(GLuint shader_program, const
 #endif
 
 #endif
-
-/* TODO(EimaMei): New function. */
-RGFWDEF RGFW_area RGFW_screenGetResolution(RGFW_window* win, RGFW_screen screen);
 
 
 /* Returns a video mode that's considered to be the most optimal for the system
@@ -1184,8 +1360,8 @@ RGFW_debugFunc RGFW_setDebugCallback(RGFW_debugFunc func) {
 #endif
 
 void RGFW_sendDebugInfo(RGFW_debugType type, RGFW_error err, RGFW_debugContext ctx, const char* msg) {
-	#ifdef RGFW_OPENGL
-	if (RGFW_getGLHint(RGFW_glNoError)) { return ; }
+	#if defined(RGFW_3DS) && defined(RGFW_OPENGL)
+	if (RGFW_getHint_OpenGL(RGFW_glNoError)) { return ; }
 	#endif
 
 	if (RGFW_debugFuncSrc) {
@@ -1202,7 +1378,6 @@ void RGFW_sendDebugInfo(RGFW_debugType type, RGFW_error err, RGFW_debugContext c
 	}
 
 	switch (err) {
-		case RGFW_infoWindow: RGFW_PRINTF(" videoMode = %s\n", RGFW_videoModeStr(ctx.win->mode)); break;
 		default: RGFW_PRINTF("\n");
 	}
 	#endif
@@ -1218,15 +1393,73 @@ RGFW_bool RGFW_window_checkEvents(RGFW_window* win, i32 waitMS) {
 }
 
 
-/*
-no more event call back defines
-*/
+size_t RGFW_sizeofWindow(void) { return sizeof(RGFW_window); }
+size_t RGFW_sizeofWindowSrc(void) { return sizeof(RGFW_window_src); }
+
+
+RGFW_context_buffer* RGFW_window_getCurrent_buffer(RGFW_window* win) {
+	RGFW_ASSERT(win != NULL);
+	return win->buffer;
+}
+
+RGFW_context_buffer* RGFW_window_getContext_buffer(RGFW_window* win) {
+	#ifndef RGFW_3DS
+	RGFW_ASSERT(win != NULL);
+	return &win->src.buffer;
+	#else
+	return RGFW_window_getContextEx_buffer(win, RGFW_screenPrimary);
+	#endif
+}
+
+RGFW_context_buffer* RGFW_window_getContextEx_buffer(RGFW_window* win, RGFW_screen screen) {
+	RGFW_ASSERT(win != NULL);
+	RGFW_ASSERT(screen >= 0 && screen < RGFW_screenCount);
+
+	#ifndef RGFW_3DS
+	return &win->src.buffer;
+	#else
+	return &win->src.buffer[screen];
+	#endif
+}
+
+#ifdef RGFW_OPENGL
+
+RGFW_context_OpenGL* RGFW_window_getCurrent_OpenGL(RGFW_window* win) {
+	RGFW_ASSERT(win != NULL);
+	return win->gl;
+}
+
+RGFW_context_OpenGL* RGFW_window_getContext_OpenGL(RGFW_window* win) {
+	#ifndef RGFW_3DS
+	RGFW_ASSERT(win != NULL);
+	return &win->src.gl;
+	#else
+	return RGFW_window_getContextEx_OpenGL(win, RGFW_screenPrimary);
+	#endif
+}
+
+RGFW_context_OpenGL* RGFW_window_getContextEx_OpenGL(RGFW_window* win, RGFW_screen screen) {
+	RGFW_ASSERT(win != NULL);
+	RGFW_ASSERT(screen >= 0 && screen < RGFW_screenCount);
+
+	#ifndef RGFW_3DS
+	return &win->src.gl;
+	#else
+	return &win->src.gl[screen];
+	#endif
+}
+
+#endif
+
+void* RGFW_window_getUserPtr(RGFW_window* win) { RGFW_ASSERT(win != NULL); return win->userPtr; }
+void RGFW_window_setUserPtr(RGFW_window* win, void* ptr) { RGFW_ASSERT(win != NULL); win->userPtr = ptr; }
+
+RGFW_window_src* RGFW_window_getSrc(RGFW_window* win) { RGFW_ASSERT(win != NULL); return &win->src; }
 
 /* TODO(EimaMei): remove these. */
 #define RGFW_EVENT_QUIT 		RGFW_BIT(25) /* the window close button was pressed */
 #define RGFW_WINDOW_ALLOC 		RGFW_BIT(28) /* if window was allocated by RGFW */
 #define RGFW_INTERNAL_FLAGS (RGFW_EVENT_QUIT | RGFW_WINDOW_ALLOC)
-
 
 RGFW_window* RGFW_createWindow(RGFW_videoMode mode, RGFW_windowFlags flags) {
 	RGFW_window* win = (RGFW_window*)RGFW_ALLOC(sizeof(RGFW_window));
@@ -1235,7 +1468,16 @@ RGFW_window* RGFW_createWindow(RGFW_videoMode mode, RGFW_windowFlags flags) {
 		return NULL;
 	}
 
-    return RGFW_createWindowPtr(mode, flags | RGFW_WINDOW_ALLOC, win);
+	return RGFW_createWindowPtr(mode, flags | RGFW_WINDOW_ALLOC, win);
+}
+
+RGFW_window* RGFW_createWindowContextless(RGFW_windowFlags flags) {
+	RGFW_ASSERT((flags & (RGFW_windowOpenGL | RGFW_windowBuffer)) == 0);
+	return RGFW_createWindow(0, flags);
+}
+
+RGFW_window* RGFW_createWindowPtrContextless(RGFW_windowFlags flags, RGFW_window* win) {
+	return RGFW_createWindowPtr(0, flags, win);
 }
 
 RGFWDEF RGFW_bool RGFW_create_window_platform(RGFW_window* win);
@@ -1244,41 +1486,36 @@ RGFW_window* RGFW_createWindowPtr(RGFW_videoMode mode, RGFW_windowFlags flags,
 		RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
 
-	win->current = 0;
-	win->buffer = NULL;
-	win->bufferSize = RGFW_AREA(0, 0);
-	win->mode = mode;
 	win->eventLen = 0;
 	win->stopCheckEvents_bool = RGFW_FALSE;
 	win->_flags = flags;
+
+	win->buffer = NULL;
+	#ifdef RGFW_OPENGL
+	win->gl = NULL;
+	#endif
 
 	win->controllerCount = 0;
 	RGFW_MEMSET(win->controllers, 0, sizeof(win->controllers));
 	RGFW_MEMSET(&win->callbacks, 0, sizeof(win->callbacks));
 
 	RGFW_bool res = RGFW_create_window_platform(win);
-	if (res == false) { return NULL; }
+	if (res == false) { return NULL; }	
 	RGFW_window_setFlags(win, win->_flags);
 
-	switch (win->_flags & RGFW_windowInitAllAPIs) {
-		case RGFW_windowBuffer: res = RGFW_window_initBuffer(win); break;
+	switch (win->_flags & (RGFW_windowBuffer | RGFW_windowOpenGL)) {
+		case 0: break;
+		case RGFW_windowBuffer: {
+			res = RGFW_window_createContext_buffer(win, mode, RGFW_pixelFormatRGBA8, RGFW_FALSE); 
+		} break;
+
 		#ifdef RGFW_OPENGL
-		case RGFW_windowOpenGL: res = RGFW_window_initOpenGL(win); break;
-		case RGFW_windowBuffer | RGFW_windowOpenGL:
-			res = RGFW_window_initOpenGL(win);
-			res = RGFW_window_initBuffer(win);
-			break;
+		case RGFW_windowOpenGL: {
+			res = RGFW_window_createContext_OpenGL(win, mode);
+		} break;
 		#endif
 
-		/* NOTE(EimaMei): No API has been specified. Try every API until one is picked. */
-		default: {
-			#ifdef RGFW_OPENGL
-			res = RGFW_window_initOpenGL(win);
-			if (res) { return win; }
-			#endif
-			RGFW_window_initBuffer(win);
-			res = RGFW_TRUE;
-		}
+		default: RGFW_sendDebugInfo(RGFW_debugTypeWarning, RGFW_errorSystem, RGFW_DEBUG_CTX(win, 0), "Multiple graphical APIs were specified. Creating nothing.");
 	}
 
 	if (!res) {
@@ -1293,9 +1530,9 @@ RGFW_window* RGFW_createWindowPtr(RGFW_videoMode mode, RGFW_windowFlags flags,
 RGFWDEF void RGFW_window_close_platform(RGFW_window* win);
 
 void RGFW_window_close(RGFW_window* win) {
-	RGFW_window_freeBuffer(win);
+	RGFW_window_freeContext_buffer(win);
 	#ifdef RGFW_OPENGL
-	RGFW_window_freeOpenGL(win);
+	RGFW_window_freeContext_OpenGL(win);
 	#endif
 
 	RGFW_window_close_platform(win);
@@ -1332,58 +1569,37 @@ const RGFW_event* RGFW_eventQueuePop(RGFW_window* win) {
 }
 
 void RGFW_window_setFlags(RGFW_window* win, RGFW_windowFlags flags) {
-	RGFW_windowFlags new_flags = win->_flags ^ flags;
-	if (new_flags & RGFW_windowConsoleInit) RGFW_window_consoleInit(win);
-
 	win->_flags = flags | (win->_flags & RGFW_INTERNAL_FLAGS);
 }
 
-RGFW_bool RGFW_window_initBuffer(RGFW_window* win) {
-	return RGFW_window_initBufferFormat(win, RGFW_pixelFormatRGBA8);
-}
-
-RGFWDEF RGFW_bool RGFW_window_initBufferFormatEx(RGFW_window* win, RGFW_pixelFormat format,
-		RGFW_bool is_native);
-
-RGFW_bool RGFW_window_initBufferFormatEx(RGFW_window* win, RGFW_pixelFormat format,
-		RGFW_bool is_native) {
+RGFW_bool RGFW_window_createContext_buffer(RGFW_window* win, RGFW_videoMode mode,
+		RGFW_pixelFormat format, RGFW_bool is_native) {
 	RGFW_ASSERT(win != NULL);
+	RGFW_window_freeContext_buffer(win);
 
-	RGFW_screen cur_screen = win->current;
-	RGFW_window_freeBufferScreen(win, cur_screen);
-
-	for (RGFW_screen screen = 0; screen < RGFW_screenCount; screen += 1) {
-		RGFW_area res = RGFW_screenGetResolution(win, screen);
-		ssize_t size = res.w * res.h * RGFW_pixelFormatBPP(format);
-
-		u8* buffers = (u8*)RGFW_ALLOC_SYS((size_t)(2 * size));
-		if (buffers == NULL) {
-			RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOutOfMemory, RGFW_DEBUG_CTX(win, (u32)screen), "Ran out of memory when allocating a buffer.");
-			return RGFW_FALSE;
+	#if RGFW_screenCount == 1
+		#error "TODO"
+		RGFW_bool res = ...;
+		RGFW_window_makeCurrent_buffer(win, win->src.buffer);
+	#else
+		for (RGFW_screen screen = 0; screen < RGFW_screenCount; screen += 1) {		
+			RGFW_bool res = RGFW_createContext_buffer(screen, mode, format, is_native, &win->src.buffer[screen]);
+			if (res == RGFW_FALSE) { return RGFW_FALSE; }
 		}
 
-		u8* framebuffers[2];
-		framebuffers[0] = &buffers[0 * size];
-		framebuffers[1] = &buffers[1 * size];
-		win->src.is_buffer_allocated[screen] = RGFW_TRUE;
-		RGFW_window_initBufferScreen(win, screen, framebuffers, format, is_native);
-	}
+		#ifdef RGFW_3DS
+		RGFW_window_makeCurrent_buffer(win, &win->src.buffer[!(win->_flags & RGFW_windowTopScreen)]);
+		#endif
+	#endif
 
 	if (!win->src.lcd_is_on) {
 		gspWaitForVBlank();
 		GSPGPU_SetLcdForceBlack(RGFW_FALSE);
 		win->src.lcd_is_on = RGFW_TRUE;
 	}
-	RGFW_window_makeCurrent(win, cur_screen);
+
+	win->_flags |= RGFW_windowBuffer;
 	return RGFW_TRUE;
-}
-
-RGFW_bool RGFW_window_initBufferFormat(RGFW_window* win, RGFW_pixelFormat format) {
-	return RGFW_window_initBufferFormatEx(win, format, RGFW_FALSE);
-}
-
-RGFW_bool RGFW_window_initBufferNative(RGFW_window* win, RGFW_pixelFormat format) {
-	return RGFW_window_initBufferFormatEx(win, format, RGFW_TRUE);
 }
 
 
@@ -1413,38 +1629,6 @@ ssize_t RGFW_controllerGetCount(RGFW_window* win) {
 }
 
 
-
-void RGFW_window_makeCurrent(RGFW_window* win, RGFW_screen screen) {
-	RGFW_ASSERT(win != NULL);
-	if (win->current == screen) { return; }
-
-	if (win->buffer) {
-		RGFW_window_makeCurrent_buffer(win, screen);
-	}
-	#ifdef RGFW_OPENGL
-	if (win->src.ctx[win->current] != NULL) {
-		RGFW_window_makeCurrent_OpenGL(win, screen);
-	}
-	#endif
-}
-
-ssize_t RGFW_getCurrent(RGFW_window* win) {
-    return win->current;
-}
-
-void RGFW_window_swapBuffers(RGFW_window* win) {
-	RGFW_ASSERT(win != NULL);
-
-	if (win->buffer) {
-		RGFW_window_swapBuffers_buffer(win);
-	}
-	#ifdef RGFW_OPENGL
-	if (win->src.ctx[0] || win->src.ctx[1]) {
-		RGFW_window_swapBuffers_OpenGL(win);
-	}
-	#endif
-}
-
 RGFW_bool RGFW_window_shouldClose(RGFW_window* win) {
 	/* TODO(EimaMei): Add an exit key. */
 	return (win == NULL) || (win->_flags & RGFW_EVENT_QUIT);
@@ -1460,50 +1644,47 @@ void RGFW_window_setShouldClose(RGFW_window* win, RGFW_bool shouldClose) {
 	}
 }
 
-/*
-	graphics API specific code (end of generic code)
-	starts here
-*/
+#if defined(RGFW_OPENGL)
 
+i32 RGFW_GL_HINTS[RGFW_glHintCount] = {
+	/* RGFW_glProfile                 */ RGFW_glProfile_Core,
+	/* RGFW_glMajor                   */ 1,
+	/* RGFW_glMinor                   */ 0,
 
-/*
-	OpenGL defines start here   (Normal, EGL, OSMesa)
-*/
+	/* RGFW_glRed                     */ 8,
+	/* RGFW_glGreen                   */ 8,
+	/* RGFW_glBlue                    */ 8,
+	/* RGFW_glAlpha                   */ 8,
 
-#if defined(RGFW_OPENGL) || defined(RGFW_EGL)
+	/* RGFW_glDoubleBuffer            */ RGFW_TRUE,
+	/* RGFW_glDepth                   */ 24,
+	/* RGFW_glStencil                 */ 0,
 
-i32 RGFW_GL_HINTS[RGFW_glHintsCount] = {
-	/* RGFW_glStencil         */ 0,
-	/* RGFW_glSamples         */ 0,
-	/* RGFW_glStereo          */ RGFW_FALSE,
-	/* RGFW_glAuxBuffers      */ 0,
-	/* RGFW_glDoubleBuffer    */ RGFW_TRUE,
-	/* RGFW_glRed             */ 8,
-	/* RGFW_glGreen           */ 8,
-	/* RGFW_glBlue            */ 8,
-	/* RGFW_glAlpha           */ 8,
-	/* RGFW_glDepth           */ 24,
-	/* RGFW_glAccumRed        */ 0,
-	/* RGFW_glAccumGreen      */ 0,
-	/* RGFW_glAccumBlue       */ 0,
-	/* RGFW_glAccumAlpha      */ 0,
-	/* RGFW_glSRGB            */ RGFW_FALSE,
-	/* RGFW_glRobustness      */ RGFW_FALSE,
-	/* RGFW_glDebug           */ RGFW_FALSE,
-	/* RGFW_glNoError         */ RGFW_FALSE,
-	/* RGFW_glReleaseBehavior */ RGFW_glReleaseNone,
-	/* RGFW_glProfile         */ RGFW_glCore,
-	/* RGFW_glMajor           */ 1,
-	/* RGFW_glMinor           */ 0,
+	/* RGFW_glAccumRed                */ 0,
+	/* RGFW_glAccumGreen              */ 0,
+	/* RGFW_glAccumBlue               */ 0,
+	/* RGFW_glAccumAlpha              */ 0,
+
+	/* RGFW_glSamples                 */ 0,
+	/* RGFW_glAuxBuffers              */ 0,
+
+	/* RGFW_glSoftwareRenderer        */ RGFW_FALSE,
+	/* RGFW_glStereo                  */ RGFW_FALSE,
+	/* RGFW_glSRGB                    */ RGFW_FALSE,
+	/* RGFW_glRobustness              */ RGFW_FALSE,
+	/* RGFW_glDebug                   */ RGFW_FALSE,
+	/* RGFW_glNoError                 */ RGFW_FALSE,
+	/* RGFW_glFlushOnContextChange    */ RGFW_FALSE,
+	/* RGFW_glShareWithCurrentContext */ RGFW_FALSE
 };
 
-void RGFW_setGLHint(RGFW_glHints hint, i32 value) {
-	RGFW_ASSERT(hint >= 0 && hint < RGFW_glHintsCount);
+void RGFW_setHint_OpenGL(RGFW_glHint hint, i32 value) {
+	RGFW_ASSERT(hint >= 0 && hint < RGFW_glHintCount);
 	RGFW_GL_HINTS[hint] = value;
 }
 
-i32 RGFW_getGLHint(RGFW_glHints hint) {
-	RGFW_ASSERT(hint >= 0 && hint < RGFW_glHintsCount);
+i32 RGFW_getHint_OpenGL(RGFW_glHint hint) {
+	RGFW_ASSERT(hint >= 0 && hint < RGFW_glHintCount);
 	return RGFW_GL_HINTS[hint];
 }
 
@@ -1697,7 +1878,7 @@ u32 RGFW_rgfwToApiKey(RGFW_button button) {
 	return CTRU_RGFW_KEY_LUT[button];
 }
 
-static
+void RGFW__aptHookCallback(APT_HookType hook, void* param);
 void RGFW__aptHookCallback(APT_HookType hook, void* param) {
 	RGFW_window* win = param;
 
@@ -1730,24 +1911,30 @@ RGFW_bool RGFW_create_window_platform(RGFW_window* win) {
 	if ((win->_flags & RGFW_windowDualScreen) == 0) {
 		win->_flags |= RGFW_windowTopScreen;
 	}
-	win->current = (win->_flags & RGFW_windowTopScreen) ? 0 : 1;
 
 	RGFW_controller* controller = &win->controllers[0];
 	controller->connected = RGFW_TRUE;
 	controller->enabled_pointers[RGFW_pointerTouchscreen] = RGFW_TRUE;
 	controller->button_start = 0;
-	controller->button_end = RGFW_controllerButtonCount - 1;
+	controller->button_end = RGFW_controllerButtonCount;
 
 	RGFW_window_src* src = &win->src;
 	src->has_checked_events = RGFW_FALSE;
 	src->lcd_is_on = RGFW_FALSE;
 
 	for (RGFW_screen i = 0; i < RGFW_screenCount; i += 1) {
-		src->buffers[i][0] = NULL;
-		src->buffers[i][1] = NULL;
-		src->format[i] = -1;
-		src->is_double_buffered[i] = RGFW_TRUE;
-		src->is_buffer_allocated[i] = RGFW_FALSE;
+		RGFW_context_buffer* b = &src->buffer[i];
+		b->buffers[0] = NULL;
+		b->buffers[1] = NULL;
+		b->format = -1;
+		b->is_double_buffered = RGFW_TRUE;
+		b->is_buffer_allocated = RGFW_FALSE;
+
+		#ifdef RGFW_OPENGL
+		RGFW_context_OpenGL* gl = &src->gl[i];
+		gl->ctx = NULL;
+		gl->framebuffer = gl->renderbuffer = 0;
+		#endif
 	}
 
 	aptHook(&src->apt_hook, RGFW__aptHookCallback, win);
@@ -1758,51 +1945,55 @@ RGFW_bool RGFW_create_window_platform(RGFW_window* win) {
 		return RGFW_FALSE;
 	}
 
+	#ifdef RGFW_OPENGL
+	gfxInitDefault();
+	RGFW_bool kygx_init = kygxInit();
+	if (!kygx_init) {
+		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Failed to initialize KYGX.");
+		return RGFW_FALSE;
+	}
+	#endif
+
 	return RGFW_TRUE;
 }
 
 /* NOTE(EimaMei): Taken from libctru gfx.c */
-void _RGFW__gspPresentFramebuffer(RGFW_window* win, ssize_t screen, u8* buffer);
+void _RGFW__gspPresentFramebuffer(RGFW_context_buffer* b, u8* buffer);
 
-void _RGFW__gspPresentFramebuffer(RGFW_window* win, ssize_t screen, u8* buffer) {
-	RGFW_window_src* src = &win->src;
-	u32 stride = GSP_SCREEN_WIDTH * (u32)RGFW_pixelFormatBPP(src->format[screen]);
-	u32 pixel_format = (u32)src->format[screen] | (1 << 8);
+void _RGFW__gspPresentFramebuffer(RGFW_context_buffer* b, u8* buffer) {
+	u32 stride = GSP_SCREEN_WIDTH * (u32)RGFW_pixelFormatBPP(b->format);
+	u32 pixel_format = (u32)b->format | (1 << 8);
 
 	u8* fb_b = buffer;
-	if (screen == 0) {
-		switch (win->mode) {
+	if (b->screen == 0) {
+		switch (b->mode) {
 		case RGFW_videoMode2D: {
 			pixel_format |= BIT(6);
 		} break;
 
 		case RGFW_videoMode3D: {
 			pixel_format |= BIT(5);
-			if (RGFW_platformGet3DSlider() > 0.0f) fb_b += src->buffer_size[screen] / 2;
+			if (RGFW_platformGet3DSlider() > 0.0f) fb_b += b->size / 2;
 		} break;
 		}
 	}
 
-	gspPresentBuffer(
-		(u32)screen, (u32)src->current_buffer[screen],
-		buffer, fb_b, stride, pixel_format
-	);
+	gspPresentBuffer((u32)b->screen, (u32)b->current, buffer, fb_b, stride, pixel_format);
 }
 
 #ifndef RGFW_BUFFER_NO_CONVERSION
 
-u8* RGFW_window_bufferToNative(RGFW_window* win, ssize_t screen);
-u8* RGFW_window_bufferToNative(RGFW_window* win, ssize_t screen) {
-	RGFW_window_src* wsrc = &win->src;
-	u8* src = wsrc->buffers[screen][wsrc->current_buffer[screen]];
+u8* RGFW_window_bufferToNative(RGFW_context_buffer* b);
+u8* RGFW_window_bufferToNative(RGFW_context_buffer* b) {
+	u8* src = RGFW_context_bufferGetBuffer(b);
 
-	if (wsrc->is_native[screen]) {
+	if (b->is_native) {
 		return src;
 	}
-	u8* dst = wsrc->buffers_native[screen][wsrc->current_buffer[screen]];
+	u8* dst = b->buffers_native[b->current];
 
-	const i32 bpp = RGFW_pixelFormatBPP(win->mode);
-	const ssize_t width  = RGFW_screenGetResolution(win, screen).w,
+	const i32 bpp = RGFW_pixelFormatBPP(b->mode);
+	const ssize_t width  = RGFW_context_bufferGetResolution(b).w,
 				  height = 240;
 	for (ssize_t i = 0; i < width; i += 1) {
 		for (ssize_t j = height - 1; j >= 0; j -= 1) {
@@ -1834,303 +2025,374 @@ u8* RGFW_window_bufferToNative(RGFW_window* win, ssize_t screen) {
 }
 #endif
 
-RGFW_bool RGFW_window_initBufferScreen(RGFW_window* win, RGFW_screen screen,
-		u8* buffers[2], RGFW_pixelFormat format, RGFW_bool is_native) {
-	RGFW_ASSERT(win != NULL);
+RGFW_bool RGFW_createContext_buffer(RGFW_screen screen, RGFW_videoMode mode,
+		RGFW_pixelFormat format, RGFW_bool is_native, RGFW_context_buffer* out_b) {
+	RGFW_area area = (screen == RGFW_screenTop)
+		? RGFW_videoModeResolution(mode)
+		: RGFW_AREA(320, 240);
+	ssize_t size = area.w * area.h * RGFW_pixelFormatBPP(format);
+
+	u8* buffers = (u8*)RGFW_ALLOC_SYS((size_t)(2 * size));
+	if (buffers == NULL) {
+		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOutOfMemory, RGFW_DEBUG_CTX(NULL, (u32)screen), "Ran out of memory when allocating a buffer.");
+		return RGFW_FALSE;
+	}
+
+	u8* buffers_list[2];
+	buffers_list[0] = &buffers[0 * size];
+	buffers_list[1] = &buffers[1 * size];
+	out_b->is_buffer_allocated = RGFW_TRUE;
+
+	return RGFW_createContextPtr_buffer(buffers_list, screen, mode, format, is_native, out_b);
+}
+
+RGFW_bool RGFW_createContextPtr_buffer(u8* buffers[2], RGFW_screen screen, RGFW_videoMode mode,
+		RGFW_pixelFormat format, RGFW_bool is_native, RGFW_context_buffer* out_b) {
+	RGFW_ASSERT(out_b != NULL);
+	RGFW_ASSERT(buffers[0] != NULL);
 	RGFW_ASSERT(screen >= 0 && screen < RGFW_screenCount);
-	RGFW_ASSERT(buffers[0] != NULL && buffers[1] != NULL);
+	RGFW_ASSERT(mode >= 0 && mode < RGFW_videoModeCount);
 	RGFW_ASSERT(format >= 0 && format < RGFW_pixelFormatCount);
 
-	RGFW_window_src* src = &win->src;
-	RGFW_area area = RGFW_screenGetResolution(win, screen);
+	RGFW_area area = (screen == RGFW_screenTop)
+		? RGFW_videoModeResolution(mode)
+		: RGFW_AREA(240, 320);
+	RGFW_context_buffer* b = out_b;
+	b->screen = screen;
+	b->mode = mode;
+	b->format = format;
+	b->current = 0;
+	b->size = (u32)(area.w * area.h * RGFW_pixelFormatBPP(format));
+	b->buffers[0] = buffers[0];
+	b->buffers[1] = buffers[1];
+	b->is_native = is_native;
 
-	src->format[screen] = format;
-	src->current_buffer[screen] = 0;
-	src->buffer_size[screen] = (u32)(area.w * area.h * RGFW_pixelFormatBPP(format));
-	src->buffers[screen][0] = buffers[0];
-	src->buffers[screen][1] = buffers[1];
-	src->is_native[screen] = is_native;
-
-	if (is_native) {
-		_RGFW__gspPresentFramebuffer(win, screen, buffers[0]);
-	}
-	else {
-		#ifndef RGFW_BUFFER_NO_CONVERSION
+	#ifndef RGFW_BUFFER_NO_CONVERSION
+	if (!is_native) {
 		for (size_t i = 0; i < 2; i += 1) {
-			src->buffers_native[screen][i] = RGFW_ALLOC_SYS(src->buffer_size[screen]);
+			b->buffers_native[i] = RGFW_ALLOC_SYS(b->size);
 
-			if (src->buffers_native[screen][i] == NULL) {
+			if (b->buffers_native[i] == NULL) {
 				RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOutOfMemory, RGFW_DEBUG_CTX(NULL, 0), "Ran out of memory allocating the native buffers.");
 				return RGFW_FALSE;
 			}
 		}
-		_RGFW__gspPresentFramebuffer(win, screen, src->buffers_native[screen][0]);
-		#endif
 	}
-	RGFW_sendDebugInfo(RGFW_debugTypeInfo, RGFW_infoBuffer, RGFW_DEBUG_CTX(win, 0), "Creating framebuffers");
-	RGFW_window_makeCurrent_buffer(win, screen);
+	_RGFW__gspPresentFramebuffer(b, b->buffers_native[0]);
+	#else
+	_RGFW__gspPresentFramebuffer(b, b->buffers[0]);
+	#endif
+
+	RGFW_sendDebugInfo(RGFW_debugTypeInfo, RGFW_infoBuffer, RGFW_DEBUG_CTX(0, 0), "Creating framebuffers");
 
 	return RGFW_TRUE;
 }
 
-void RGFW_window_freeBuffer(RGFW_window* win) {
+void RGFW_window_freeContext_buffer(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
-	if (win->buffer == NULL) { return ; }
 
-	for (RGFW_screen screen = 0; screen < RGFW_screenCount; screen += 1) {
-		RGFW_window_freeBufferScreen(win, screen);
+	if (win->_flags & RGFW_windowBuffer) {
+		for (RGFW_screen screen = 0; screen < RGFW_screenCount; screen += 1) {
+			RGFW_context_buffer* b = &win->src.buffer[screen];
+			if (win->buffer == b) {
+				RGFW_window_makeCurrent_buffer(win, NULL);
+			}
+			RGFW_context_free_buffer(b);
+		}
+		win->_flags &= ~(RGFW_windowFlags)RGFW_windowBuffer;
 	}
 
 	win->buffer = NULL;
 }
 
-void RGFW_window_freeBufferScreen(RGFW_window* win, RGFW_screen screen) {
-	RGFW_ASSERT(win != NULL);
-	RGFW_ASSERT(screen >= 0 && screen < RGFW_screenCount);
+void RGFW_context_free_buffer(RGFW_context_buffer* b) {
+	RGFW_ASSERT(b != NULL);
 
-	RGFW_window_src* src = &win->src;
-	if (src->buffers[screen][0] == NULL) { return ; }
-
-	if (src->is_buffer_allocated[screen]) {
-		RGFW_FREE_SYS(win->src.buffers[screen][0]);
+	if (b->is_buffer_allocated) {
+		RGFW_FREE_SYS(b->buffers[0]);
 	}
 
 	#ifndef RGFW_BUFFER_NO_CONVERSION
-	if (!src->is_native[screen]) {
-		RGFW_FREE_SYS(win->src.buffers_native[screen][0]);
+	if (!b->is_native) {
+		RGFW_FREE_SYS(b->buffers_native[0]);
 	}
 	#endif
 
-	src->buffers[screen][0] = NULL;
-	src->buffers[screen][1] = NULL;
+	b->buffers[0] = NULL;
+	b->buffers[1] = NULL;
 }
 
 void RGFW_window_swapBuffers_buffer(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
-	RGFW_window_src* src = &win->src;
 
 	for (RGFW_screen screen = 0; screen < RGFW_screenCount; screen += 1) {
-		if ((win->_flags & RGFW_BIT(16 + screen)) == 0) {
-			continue;
-		}
-
+		RGFW_context_buffer* b = &win->src.buffer[screen];
 		#ifndef RGFW_BUFFER_NO_CONVERSION
-		u8* buffer = RGFW_window_bufferToNative(win, screen);
+		u8* buffer = RGFW_window_bufferToNative(b);
 		#else
-		u8* buffer = src->buffers[screen][src->current_buffer[screen]];
+		u8* buffer = b->buffers[b->current];
 		#endif
-		GSPGPU_FlushDataCache(buffer, src->buffer_size[screen]);
+		GSPGPU_FlushDataCache(buffer, b->size);
 
-		_RGFW__gspPresentFramebuffer(win, screen, buffer);
-		src->current_buffer[screen] ^= src->is_double_buffered[screen];
+		_RGFW__gspPresentFramebuffer(b, buffer);
+		b->current ^= b->is_double_buffered;
 	}
-
-	ssize_t screen = win->current;
-	win->buffer = src->buffers[screen][src->current_buffer[screen]];
 
 	gspWaitForVBlank();
 }
 
-void RGFW_window_makeCurrent_buffer(RGFW_window* win, RGFW_screen screen) {
-	RGFW_ASSERT(win != NULL);
-	RGFW_ASSERT(screen >= 0 && screen < RGFW_screenCount);
-
-	RGFW_window_src* src = &win->src;
-	win->current = screen;
-	win->buffer = src->buffers[screen][win->src.current_buffer[screen]];
-	win->bufferSize = RGFW_screenGetResolution(win, screen);
+void RGFW_window_makeCurrent_buffer(RGFW_window* win, RGFW_context_buffer* buffer) {
+	win->buffer = buffer;
 }
 
-
-RGFW_bool RGFW_window_bufferSetFormat(RGFW_window* win, RGFW_pixelFormat format) {
-	if (win->buffer == NULL) { return RGFW_FALSE; }
-	RGFW_pixelFormat win_format = RGFW_window_bufferGetFormat(win);
+RGFW_bool RGFW_context_bufferSetFormat(RGFW_context_buffer* b, RGFW_pixelFormat format) {
+	if (b == NULL) { return RGFW_FALSE; }
 
 	/* TODO(EimaMei): Have a way to save the original bpp for performance reasons. */
-	if (RGFW_pixelFormatBPP(win_format) < RGFW_pixelFormatBPP(format)) {
-		RGFW_window_freeBufferScreen(win, win->current);
-		return RGFW_window_initBufferFormatEx(win, format, win->src.is_native[win->current]);
+	if (RGFW_pixelFormatBPP(b->format) < RGFW_pixelFormatBPP(format)) {
+		RGFW_context_free_buffer(b);
+		return RGFW_createContext_buffer(b->screen, b->mode, format, b->is_native, b);
+	}
+	else {
+		b->format = format;
 	}
 
-	win->src.format[win->current] = format;
 	return RGFW_TRUE;
 }
 
-void RGFW_window_bufferSetNative(RGFW_window* win, RGFW_bool is_native) {
-	RGFW_ASSERT(win != NULL);
-	win->src.is_native[win->current] = RGFW_BOOL(is_native);
+void RGFW_context_bufferSetNative(RGFW_context_buffer* b, RGFW_bool is_native) {
+	RGFW_ASSERT(b != NULL);
+	b->is_native = RGFW_BOOL(is_native);
+
 	#ifndef RGFW_BUFFER_NO_CONVERSION
 	if (is_native == RGFW_FALSE) {
-		RGFW_FREE_SYS(win->src.buffers_native[win->current][0]);
+		RGFW_FREE_SYS(b->buffers_native[0]);
 	}
 	#endif
 }
 
-void RGFW_window_bufferSetDoubleBuffering(RGFW_window* win, RGFW_bool enable) {
-	RGFW_ASSERT(win != NULL);
-	win->src.is_double_buffered[win->current] = RGFW_BOOL(enable);
+void RGFW_context_bufferSetDoubleBuffering(RGFW_context_buffer* b, RGFW_bool is_double_buffered) {
+	RGFW_ASSERT(b != NULL);
+	b->is_double_buffered = RGFW_BOOL(is_double_buffered);
 }
 
-void RGFW_window_bufferFlipBuffers(RGFW_window* win) {
-	RGFW_ASSERT(win != NULL);
-	win->src.current_buffer[win->current] ^= 1;
+void RGFW_context_bufferFlipBuffers(RGFW_context_buffer* b) {
+	RGFW_ASSERT(b != NULL);
+	b->current ^= 1;
 }
 
-
-RGFW_pixelFormat RGFW_window_bufferGetFormat(RGFW_window* win) {
-	RGFW_ASSERT(win != NULL);
-	return win->src.format[win->current];
+RGFW_screen RGFW_context_bufferGetScreen(RGFW_context_buffer* b) {
+	RGFW_ASSERT(b != NULL);
+	#ifndef RGFW_3DS
+	return RGFW_screenPrimary;
+	#else
+	return b->screen;
+	#endif
 }
 
-RGFW_bool RGFW_window_bufferIsNative(RGFW_window* win) {
-	RGFW_ASSERT(win != NULL);
-	return win->src.is_native[win->current];
+u8* RGFW_context_bufferGetBuffer(RGFW_context_buffer* b) {
+	RGFW_ASSERT(b != NULL);
+	return b->buffers[b->current];
 }
 
-RGFW_bool RGFW_window_bufferIsDoubleBuffered(RGFW_window* win) {
-	RGFW_ASSERT(win != NULL);
-	return win->src.is_double_buffered[win->current];
+ssize_t RGFW_context_bufferGetBufferCount(RGFW_context_buffer* b) {
+	RGFW_ASSERT(b != NULL);
+	return b->is_double_buffered ? 2 : 1;	
 }
 
-ssize_t RGFW_window_bufferGetCurrent(RGFW_window* win) {
-	RGFW_ASSERT(win != NULL);
-	return win->src.current_buffer[win->current];
+RGFW_pixelFormat RGFW_context_bufferGetFormat(RGFW_context_buffer* b) {
+	RGFW_ASSERT(b != NULL);
+	return b->format;
+}
+
+ssize_t RGFW_context_bufferGetCurrent(RGFW_context_buffer* b) {
+	RGFW_ASSERT(b != NULL);
+	return b->current;
+}
+
+RGFW_area RGFW_context_bufferGetResolution(RGFW_context_buffer* b) {
+	RGFW_ASSERT(b != NULL);
+
+	if (RGFW_context_bufferIsNative(b)) {
+		return (b->screen == RGFW_screenTop)
+			? RGFW_videoModeResolution(b->mode)
+			: RGFW_AREA(240, 320);
+	}
+	else {
+		RGFW_area area = RGFW_videoModeResolution(b->mode);
+		return (b->screen == RGFW_screenTop)
+			? RGFW_AREA(area.h, area.w)
+			: RGFW_AREA(320, 240);
+	}
+}
+
+RGFW_bool RGFW_context_bufferIsNative(RGFW_context_buffer* b) {
+	RGFW_ASSERT(b != NULL);
+	return b->is_native;
+}
+
+RGFW_bool RGFW_context_bufferIsDoubleBuffered(RGFW_context_buffer* b) {
+	RGFW_ASSERT(b != NULL);
+	return b->is_double_buffered;
+}
+
+RGFW_bool RGFW_context_bufferIsStereoscopic(RGFW_context_buffer* b) {
+	RGFW_ASSERT(b != NULL);
+	#ifndef RGFW_3DS
+	return RGFW_FALSE;
+	#else
+	return b->screen == RGFW_screenTop && b->mode == RGFW_videoMode3D;
+	#endif
 }
 
 
 #ifdef RGFW_OPENGL
 
-void _RGFW_window_freeGlassCtx(RGFW_window* win, GLASSScreen screen);
+RGFW_bool RGFW_createContext_OpenGL(RGFW_screen screen, RGFW_videoMode mode, RGFW_context_OpenGL* out_gl) {
+	RGFW_ASSERT(screen >= 0 && screen <= RGFW_screenCount);
+	RGFW_ASSERT(out_gl != NULL);
 
-void _RGFW_window_freeGlassCtx(RGFW_window* win, GLASSScreen screen) {
-	RGFW_ASSERT(win != NULL);
-	if (win->src.ctx[screen] == NULL) { return ; }
-
-	glassBindContext(win->src.ctx[screen]);
-	glDeleteRenderbuffers(1, &win->src.gl_renderbuffer[screen]);
-	glDeleteFramebuffers(1, &win->src.gl_framebuffer[screen]);
-
-	glassDestroyContext(win->src.ctx[screen]);
-	win->src.ctx[screen] = NULL;
-
-	glassBindContext(NULL);
-}
-
-RGFW_bool RGFW_window_initOpenGL(RGFW_window* win) {
-	switch (win->_flags & RGFW_windowDualScreen) {
-		case RGFW_windowTopScreen:    return RGFW_window_initOpenGLScreen(win, RGFW_screenTop);
-		case RGFW_windowBottomScreen: return RGFW_window_initOpenGLScreen(win, RGFW_screenBottom);
-		case RGFW_windowDualScreen: {
-			RGFW_bool res = 0;
-			res |= RGFW_window_initOpenGLScreen(win, RGFW_screenBottom);
-			res |= RGFW_window_initOpenGLScreen(win, RGFW_screenTop);
-			return res;
-		} break;
-	}
-
-	RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(win, 0), "No valid screen was specified to create an OpenGL context.");
-	return RGFW_FALSE;
-}
-
-RGFW_bool RGFW_window_initOpenGLScreen(RGFW_window* win, RGFW_screen screen) {
-	if (RGFW_getGLHint(RGFW_glProfile) != RGFW_glES) {
-		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS only supports GLES.");
+	if (RGFW_getHint_OpenGL(RGFW_glProfile) != RGFW_glProfile_ES) {
+		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "3DS only supports GLES.");
 		return RGFW_FALSE;
 	}
 
-	if (RGFW_getGLHint(RGFW_glMajor) != 1 || (RGFW_getGLHint(RGFW_glMinor) != 0 && RGFW_getGLHint(RGFW_glMinor) != 1)) {
-		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS can only support up to GLES 1.1.");
+	if (RGFW_getHint_OpenGL(RGFW_glMajor) != 1 || (RGFW_getHint_OpenGL(RGFW_glMinor) != 0 && RGFW_getHint_OpenGL(RGFW_glMinor) != 1)) {
+		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "3DS can only support up to GLES 1.1.");
 		return RGFW_FALSE;
 	}
 
-	i32 stencil = RGFW_getGLHint(RGFW_glStencil);
-	if (stencil != 0 && stencil != 8) {
-		RGFW_sendDebugInfo(RGFW_debugTypeWarning, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS only supports an 8-bit stencil buffer. Defaulting to 0.");
-		RGFW_setGLHint(RGFW_glStencil, 0);
+	i32 stencil = RGFW_getHint_OpenGL(RGFW_glStencil);
+	if (stencil > 8) {
+		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported stencil buffer size.");
+		return RGFW_FALSE;
+	}
+	else if (stencil != 0 && stencil != 8) {
+		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported stencil buffer size. Defaulting to 8.");
+		RGFW_setHint_OpenGL(RGFW_glStencil, 8);
 	}
 
-	i32 depth = RGFW_getGLHint(RGFW_glStencil);
-	if (depth != 0 && depth != 24) {
-		RGFW_sendDebugInfo(RGFW_debugTypeWarning, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(win, 0), "3DS only supports a 24-bit depth buffer. Defaulting to 0.");
-		RGFW_setGLHint(RGFW_glStencil, 0);
+	i32 depth = RGFW_getHint_OpenGL(RGFW_glStencil);
+	if (depth > 24) {
+		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported depth buffer size.");
+		return RGFW_FALSE;
+	}
+	else if (stencil != 0 && stencil != 24) {
+		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported depth buffer size. Defaulting to 24.");
+		RGFW_setHint_OpenGL(RGFW_glStencil, 24);
 	}
 
-	RGFW_window_src* src = &win->src;
-	if (!src->kygx_initialized) {
-		gfxInitDefault();
-		src->kygx_initialized = kygxInit();
-		if (!src->kygx_initialized) {
-			RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(win, 0), "Failed to initialize KYGX.");
+	i32 r = RGFW_getHint_OpenGL(RGFW_glRed),
+		g = RGFW_getHint_OpenGL(RGFW_glGreen),
+		b = RGFW_getHint_OpenGL(RGFW_glBlue),
+		a = RGFW_getHint_OpenGL(RGFW_glAlpha);
+
+	GLenum internal_format;
+	if (a == 0) {
+		if (r <= 5 && g <= 6 && b <= 5) {
+			internal_format = GL_RGB565;
+			out_gl->format = RGFW_pixelFormatRGB565;
+
+			if (r != 5 || g != 6 || b != 5) {
+				RGFW_sendDebugInfo(RGFW_debugTypeWarning, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGB565.");
+			}
+		}
+		else if (r <= 8 && g <= 8 && b <= 8) {
+			internal_format = GL_RGB8_OES;
+			out_gl->format = RGFW_pixelFormatBGR8;
+
+			if (r != 8 || g != 8 || b != 8) {
+				RGFW_sendDebugInfo(RGFW_debugTypeWarning, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGB8.");
+			}
+		}
+		else {
+			RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported color buffer format.");
 			return RGFW_FALSE;
 		}
 	}
+	else if (a == 1) {
+		if (r <= 5 && g <= 5 && b <= 5) {
+			internal_format = GL_RGB5_A1;
+			out_gl->format = RGFW_pixelFormatRGB5_A1;
 
-	i32 r = RGFW_getGLHint(RGFW_glRed),
-		g = RGFW_getGLHint(RGFW_glGreen),
-		b = RGFW_getGLHint(RGFW_glBlue),
-		a = RGFW_getGLHint(RGFW_glAlpha);
-
-	GLenum internal_format;
-	if (r == 8 && g == 8 && b == 8) {
-		if (a == 8) {
-			internal_format = GL_RGBA8_OES;
-			src->format[screen] = RGFW_pixelFormatRGBA8;
+			if (r != 5 || g != 5 || b != 5) {
+				RGFW_sendDebugInfo(RGFW_debugTypeWarning, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGB5_A1.");
+			}
 		}
-		else if (a == 0) {
-			internal_format = GL_RGB8_OES;
-			src->format[screen] = RGFW_pixelFormatBGR8;
+		else if (r <= 8 && g <= 8 && b <= 8) {
+			internal_format = GL_RGBA8_OES;
+			out_gl->format = RGFW_pixelFormatRGBA8;
+			RGFW_sendDebugInfo(RGFW_debugTypeWarning, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGBA8.");
 		}
 		else {
-			RGFW_sendDebugInfo(RGFW_debugTypeWarning, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(win, 0), "Invalid alpha channel size. Defaulting to the RGBA8 format.");
-			RGFW_setGLHint(RGFW_glAlpha, 8);
-			internal_format = GL_RGBA8_OES;
-			src->format[screen] = RGFW_pixelFormatRGBA8;
+			RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported color buffer format.");
+			return RGFW_FALSE;
 		}
 	}
-	else if (r == 4 && g == 4 && b == 4 && a == 4) {
-		internal_format = GL_RGBA4;
-		src->format[screen] = RGFW_pixelFormatRGBA4;
+	else if (a <= 4) {
+		if (r <= 4 && g <= 4 && b <= 4) {
+			internal_format = GL_RGBA4;
+			out_gl->format = RGFW_pixelFormatRGBA4;
+
+			if (r != 4 || g != 4 || b != 4 || a != 4) {
+				RGFW_sendDebugInfo(RGFW_debugTypeWarning, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGBA4.");
+			}
+		}
+		else if (r <= 8 && g <= 8 && b <= 8) {
+			internal_format = GL_RGBA4;
+			out_gl->format = RGFW_pixelFormatRGBA4;
+
+			RGFW_sendDebugInfo(RGFW_debugTypeWarning, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGBA8.");
+		}
+		else {
+			RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported color buffer format.");
+			return RGFW_FALSE;
+		}
 	}
-	else if (r == 5 && g == 5 && b == 5 && a == 1) {
-		internal_format = GL_RGB5_A1;
-		src->format[screen] = RGFW_pixelFormatRGB5_A1;
+	else if (a <= 8) {
+		if (r <= 8 && g <= 8 && b <= 8) {
+			internal_format = GL_RGBA8_OES;
+			out_gl->format = RGFW_pixelFormatRGBA8;
+
+			if (r != 8 || g != 8 || b != 8 || a != 8) {
+				RGFW_sendDebugInfo(RGFW_debugTypeWarning, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGBA8.");
+			}
+		}
+		else {
+			RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported color buffer format.");
+			return RGFW_FALSE;
+		}
 	}
 	else {
-		RGFW_sendDebugInfo(RGFW_debugTypeWarning, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(win, 0), "Invalid R, B, G and A channel sizes. Defaulting to the RGBA8 format.");
-		for (ssize_t i = 0; i < 4; i += 1) {
-			RGFW_setGLHint(RGFW_glRed + i, 8);
-		}
-
-		internal_format = GL_RGBA8_OES;
-		src->format[screen] = RGFW_pixelFormatRGBA8;
+		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Unsupported color buffer format.");
+		return RGFW_FALSE;
 	}
 
-	if (RGFW_getGLHint(RGFW_glStereo)) {
-		win->mode = RGFW_videoMode3D;
-	}
+	out_gl->mode = (RGFW_getHint_OpenGL(RGFW_glStereo) && screen == RGFW_screenTop)
+		? RGFW_videoMode3D
+		: mode;
 
 	GLASSCtxParams param;
 	glassGetDefaultContextParams(&param, GLASS_VERSION_ES_2);
 	param.targetScreen = (GLASSScreen)screen;
 
-	src->ctx[screen] = glassCreateContext(&param);
-	if (src->ctx[screen] == NULL) {
+	out_gl->ctx = glassCreateContext(&param);
+	if (out_gl->ctx == NULL) {
 		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(NULL, 0), "Failed to create a GLASS context.");
 		return RGFW_FALSE;
 	}
-	win->current = screen;
-	glassBindContext(src->ctx[screen]);
+	glassBindContext(out_gl->ctx);
 
 	GLint width = (screen == RGFW_screenTop)
-		? RGFW_videoModeResolution(win->mode).h
+		? RGFW_videoModeResolution(out_gl->mode).h
 		: 320;
-	glGenRenderbuffers(1, &src->gl_renderbuffer[screen]);
-	glBindRenderbuffer(GL_RENDERBUFFER, src->gl_renderbuffer[screen]);
+	glGenRenderbuffers(1, &out_gl->renderbuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, out_gl->renderbuffer);
 	glRenderbufferStorage(GL_RENDERBUFFER, internal_format, width, 240);
 
-	glGenFramebuffers(1, &src->gl_framebuffer[screen]);
-	glBindFramebuffer(GL_FRAMEBUFFER, src->gl_framebuffer[screen]);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, src->gl_renderbuffer[screen]);
+	glGenFramebuffers(1, &out_gl->framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, out_gl->framebuffer);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, out_gl->renderbuffer);
 
 	glViewport(0, 0, width, 240);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -2138,40 +2400,98 @@ RGFW_bool RGFW_window_initOpenGLScreen(RGFW_window* win, RGFW_screen screen) {
 	return RGFW_TRUE;
 }
 
-void RGFW_window_freeOpenGL(RGFW_window* win) {
+void RGFW_context_free_OpenGL(RGFW_context_OpenGL* out_gl) {
+	RGFW_ASSERT(out_gl != NULL);
+	if (out_gl->ctx == NULL) { return; }
+
+	glassBindContext(out_gl->ctx);
+	glDeleteRenderbuffers(1, &out_gl->renderbuffer);
+	glDeleteFramebuffers(1, &out_gl->framebuffer);
+
+	glassDestroyContext(out_gl->ctx);
+	glassBindContext(NULL);
+	out_gl->ctx = NULL;
+}
+
+void RGFW_context_swapInterval_OpenGL(RGFW_context_OpenGL* gl, i32 swap_interval) {
+	RGFW_ASSERT(gl != NULL);
+	if (gl->ctx) {
+		glassSetVSync(gl->ctx, RGFW_BOOL(swap_interval));
+	}
+}
+
+
+RGFW_bool RGFW_window_createContext_OpenGL(RGFW_window* win, RGFW_videoMode mode) {
 	RGFW_ASSERT(win != NULL);
 
+	RGFW_bool res;
 	switch (win->_flags & RGFW_windowDualScreen) {
-		case RGFW_windowTopScreen:    _RGFW_window_freeGlassCtx(win, GLASS_SCREEN_TOP); break;
-		case RGFW_windowBottomScreen: _RGFW_window_freeGlassCtx(win, GLASS_SCREEN_BOTTOM); break;
+		case RGFW_windowTopScreen:    res = RGFW_createContext_OpenGL(RGFW_screenTop, mode, &win->src.gl[RGFW_screenTop]); break;
+		case RGFW_windowBottomScreen: res = RGFW_createContext_OpenGL(RGFW_screenBottom, mode, &win->src.gl[RGFW_screenBottom]); break;
 		case RGFW_windowDualScreen: {
-			_RGFW_window_freeGlassCtx(win, GLASS_SCREEN_TOP);
-			_RGFW_window_freeGlassCtx(win, GLASS_SCREEN_BOTTOM);
+			res = RGFW_createContext_OpenGL(RGFW_screenBottom, mode, &win->src.gl[RGFW_screenBottom]);
+			res = RGFW_createContext_OpenGL(RGFW_screenTop, mode, &win->src.gl[RGFW_screenTop]);
+		} break;
+
+		default: {
+			RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOpenGLContext, RGFW_DEBUG_CTX(win, 0), "No screen was specified to create an OpenGL context.");
+			return RGFW_FALSE;
+		}
+	}
+
+	if (!res) {
+		return RGFW_FALSE;
+	}
+	RGFW_window_makeCurrent_OpenGL(win, &win->src.gl[!(win->_flags & RGFW_windowTopScreen)]);
+
+	win->_flags |= RGFW_windowOpenGL;
+	return res;
+}
+
+void RGFW_window_freeContext_OpenGL(RGFW_window* win) {
+	RGFW_ASSERT(win != NULL);
+
+	if ((win->_flags & RGFW_windowOpenGL) == 0) {
+		return;
+	}
+	
+	if (win->gl == &win->src.gl[RGFW_screenTop] || win->gl == &win->src.gl[RGFW_screenBottom]) {
+		RGFW_window_makeCurrent_OpenGL(win, NULL);
+	}
+
+	switch (win->_flags & RGFW_windowDualScreen) {
+		case RGFW_windowTopScreen: RGFW_context_free_OpenGL(&win->src.gl[RGFW_screenTop]); break;
+		case RGFW_windowBottomScreen: RGFW_context_free_OpenGL(&win->src.gl[RGFW_screenBottom]); break;
+		case RGFW_windowDualScreen: {
+			RGFW_context_free_OpenGL(&win->src.gl[RGFW_screenTop]); 
+			RGFW_context_free_OpenGL(&win->src.gl[RGFW_screenBottom]);
 		} break;
 	}
 
+	win->_flags &= ~(RGFW_windowFlags)RGFW_windowOpenGL;
 	RGFW_sendDebugInfo(RGFW_debugTypeInfo, RGFW_infoOpenGL, RGFW_DEBUG_CTX(win, 0), "OpenGL context freed.");
 }
 
-void RGFW_window_makeCurrent_OpenGL(RGFW_window* win, RGFW_screen screen) {
-	RGFW_ASSERT(screen >= 0 && screen < RGFW_screenCount);
-	win->current = screen;
-	glassBindContext(win ? win->src.ctx[screen] : NULL);
-}
-void* RGFW_getCurrent_OpenGL(void) {
-	return glassGetBoundContext();
+void RGFW_window_swapInterval_OpenGL(RGFW_window* win, i32 swap_interval) {
+	RGFW_ASSERT(win != NULL);
+	RGFW_context_swapInterval_OpenGL(win->gl, swap_interval);
 }
 
 void RGFW_window_swapBuffers_OpenGL(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
-	glassSwapContextBuffers(win->src.ctx[0], win->src.ctx[1]);
+	glassSwapContextBuffers(win->src.gl[RGFW_screenTop].ctx, win->src.gl[RGFW_screenBottom].ctx);
 }
 
-void RGFW_window_swapInterval(RGFW_window* win, i32 swapInterval) {
+void RGFW_window_makeCurrent_OpenGL(RGFW_window* win, RGFW_context_OpenGL* out_gl) {
 	RGFW_ASSERT(win != NULL);
-	if (win->src.ctx[win->current]) {
-		glassSetVSync(win->src.ctx[win->current], RGFW_BOOL(swapInterval));
-	}
+
+	win->gl = out_gl;
+	glassBindContext(win->gl ? win->gl->ctx : NULL);
+}
+
+
+void* RGFW_getCurrentContext_OpenGL(void) {
+	return glassGetBoundContext();
 }
 
 #endif
@@ -2184,22 +2504,6 @@ RGFW_systemModel RGFW_platformGetModel(void) {
 
 float RGFW_platformGet3DSlider(void) {
 	return osGet3DSliderState();
-}
-
-RGFW_area RGFW_screenGetResolution(RGFW_window* win, RGFW_screen screen) {
-	RGFW_ASSERT(win != NULL);
-
-	if (win->src.is_native[screen]) {
-		return (screen == RGFW_screenTop)
-			? RGFW_videoModeResolution(win->mode)
-			: RGFW_AREA(240, 320);
-	}
-	else {
-		RGFW_area area = RGFW_videoModeResolution(win->mode);
-		return (screen == RGFW_screenTop)
-			? RGFW_AREA(area.h, area.w)
-			: RGFW_AREA(320, 240);
-	}
 }
 
 RGFW_videoMode RGFW_videoModeOptimal(void) {
@@ -2281,14 +2585,15 @@ RGFW_bool RGFW_window_consoleInit(RGFW_window* win) {
 	static RGFW_bool console_initialized = RGFW_FALSE;
 
 	if (win->buffer == NULL) {
-		RGFW_bool res = RGFW_window_initBufferNative(win, RGFW_pixelFormatRGB565);
+		RGFW_bool res = RGFW_window_createContext_buffer(win, RGFW_videoModeOptimal(), RGFW_pixelFormatRGB565, RGFW_TRUE);
+
 		if (res == RGFW_FALSE) {
 			return RGFW_FALSE;
 		}
 	}
-	RGFW_window_bufferSetNative(win, RGFW_TRUE);
-	RGFW_window_bufferSetFormat(win, RGFW_pixelFormatRGB565);
-	RGFW_window_bufferSetDoubleBuffering(win, RGFW_FALSE);
+	RGFW_context_bufferSetNative(win->buffer, RGFW_TRUE);
+	RGFW_context_bufferSetFormat(win->buffer, RGFW_pixelFormatRGB565);
+	RGFW_context_bufferSetDoubleBuffering(win->buffer, RGFW_FALSE);
 
 	if (!console_initialized) {
 		/* NOTE(EimaMei): Taken from libctru console.c */
@@ -2306,19 +2611,19 @@ RGFW_bool RGFW_window_consoleInit(RGFW_window* win) {
 	}
 	*currentConsole = defaultConsole;
 	currentConsole->consoleInitialised = RGFW_TRUE;
-	currentConsole->frameBuffer = (u16*)(void*)win->buffer;
+	currentConsole->frameBuffer = (u16*)(void*)win->buffer->buffers[0];
 
 	/* NOTE(EimaMei): Taken from libctru console.c */
-	if (win->current == RGFW_screenTop) {
-		RGFW_bool is_wide = (win->mode == RGFW_videoModeWide);
+	if (win->buffer->screen == RGFW_screenTop) {
+		RGFW_bool is_wide = (win->buffer->mode == RGFW_videoModeWide);
 		currentConsole->consoleWidth = is_wide ? 100 : 50;
 		currentConsole->windowWidth = is_wide ? 100 : 50;
 	}
 
 	/* TODO(EimaMei): Should be kept in the library. */
-	if ((win->_flags & RGFW_windowDualScreen) == RGFW_windowDualScreen) {
+	/*if ((win->_flags & RGFW_windowDualScreen) == RGFW_windowDualScreen) {
 		win->current ^= 1;
-	}
+	}*/
 
 	consoleClear();
 	RGFW_window_swapBuffers_buffer(win);
@@ -2365,7 +2670,7 @@ RGFW_bool RGFW_window_checkEvent(RGFW_window* win, const RGFW_event** ev_out) {
 		return RGFW_FALSE;
 	}
 
-    RGFW_resetKeyPrev(win);
+	RGFW_resetKeyPrev(win);
 	hidScanInput();
 
 	u32 pressed = hidKeysHeld();
@@ -2464,6 +2769,7 @@ RGFW_bool RGFW_window_checkEvent(RGFW_window* win, const RGFW_event** ev_out) {
 
 	while (released & RGFW_ACCEPTED_CTRU_INPUTS) {
 		RGFW_button button = RGFW_apiKeyToRGFW(released);
+		RGFW_ASSERT(button != -1);
 
 		RGFW_event* ev = RGFW_eventQueuePush(win);
 		ev->controller = controller;
@@ -2471,7 +2777,7 @@ RGFW_bool RGFW_window_checkEvent(RGFW_window* win, const RGFW_event** ev_out) {
 		ev->button = button;
 
 		RGFW_buttonState* state = &ev->controller->buttons[ev->button];
-		RGFW_MASK_SET(*state, RGFW_buttonStatePrevious, *state & RGFW_buttonStateCurrent);
+		RGFW_MASK_SET(*state, RGFW_buttonStatePrevious, RGFW_TRUE);
 		RGFW_MASK_SET(*state, RGFW_buttonStateCurrent, RGFW_FALSE);
 		released &= ~RGFW_rgfwToApiKey(button);
 
@@ -2504,18 +2810,9 @@ void RGFW_window_close_platform(RGFW_window* win) {
 	gspExit();
 
 	#ifdef RGFW_OPENGL
-	if (win->src.kygx_initialized) {
-		gfxExit();
-		kygxExit();
-		win->src.kygx_initialized = RGFW_FALSE;
-	}
+	kygxExit();
+	gfxExit();
 	#endif
-}
-
-RGFW_area RGFW_windowGetSize(RGFW_window* win) {
-	RGFW_ASSERT(win != NULL);
-	static const i32 WIDTH_LUT[RGFW_videoModeCount] = {400, 400, 800};
-	return RGFW_AREA(win->current == RGFW_screenTop ? WIDTH_LUT[win->mode] : 320, 240);
 }
 
 #ifdef RGFW_OPENGL
@@ -2544,7 +2841,7 @@ RGFW_bool RGFW_platform_OpenGL_rotateScreen(GLuint shader_program, const char* m
 
 #endif /* RGFW_IMPLEMENTATION */
 
-#if defined(__cplusplus) && !defined(__EMSCRIPTEN__)
+#if defined(__cplusplus)
 }
 #endif
 

@@ -1,5 +1,4 @@
 #pragma once
-#define RGFW_OPENGL
 #include <RGFW_embedded.h>
 
 #ifdef RGFW_3DS
@@ -21,5 +20,4 @@ const unsigned char gles1_vshader[] = {
 	0x5f, 0x50, 0x52, 0x4f, 0x4a, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x00
 };
 
-const int gles1_vshader_format = GL_SHADER_BINARY_PICA;
 #endif

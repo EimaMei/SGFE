@@ -11,13 +11,16 @@ int main(void) {
 #ifdef RGFW_3DS
 	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowBuffer | RGFW_windowDualScreen);
 
-	CPU_Surface top = surface_make(win, CPU_colorMake(255, 255, 255, 255)),
-				bottom = surface_make(win, CPU_colorMake(43, 184, 0, 255));
+	CPU_Surface top = surface_make(
+		RGFW_window_getContextEx_buffer(win, RGFW_screenTop),
+		CPU_colorMake(255, 255, 255, 255)
+	);
+	CPU_Surface bottom = surface_make(
+		RGFW_window_getContextEx_buffer(win, RGFW_screenBottom),
+		CPU_colorMake(43, 184, 0, 255)
+	);
 
-	RGFW_window_makeCurrent(win, RGFW_screenBottom);
 	surface_clear_buffers(&bottom);
-
-	RGFW_window_makeCurrent(win, RGFW_screenTop);
 	surface_clear_buffers(&top);
 #else
     #error "This platform does not support multiple screens."
@@ -25,15 +28,13 @@ int main(void) {
 
 	RGFW_rect r = RGFW_RECT(100, 100, img_lonic_width, img_lonic_height);
 
-	/* NOTE(EimaMei): 'RGFW_windowGetSize(win)' may actually differ to 'win->bufferSize'
-	 * in certain situations where the viewport for the window is actually smaller
-	 * than the rendered buffer.
-	 *
-	 * Platforms where it differs:
-	 * - 3DS (when using RGFW_videoMode3D) - internally the buffer is 800x240,
-	 * however the viewport is still set to 400x240 as the second half of the
-	 * resolution is used for the 3D effect. */
-	RGFW_area win_res = RGFW_windowGetSize(win);
+	RGFW_area win_res = RGFW_context_bufferGetResolution(win->buffer);
+	/* NOTE(EimaMei): For stereoscopic images we have to divide the width in half
+	 * since we don't want Lonic (from the left eye image) moving to the right one
+	 * since that'll create a distorted view. */
+	if (RGFW_context_bufferIsStereoscopic(win->buffer)) {
+		win_res.w /= 2;
+	}
 
 	while (!RGFW_window_shouldClose(win)) {
 		const RGFW_event* event;
@@ -61,13 +62,13 @@ int main(void) {
 		}
 
 		#ifdef RGFW_3DS
-		RGFW_window_makeCurrent(win, RGFW_screenTop); {
+		RGFW_window_makeCurrent_buffer(win, top.ctx); {
 			surface_clear_dirty_rects(&top);
 			surface_rect(&top, RGFW_RECT(15, 15, 64, 64), CPU_colorMake(0, 255, 0, 255));
 			surface_bitmap(&top, r, img_lonic_data);
 		}
 
-		RGFW_window_makeCurrent(win, RGFW_screenBottom); {
+		RGFW_window_makeCurrent_buffer(win, bottom.ctx); {
 			surface_clear_dirty_rects(&bottom);
 			surface_rect(&bottom, RGFW_RECT(15, 15, 64, 64), CPU_colorMake(15, 129, 216, 255));
 		}

@@ -14,10 +14,31 @@ TODO (in no particular order):
 - Document examples/README.md
 - Update CHANGELOG
 - Explain how swapBuffers differs from swapBuffers_OpenGL and _buffers
+- make RGFW_context
+- Add changes from Desktop to Embedded
+- add a gyro example.
+- (3DS) Add anti-aliasing for OpenGL.
+- (3DS) Update GLASS, libctru and other 3ds dependencies.
+- (3DS) Add documentation for OpenGL support and how it requires GLASS and a forked
+version of libctru.
+- (3DS) Implement 'GSPGPU_SetLcdForceBlack' using the "showWindow" functions. Add
+back the window flags for it.
+- Implement a show flag.
+- Add an example where the "non-primary" screen is only used.
+- Add a sizeof and getters/setters for each opaque struct type.
+- Rework debug systems to be more flexible.
+- Add a point about RGFW_screenPrimary being available on all platforms.
+- swapInterval example
+- Make createContext functions cross-platform/global.
+- Implement better header guard.
+- Pick a better name for RGFW Embedded.
+- remove RGFW_windowInitAllAPIs
 
 Maybe:
-- (3DS) RGFW_window_swapInterval for buffer rendering.
+- (3DS) Find a way to not use gfxInitDefault for GLASS.
+- RGFW_window_swapInterval for buffer rendering.
 - VRAM alloc functions?
+- Knob?
 
 Distant TODO:
 - Create a portable stdout/stderr library that'd write the text on screen.
@@ -25,3 +46,7 @@ Distant TODO:
 Planned backends:
 - Wii (pretty likely)
 - Dreamcast (later on, maybe)
+
+Console library TODO:
+- Create a console structure that creates its own context and renders on top of the user output.
+- Make it creatable/independent of RGFW_window and its init function.

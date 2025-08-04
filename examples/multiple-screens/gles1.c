@@ -6,7 +6,15 @@
 #include "../gles/gles1_vshader.h"
 
 static
-GLuint load_shader(GLenum shader_type, GLenum binary_format, const u8* binary_source, ssize_t binary_size) {
+GLuint load_shader(GLenum shader_type, const u8* binary_source, ssize_t binary_size) {
+	#ifdef RGFW_3DS
+	#ifndef GL_SHADER_BINARY_PICA
+	#define GL_SHADER_BINARY_PICA 0x6000
+	#endif
+
+	GLenum binary_format = GL_SHADER_BINARY_PICA;
+	#endif
+
 	GLuint shader = glCreateShader(shader_type);
 	glShaderBinary(1, &shader, binary_format, binary_source, binary_size);
 
@@ -18,17 +26,22 @@ typedef struct {
 	float color[4];
 } vertex;
 
+static const vertex vertices[] = {
+	{{-0.5f, -0.5f},  {1, 0, 0, 1}},
+	{{ 0.5f, -0.5f},  {0, 1, 0, 1}},
+	{{ 0.0f,  0.5f},  {0, 0, 1, 1}},
+};
+
 static
-void scene_setup(vertex* allocated_vertices) {
-	/* OpenGL setup. */
+void scene_setup(u32* vbo) {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	GLuint vertex_shader = load_shader(
-		GL_VERTEX_SHADER, gles1_vshader_format, gles1_vshader, sizeof(gles1_vshader)
+		GL_VERTEX_SHADER, gles1_vshader, sizeof(gles1_vshader)
 	);
 
-	GLuint shader_program = glCreateProgram();
+	u32 shader_program = glCreateProgram();
 	glAttachShader(shader_program, vertex_shader);
 
 	glLinkProgram(shader_program);
@@ -42,13 +55,6 @@ void scene_setup(vertex* allocated_vertices) {
 		}
 	}
 	glUseProgram(shader_program);
-
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)allocated_vertices->pos);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)&allocated_vertices->color);
-
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-
 	#ifdef RGFW_3DS
 	/* NOTE(EimaMei): The Nintendo 3DS internally uses a "portrait" resolution
 	 * for its screens, meaning bottom left is (-1.0, 1.0) while top right is
@@ -57,32 +63,35 @@ void scene_setup(vertex* allocated_vertices) {
 	 * by inputting a mat4 uniform variable and calling the "fixScreen" function. */
 	RGFW_platform_OpenGL_rotateScreen(shader_program, "RGFW_PROJECTION");
 	#endif
+	glDeleteProgram(shader_program);
+
+	glGenBuffers(1, vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, *vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, pos));
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, color));
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
 }
 
 int main(void) {
-	RGFW_setGLHint(RGFW_glMajor, 1);
-	RGFW_setGLHint(RGFW_glMinor, 0);
-	RGFW_setGLHint(RGFW_glProfile, RGFW_glES);
-
-	/* NOTE(EimaMei): On some embedded platforms video graphics must be allocated
-	 * from a specific memory address, otherwise you'll just only see a blank screen.
-	 * We copy over our vertices to a valid buffer for this. */
-	vertex vertices[] = {
-		{{-1,  1},  {1, 0, 0, 1}},
-		{{ 1,  1},  {0, 1, 0, 1}},
-		{{ 1, -1},  {0, 0, 1, 1}},
-	};
-	vertex* allocated_vertices = RGFW_ALLOC_SYS(sizeof(vertices));
-	memcpy(allocated_vertices, vertices, sizeof(vertices));
+	RGFW_setHint_OpenGL(RGFW_glMajor, 1);
+	RGFW_setHint_OpenGL(RGFW_glMinor, 0);
+	RGFW_setHint_OpenGL(RGFW_glProfile, RGFW_glProfile_ES);
 
 #ifdef RGFW_3DS
 	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowOpenGL | RGFW_windowDualScreen);
+	RGFW_context_OpenGL *top = RGFW_window_getContextEx_OpenGL(win, RGFW_screenTop),
+						*bottom = RGFW_window_getContextEx_OpenGL(win, RGFW_screenBottom);
 
-	RGFW_window_makeCurrent(win, RGFW_screenTop);
-	scene_setup(allocated_vertices);
+	u32 vbo[2];
+	RGFW_window_makeCurrent_OpenGL(win, top);
+	scene_setup(&vbo[0]);
 
-	RGFW_window_makeCurrent(win, RGFW_screenBottom);
-	scene_setup(allocated_vertices);
+	RGFW_window_makeCurrent_OpenGL(win, bottom);
+	scene_setup(&vbo[1]);
 #else
 	#error "This platform does not support multiple screens."
 #endif
@@ -94,13 +103,12 @@ int main(void) {
 		}
 
 #ifdef RGFW_3DS
-		RGFW_window_makeCurrent(win, RGFW_screenTop);
-		{
+		RGFW_window_makeCurrent_OpenGL(win, top); {
 			glClear(GL_COLOR_BUFFER_BIT);
 			glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
 		}
 
-		RGFW_window_makeCurrent(win, RGFW_screenBottom); {
+		RGFW_window_makeCurrent_OpenGL(win, bottom); {
 			glClear(GL_COLOR_BUFFER_BIT);
 			glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
 		}
@@ -109,6 +117,11 @@ int main(void) {
 		RGFW_window_swapBuffers_OpenGL(win);
 	}
 
-	RGFW_FREE_SYS(allocated_vertices);
+	RGFW_window_makeCurrent_OpenGL(win, top);
+	glDeleteBuffers(1, &vbo[0]);
+
+	RGFW_window_makeCurrent_OpenGL(win, bottom);
+	glDeleteBuffers(1, &vbo[1]);
+
 	RGFW_window_close(win);
 }

@@ -8,21 +8,14 @@
 
 
 int main(void) {
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), 0);
-	RGFW_rect r = RGFW_RECT(100, 100, img_lonic_width, img_lonic_height);
+	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowBuffer);
+	if (win == NULL) { return 1; }
 
-	/* NOTE(EimaMei): 'RGFW_windowGetSize(win)' may actually differ to 'win->bufferSize'
-	 * in certain situations where the viewport for the window is actually smaller
-	 * than the rendered buffer.
-	 *
-	 * Platforms where it differs:
-	 * - 3DS (when using RGFW_videoMode3D) - internally the buffer is 800x240,
-	 * however the viewport is still set to 400x240 as the second half of the
-	 * resolution is used for the 3D effect. */
-	RGFW_area win_res = RGFW_windowGetSize(win);
-
-	CPU_Surface s = surface_make(win, CPU_colorMake(255, 255, 255, 255));
+	CPU_Surface s = surface_make(RGFW_window_getContext_buffer(win), CPU_colorMake(255, 255, 255, 255));
 	surface_clear_buffers(&s);
+
+	RGFW_area win_res = RGFW_context_bufferGetResolution(s.ctx);
+	RGFW_rect r = RGFW_RECT(100, 100, img_lonic_width, img_lonic_height);
 
 	while (!RGFW_window_shouldClose(win)) {
 		const RGFW_event* event;
