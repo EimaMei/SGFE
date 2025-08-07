@@ -12,11 +12,11 @@ int main(void) {
 	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowBuffer | RGFW_windowDualScreen);
 
 	CPU_Surface top = surface_make(
-		RGFW_window_getContextEx_buffer(win, RGFW_screenTop),
+		RGFW_windowGetContextExBuffer(win, RGFW_screenTop),
 		CPU_colorMake(255, 255, 255, 255)
 	);
 	CPU_Surface bottom = surface_make(
-		RGFW_window_getContextEx_buffer(win, RGFW_screenBottom),
+		RGFW_windowGetContextExBuffer(win, RGFW_screenBottom),
 		CPU_colorMake(43, 184, 0, 255)
 	);
 
@@ -28,11 +28,11 @@ int main(void) {
 
 	RGFW_rect r = RGFW_RECT(100, 100, img_lonic_width, img_lonic_height);
 
-	RGFW_area win_res = RGFW_context_bufferGetResolution(win->buffer);
+	RGFW_area win_res = RGFW_bufferGetResolution(win->buffer);
 	/* NOTE(EimaMei): For stereoscopic images we have to divide the width in half
 	 * since we don't want Lonic (from the left eye image) moving to the right one
 	 * since that'll create a distorted view. */
-	if (RGFW_context_bufferIsStereoscopic(win->buffer)) {
+	if (RGFW_bufferIsStereoscopic(win->buffer)) {
 		win_res.w /= 2;
 	}
 
@@ -62,19 +62,19 @@ int main(void) {
 		}
 
 		#ifdef RGFW_3DS
-		RGFW_window_makeCurrent_buffer(win, top.ctx); {
+		RGFW_windowMakeCurrentBuffer(win, top.ctx); {
 			surface_clear_dirty_rects(&top);
 			surface_rect(&top, RGFW_RECT(15, 15, 64, 64), CPU_colorMake(0, 255, 0, 255));
 			surface_bitmap(&top, r, img_lonic_data);
 		}
 
-		RGFW_window_makeCurrent_buffer(win, bottom.ctx); {
+		RGFW_windowMakeCurrentBuffer(win, bottom.ctx); {
 			surface_clear_dirty_rects(&bottom);
 			surface_rect(&bottom, RGFW_RECT(15, 15, 64, 64), CPU_colorMake(15, 129, 216, 255));
 		}
 		#endif
 
-		RGFW_window_swapBuffers_buffer(win);
+		RGFW_windowSwapBuffers(win);
 	}
 
 	RGFW_window_close(win);

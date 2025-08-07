@@ -83,8 +83,8 @@ int main(void) {
 
 #ifdef RGFW_3DS
 	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowOpenGL | RGFW_windowDualScreen);
-	RGFW_context_OpenGL *top = RGFW_window_getContextEx_OpenGL(win, RGFW_screenTop),
-						*bottom = RGFW_window_getContextEx_OpenGL(win, RGFW_screenBottom);
+	RGFW_contextOpenGL *top = RGFW_windowGetContextExOpenGL(win, RGFW_screenTop),
+						*bottom = RGFW_windowGetContextExOpenGL(win, RGFW_screenBottom);
 
 	u32 vbo[2];
 	RGFW_window_makeCurrent_OpenGL(win, top);

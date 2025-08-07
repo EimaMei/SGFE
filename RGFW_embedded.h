@@ -98,7 +98,7 @@
 
 #ifndef RGFW_ASSERT
 	#include <assert.h>
-	#define RGFW_ASSERT assert
+	#define RGFW_ASSERT(condition) assert(condition)
 #endif
 
 #if !defined(RGFW_MEMCPY) || !defined(RGFW_STRNCMP) || !defined(RGFW_MEMSET)
@@ -191,15 +191,25 @@
 	#define RGFW_3DS 1
 	#endif
 
-	#ifndef RGFW_MAX_CONTROLLER_DEVICES
-	#define RGFW_MAX_CONTROLLER_DEVICES 1
+	#ifndef RGFW_MAX_CONTROLLERS
+	#define RGFW_MAX_CONTROLLERS 1
 	#endif
 
-	/* TODO(EimaMei): comment. */
-	#ifndef RGFW_ALLOC_SYS
-	#define RGFW_ALLOC_SYS(size) linearAlloc((size))
-	#define RGFW_FREE_SYS(ptr) linearFree(ptr)
+#elif defined(GEKKO)
+	#ifndef RGFW_WII
+	#define RGFW_WII 1
 	#endif
+
+	#ifndef RGFW_MAX_CONTROLLERS
+	#define RGFW_MAX_CONTROLLERS 4
+	#endif
+
+	#define RGFW__BACKEND_FREE_WINDOW_IN_CLOSE
+#else
+	#ifndef RGFW_MAX_CONTROLLERS
+	#define RGFW_MAX_CONTROLLERS 1
+	#endif
+
 #endif
 
 /*
@@ -216,77 +226,22 @@ typedef RGFW_ENUM(ssize_t, RGFW_screen) {
 	RGFW_screenCount
 };
 
-typedef RGFW_ENUM(u8, RGFW_eventType) {
-	/*! event codes */
-	RGFW_eventNone = 0, /*!< no event has been sent */
-
-	RGFW_quit, /*!< the user clicked the quit button */
-	RGFW_deviceSleep, /* The device has entered sleep mode. */
-	RGFW_deviceWakeup, /* The device has exited out of sleep mode. */
-
-	RGFW_windowRefresh, /* The window content needs to be refreshed */
-	RGFW_windowVideoModeChanged, /* Video mode for the window has been changed (usually by 'RGFW_windowChangeVideoMode'). */
-	RGFW_windowFocusOut, /* User has exited the window and entered a new environment (eg. "Home Menu".) */
-	RGFW_windowFocusIn, /* 	User has entered the window from an external environment (usually the "Home Menu"). */
-
-
-	RGFW_controllerConnected, /*!< a controller was connected */
-	RGFW_controllerDisconnected, /*!< a controller was disconnected */
-
-	RGFW_buttonPressed, /*!< a controller button was pressed */
-	RGFW_buttonReleased, /*!< a controller button was released */
-
-	RGFW_axisMove, /*!< an axis of a controller was moved */
-
-	RGFW_pointerMove, /* The pointer of the controller has moved. */
-	RGFW_pointerPressed, /* The pointer buttons of the controller have been pressed. */
-
-	RGFW_motionMove, /* The motion sensors of the controller have been moved. */
-};
-
-/* NOTE(EimaMei): The following input enums are implementation-defined. The first
- * value will always be equal to zero, while the following types' values are
- * incremented linearly. */
-
-typedef RGFW_ENUM(i32, RGFW_controllerType) {
+typedef RGFW_ENUM(ssize_t, RGFW_controllerType) {
 	/* NOTE(EimaMei): Value '0' indicates the 'Default' controller used for
 	 * the system. Must be present on all implementations. */
 	RGFW_controllerTypeStandard = 0,
 
+	#ifdef RGFW_WII
+	RGFW_controllerTypeWiiRemote = RGFW_controllerTypeStandard,
+	RGFW_controllerTypeNunchuk,
+	RGFW_controllerTypeUnknown,
+	#endif
+
 	RGFW_controllerTypeCount,
 };
 
-typedef RGFW_ENUM(i32, RGFW_axisType) {
-#ifdef RGFW_3DS
-	RGFW_axisTypeLeftX,
-	RGFW_axisTypeLeftY,
-	/* TODO(EimaMei): As of July 2nd 2025 Circle Pad Pro support isn't going to
-	 * be added until this PR gets merged: https://github.com/devkitPro/libctru/pull/568. */
-	/* RGFW_axisTypeRightX,
-	RGFW_axisTypeRightY, */
-#endif
 
-	RGFW_axisTypeCount,
-};
-
-typedef RGFW_ENUM(i32, RGFW_pointerType) {
-#ifdef RGFW_3DS
-	RGFW_pointerTouchscreen,
-#endif
-
-	RGFW_pointerTypeCount,
-};
-
-typedef RGFW_ENUM(i32, RGFW_motionType) {
-#ifdef RGFW_3DS
-	RGFW_motionAccelerometer,
-	RGFW_motionGyroscope,
-#endif
-
-	RGFW_motionTypeCount,
-};
-
-typedef RGFW_ENUM(i32, RGFW_button) {
+typedef RGFW_ENUM(ssize_t, RGFW_buttonType) {
 	RGFW_buttonInvalid = -1,
 
 	/* NOTE(EimaMei): The first controller type's (aka the default controller type's)
@@ -311,21 +266,111 @@ typedef RGFW_ENUM(i32, RGFW_button) {
 	RGFW_CstickLeft,
 	RGFW_CstickUp,
 	RGFW_CstickDown,
+#elif RGFW_WII
+	RGFW_button_2 = 0,
+	RGFW_button_1,
+	RGFW_button_B,
+	RGFW_button_A,
+	RGFW_button_Minus,
+	RGFW_button_Home,
+	RGFW_button_Left,
+	RGFW_button_Right,
+	RGFW_button_Down,
+	RGFW_button_Up,
+	RGFW_button_Plus,
 
+	RGFW_buttonCount_WiiRemote,
+
+
+	RGFW_button_Z = RGFW_button_Plus + 1,
+	RGFW_button_C,
+	RGFW_buttonCount_Nunchuk,
 #endif
-
-	RGFW_controllerButtonCount
 };
 
-/*! basic vector type, if there's not already a point/vector type of choice */
-#ifndef RGFW_point
-	typedef struct RGFW_point { i32 x, y; } RGFW_point;
+typedef RGFW_ENUM(u32, RGFW_button) {
+#ifdef RGFW_3DS
+	RGFW_A = 0,
+	RGFW_B,
+	RGFW_Select,
+	RGFW_Start,
+	RGFW_DpadRight,
+	RGFW_DpadLeft,
+	RGFW_DpadUp,
+	RGFW_DpadDown,
+	RGFW_R,
+	RGFW_L,
+	RGFW_X,
+	RGFW_Y,
+	RGFW_ZL,
+	RGFW_ZR,
+	RGFW_CstickRight,
+	RGFW_CstickLeft,
+	RGFW_CstickUp,
+	RGFW_CstickDown,
+#elif RGFW_WII
+	RGFW_2      = RGFW_BIT(RGFW_button_2),
+	RGFW_1      = RGFW_BIT(RGFW_button_1),
+	RGFW_B      = RGFW_BIT(RGFW_button_B),
+	RGFW_A      = RGFW_BIT(RGFW_button_A),
+	RGFW_Minus  = RGFW_BIT(RGFW_button_Minus),
+	RGFW_Home   = RGFW_BIT(RGFW_button_Home),
+	RGFW_Left   = RGFW_BIT(RGFW_button_Left),
+	RGFW_Right  = RGFW_BIT(RGFW_button_Right),
+	RGFW_Down   = RGFW_BIT(RGFW_button_Down),
+	RGFW_Up     = RGFW_BIT(RGFW_button_Up),
+	RGFW_Plus   = RGFW_BIT(RGFW_button_Plus),
+	RGFW_Z      = RGFW_BIT(RGFW_button_Z),
+	RGFW_C      = RGFW_BIT(RGFW_button_C),
+
+	RGFW_buttonMask_WiiRemote = RGFW_2 | RGFW_1 | RGFW_B | RGFW_A | RGFW_Minus |
+						RGFW_Home | RGFW_Left | RGFW_Right | RGFW_Down | RGFW_Up |
+						RGFW_Plus,
+	RGFW_buttonMask_Nunchuk = RGFW_buttonMask_WiiRemote | RGFW_buttonMask_WiiRemote
+#endif
+};
+
+typedef RGFW_ENUM(ssize_t, RGFW_axisType) {
+#ifdef RGFW_3DS
+	RGFW_axisLeftX,
+	RGFW_axisLeftY,
+	/* TODO(EimaMei): As of July 2nd 2025 Circle Pad Pro support isn't going to
+	 * be added until this PR gets merged: https://github.com/devkitPro/libctru/pull/568. */
+	/* RGFW_axisTypeRightX,
+	RGFW_axisTypeRightY, */
+#elif RGFW_WII
+	RGFW_axisLeftX,
+	RGFW_axisLeftY,
+
 #endif
 
-/*! basic 3D vector type in float-point decimals, used for motion usually. */
-#ifndef RGFW_point3D
-	typedef struct RGFW_point3D { float x, y, z; } RGFW_point3D;
+	RGFW_axisTypeCount,
+};
+
+typedef RGFW_ENUM(ssize_t, RGFW_pointerType) {
+#ifdef RGFW_3DS
+	RGFW_pointerTouchscreen,
+#elif RGFW_WII
+	RGFW_pointerInfrared,
 #endif
+
+	RGFW_pointerTypeCount,
+};
+
+typedef RGFW_ENUM(ssize_t, RGFW_motionType) {
+	#if RGFW_3DS
+	RGFW_motionAccelerometer,
+	RGFW_motionGyroscope,
+
+	#elif RGFW_WII
+	RGFW_motionAccelerometer,
+	RGFW_motionGyroscope,
+	RGFW_motionNunchukAccelerometer,
+
+	#endif
+
+	RGFW_motionTypeCount,
+};
 
 /*! basic rect type, if there's not already a rect type of choice */
 #ifndef RGFW_rect
@@ -335,16 +380,6 @@ typedef RGFW_ENUM(i32, RGFW_button) {
 /*! basic area type, if there's not already a area type of choice */
 #ifndef RGFW_area
 	typedef struct RGFW_area { i32 w, h; } RGFW_area;
-#endif
-
-#if defined(__cplusplus) && !defined(__APPLE__)
-#define RGFW_POINT(x, y) {(i32)x, (i32)y}
-#define RGFW_RECT(x, y, w, h) {(i32)x, (i32)y, (i32)w, (i32)h}
-#define RGFW_AREA(w, h) {(u32)w, (u32)h}
-#else
-#define RGFW_POINT(x, y) (RGFW_point){(i32)(x), (i32)(y)}
-#define RGFW_RECT(x, y, w, h) (RGFW_rect){(i32)(x), (i32)(y), (i32)(w), (i32)(h)}
-#define RGFW_AREA(w, h) (RGFW_area){w, h}
 #endif
 
 typedef struct RGFW_axis {
@@ -360,38 +395,29 @@ typedef RGFW_ENUM(u8, RGFW_buttonState) {
 
 /* TODO(EimaMei): new structure. */
 typedef struct RGFW_controller {
-	/* Denotes if the controller is connected. */
-	RGFW_bool connected;
+	/* TODO */
+	ssize_t port;
 	/* Denotes what type of controller it is. */
 	RGFW_controllerType type;
+	/* Denotes if the controller is connected. */
+	RGFW_bool connected;
 
-	/* Current button states. */
-	RGFW_buttonState buttons[RGFW_controllerButtonCount];
+	/* TODO */
+	RGFW_button buttons_held, buttons_down, buttons_up;
+
 	/* Current axes states. */
 	RGFW_axis axes[RGFW_axisTypeCount];
 	/* Current pointer states. */
-	RGFW_point pointers[RGFW_pointerTypeCount];
+	i32 pointers[RGFW_pointerTypeCount][2];
 	/* Current motion states. */
-	RGFW_point3D motions[RGFW_motionTypeCount];
+	float motions[RGFW_motionTypeCount][3];
 
-	/* Range of valid buttons for the controller. */
-	RGFW_button button_start, button_end;
 	/* Boolean states of enabled pointers. */
 	RGFW_bool enabled_pointers[RGFW_pointerTypeCount];
 	/* Boolean states of enabled motions. */
 	RGFW_bool enabled_motions[RGFW_motionTypeCount];
 } RGFW_controller;
 
-/*! Event structure for checking/getting events */
-typedef struct RGFW_event {
-	RGFW_eventType type; /*!< which event has been sent?*/
-	RGFW_controller* controller;
-
-	RGFW_axisType axis;
-	RGFW_pointerType pointer;
-	RGFW_motionType motion;
-	RGFW_button button;
-} RGFW_event;
 
 
 /* TODO(EimaMei): document */
@@ -400,16 +426,45 @@ typedef RGFW_ENUM(i32, RGFW_videoMode) {
 	/* Sets the video resolution to 400x240 with stereoscopy disabled. Works on
 	 * all models. */
 	RGFW_videoMode2D,
-	/* Sets the video resolution to 400x240 with stereoscopy enabled. Works on 
+	/* Sets the video resolution to 400x240 with stereoscopy enabled. Works on
 	 * all non-2DS consoles. While the visible video resolution is 400x240, the
 	 * actual buffer size is 800x240.
 	 *
 	 * Left image is from 0x0 to 400x240, right image is from 400x240 to 800x240. */
 	RGFW_videoMode3D,
-	/* Sets the video resolution to 800x240 with steroescopy disabled. Only works 
+	/* Sets the video resolution to 800x240 with steroescopy disabled. Only works
 	 * on 3DS consoles and New 2DS XL. */
 	RGFW_videoModeWide,
-	/* TODO(EimaMei): Add an error if you select this on 2DS consoles.*/
+
+	#elif RGFW_WII
+	/* 320x240 NTSC 60 hz Progressive */
+	RGFW_videoModeNTSC_240i,
+	/* 720x480 NTSC 60 hz Interlaced */
+	RGFW_videoModeNTSC_480i,
+	/* 720x480 NTSC 60 hz Progressive */
+	RGFW_videoModeNTSC_480p,
+
+	/* 320x264 PAL 50 hz Interlaced */
+	RGFW_videoModePAL_264i,
+	/* 720x576 PAL 50 hz Interlaced */
+	RGFW_videoModePAL_576i,
+	/* 720x576 PAL 50 hz Progressive */
+	RGFW_videoModePAL_576p,
+
+	/* 320x240 PAL-M 60 hz Progressive */
+	RGFW_videoModeMPAL_240i,
+	/* 720x480 PAL-M 60 hz Interlaced */
+	RGFW_videoModeMPAL_480i,
+	/* 720x480 PAL-M 60 hz Progressive */
+	RGFW_videoModeMPAL_480p,
+
+	/* 320x240 PAL 60 hz Interlaced */
+	RGFW_videoModePAL60hz_240i,
+	/* 720x480 PAL 60 hz Interlaced */
+	RGFW_videoModePAL60hz_480i,
+	/* 720x480 PAL 60 hz Progressive */
+	RGFW_videoModePAL60hz_480p,
+
 	#endif
 
 	RGFW_videoModeCount
@@ -428,6 +483,9 @@ typedef RGFW_ENUM(ssize_t, RGFW_pixelFormat) {
 	RGFW_pixelFormatRGB565,
 	RGFW_pixelFormatRGB5_A1,
 	RGFW_pixelFormatRGBA4,
+	#elif RGFW_WII
+	/* TODO */
+	RGFW_pixelFormatYUV,
 	#endif
 
 	RGFW_pixelFormatCount,
@@ -449,6 +507,130 @@ typedef RGFW_ENUM(i32, RGFW_systemModel) {
 	RGFW_systemModelCount,
 };
 
+
+
+/* TODO */
+typedef RGFW_ENUM(ssize_t, RGFW_contextType) {
+	RGFW_contextTypeNone,
+	RGFW_contextTypeBuffer,
+	RGFW_contextTypeOpenGL,
+	RGFW_contextTypeNative
+};
+
+
+/* TODO */
+typedef struct RGFW_context RGFW_context;
+
+/* TODO */
+RGFWDEF RGFW_contextType RGFW_contextGetType(const RGFW_context* ctx);
+/* TODO */
+RGFWDEF void* RGFW_contextGetData(RGFW_context* ctx);
+
+
+/* TODO */
+typedef struct RGFW_contextBuffer RGFW_contextBuffer;
+
+/* TODO */
+RGFWDEF RGFW_contextBuffer* RGFW_contextGetBuffer(RGFW_context* ctx);
+
+
+#ifdef RGFW_OPENGL
+/**
+ * OpenGL Context type
+ *
+ * The structure is used as an opaque data type to an OpenGL context.
+ *
+ * \sa RGFW_createContext_OpenGL
+ */
+typedef struct RGFW_contextOpenGL RGFW_contextOpenGL;
+
+/* TODO */
+RGFWDEF RGFW_contextOpenGL* RGFW_contextGetOpenGL(RGFW_context* ctx);
+#endif
+
+typedef RGFW_ENUM(ssize_t, RGFW_eventType) {
+	/*! event codes */
+	RGFW_eventNone = 0, /*!< no event has been sent */
+
+	RGFW_eventQuit, /*!< the user clicked the quit button */
+	RGFW_eventDeviceSleep, /* The device has entered sleep mode. */
+	RGFW_eventDeviceWakeup, /* The device has exited out of sleep mode. */
+
+	RGFW_windowRefresh, /* The window content needs to be refreshed */
+	RGFW_eventVideoModeChanged, /* Video mode for the window has been changed (usually by 'RGFW_windowChangeVideoMode'). */
+	RGFW_eventFocusOut, /* User has exited the window and entered a new environment (eg. "Home Menu".) */
+	RGFW_eventFocusIn, /* 	User has entered the window from an external environment (usually the "Home Menu"). */
+
+
+	RGFW_eventControllerConnected, /*!< a controller was connected */
+	RGFW_eventControllerDisconnected, /*!< a controller was disconnected */
+
+	RGFW_eventButtonDown, /*!< a controller button was pressed */
+	RGFW_eventButtonUp, /*!< a controller button was released */
+
+	RGFW_eventAxis, /*!< an axis of a controller was moved */
+	RGFW_eventPointer,
+	RGFW_eventMotion, /* The motion sensors of the controller have been moved. */
+};
+
+typedef struct RGFW_event_controller {
+	RGFW_eventType type;
+	RGFW_controller* controller;
+} RGFW_event_controller;
+
+typedef struct RGFW_event_button {
+	RGFW_eventType type;
+	RGFW_controller* controller;
+
+	RGFW_button buttons;
+	RGFW_button buttons_down;
+	u32 raw_buttons;
+	u32 raw_buttons_down;
+} RGFW_event_button;
+
+typedef struct RGFW_event_axis {
+	RGFW_controller* controller;
+	RGFW_axisType which;
+	float value;
+	float deadzone;
+} RGFW_event_axis;
+
+typedef struct RGFW_event_pointer {
+	RGFW_controller* controller;
+	RGFW_pointerType which;
+	i32 x, y;
+} RGFW_event_pointer;
+
+typedef struct RGFW_event_motion {
+	RGFW_controller* controller;
+	RGFW_motionType which;
+	float x, y, z;
+} RGFW_event_motion;
+
+typedef struct RGFW_event_user {
+	ssize_t code;
+	void* data1;
+	void* data2;
+} RGFW_event_user;
+
+typedef struct RGFW_event {
+	RGFW_eventType type;
+
+	RGFW_event_controller controller;
+	RGFW_event_button button;
+	RGFW_event_axis axis;
+	RGFW_event_pointer pointer;
+	RGFW_event_motion motion;
+	RGFW_event_user user;
+} RGFW_event;
+
+
+
+/* TODO */
+typedef struct RGFW_window RGFW_window;
+/* TODO */
+typedef struct RGFW_window_src RGFW_window_src;
+
 /*! Optional arguments for making a windows */
 typedef RGFW_ENUM(u32, RGFW_windowFlags) {
 	RGFW_windowFlagsNone      = 0,
@@ -465,13 +647,7 @@ typedef RGFW_ENUM(u32, RGFW_windowFlags) {
 	#endif
 };
 
-/* TODO */
-typedef struct RGFW_window RGFW_window;
-/* TODO */
-typedef struct RGFW_window_src RGFW_window_src;
-
-/* TODO */
-typedef struct RGFW_context_buffer RGFW_context_buffer;
+/* TODO(EimaMei): Move window create functions here. */
 
 /* TODO(EimaMei): NEW FUNCTION. */
 typedef void (*RGFW_deviceSleepFunc)(RGFW_window* win, RGFW_bool is_sleeping);
@@ -489,7 +665,7 @@ typedef void (*RGFW_windowFocusFunc)(RGFW_window* win, RGFW_bool is_focused);
 typedef void (*RGFW_controllerFunc)(RGFW_window* win, RGFW_controller* controller, RGFW_bool is_connected);
 
 /*! RGFW_buttonPressed, the window that got the event, the button that was pressed, the scroll value, if it was a press (else it's a release) */
-typedef void (*RGFW_buttonFunc)(RGFW_window* win, RGFW_controller* controller, RGFW_button button, RGFW_bool pressed);
+typedef void (*RGFW_buttonFunc)(RGFW_window* win, RGFW_controller* controller, RGFW_button mask, RGFW_bool down);
 /*! RGFW_axisMove, the window that got the event, the controller in question, the axis values and the axis count */
 typedef void (*RGFW_axisFunc)(RGFW_window* win, RGFW_controller* controller, RGFW_axisType axis);
 /* TODO(EimaMei): NEW FUNCTION. */
@@ -517,6 +693,8 @@ typedef struct RGFW_callbacks {
 
 #if !defined(RGFW_NO_WINDOW_SRC) || defined(RGFW_IMPLEMENTATION)
 
+#ifdef RGFW_3ds
+
 #include <3ds.h>
 
 #ifdef RGFW_OPENGL
@@ -524,7 +702,7 @@ typedef struct RGFW_callbacks {
 #include <GLES/gl2.h>
 #endif
 
-struct RGFW_context_buffer {
+struct RGFW_contextBuffer {
 	RGFW_screen screen;
 	RGFW_videoMode mode;
 	RGFW_pixelFormat format;
@@ -543,7 +721,7 @@ struct RGFW_context_buffer {
 };
 
 #ifdef RGFW_OPENGL
-struct RGFW_context_OpenGL {
+struct RGFW_contextOpenGL {
 	RGFW_screen screen;
 	RGFW_videoMode mode;
 	RGFW_pixelFormat format;
@@ -560,29 +738,86 @@ struct RGFW_window_src {
 	angularRate gyro;
 	aptHookCookie apt_hook;
 
-	RGFW_context_buffer buffer[RGFW_screenCount];
-	#ifdef RGFW_OPENGL
-	struct RGFW_context_OpenGL gl[RGFW_screenCount];
+	union {
+		RGFW_contextBuffer buffer[RGFW_screenCount];
+		#ifdef RGFW_OPENGL
+		struct RGFW_contextOpenGL gl[RGFW_screenCount];
+		#endif
+	} ctx;
+};
+
+#elif RGFW_WII
+
+#ifndef HW_RVL
+#define HW_RVL 1
+#endif
+#include <gccore.h>
+#include <wiiuse/wpad.h>
+
+
+struct RGFW_contextBuffer {
+	RGFW_videoMode mode;
+	RGFW_screen screen;
+	RGFW_pixelFormat format;
+	u8* buffers[2];
+
+	GXRModeObj* gx_video_mode;
+	ssize_t current;
+
+	RGFW_bool is_buffer_allocated;
+	RGFW_bool is_double_buffered;
+	RGFW_bool is_native;
+
+	#ifndef RGFW_BUFFER_NO_CONVERSION
+	u8* buffers_native[2];
 	#endif
 };
 
-struct RGFW_window {
-	RGFW_window_src src; /*!< src window data */
+#ifdef RGFW_OPENGL
+struct RGFW_contextOpenGL {
+};
+#endif
 
+struct RGFW_context {
+	RGFW_contextType type;
+	union {
+		struct RGFW_contextBuffer buffer;
+		#ifdef RGFW_OPENGL
+		struct RGFW_contextOpenGL gl;
+		#endif
+	} data;
+};
+
+struct RGFW_window_src {
+	struct wiimote_t** wiimotes;
+	RGFW_context ctx;
+};
+
+#else
+
+struct RGFW_contextBuffer { u8 blank; };
+
+struct RGFW_window_src {
+	union {
+		RGFW_contextBuffer buffer;
+	} ctx;
+};
+
+#endif
+
+struct RGFW_window {
 	/* TODO */
-	RGFW_context_buffer* buffer;
-	#ifdef RGFW_OPENGL
-	struct RGFW_context_OpenGL* gl;
-	#endif
+	RGFW_window_src src;
+	/* TODO */
+	RGFW_context* current;
 
 	/* struct RGFW_info */
 	RGFW_event events[32];
-	ssize_t eventLen;
+	ssize_t event_len;
 
-	ssize_t controllerCount; /*!< the actual amount of controllers */
-	RGFW_controller controllers[RGFW_MAX_CONTROLLER_DEVICES];
+	RGFW_controller controllers[RGFW_MAX_CONTROLLERS];
 
-	RGFW_bool stopCheckEvents_bool;
+	RGFW_bool queue_events, polled_events;
 	u32 _flags; /*!< windows flags (for RGFW to check) */
 
 	RGFW_callbacks callbacks;
@@ -596,33 +831,42 @@ RGFWDEF size_t RGFW_sizeofWindow(void);
 /* TODO */
 RGFWDEF size_t RGFW_sizeofWindowSrc(void);
 
+
 /* TODO */
-RGFWDEF RGFW_context_buffer* RGFW_window_getCurrent_buffer(RGFW_window* win);
+RGFWDEF RGFW_context* RGFW_windowGetCurrent(RGFW_window* win);
 /* TODO */
-RGFWDEF RGFW_context_buffer* RGFW_window_getContext_buffer(RGFW_window* win);
+RGFWDEF RGFW_context* RGFW_windowGetContext(RGFW_window* win);
 /* TODO */
-RGFWDEF RGFW_context_buffer* RGFW_window_getContextEx_buffer(RGFW_window* win, RGFW_screen screen);
+RGFWDEF RGFW_context* RGFW_windowGetContextEx(RGFW_window* win, RGFW_screen screen);
+
+/* TODO */
+RGFWDEF RGFW_contextBuffer* RGFW_windowGetCurrentBuffer(RGFW_window* win);
+/* TODO */
+RGFWDEF RGFW_contextBuffer* RGFW_windowGetContextBuffer(RGFW_window* win);
+/* TODO */
+RGFWDEF RGFW_contextBuffer* RGFW_windowGetContextExBuffer(RGFW_window* win, RGFW_screen screen);
 
 #ifdef RGFW_OPENGL
 /* TODO */
-RGFWDEF struct RGFW_context_OpenGL* RGFW_window_getCurrent_OpenGL(RGFW_window* win);
+RGFWDEF RGFW_contextOpenGL* RGFW_windowGetCurrentOpenGL(RGFW_window* win);
 /* TODO */
-RGFWDEF struct RGFW_context_OpenGL* RGFW_window_getContext_OpenGL(RGFW_window* win);
+RGFWDEF RGFW_contextOpenGL* RGFW_windowGetContextOpenGL(RGFW_window* win);
 /* TODO */
-RGFWDEF struct RGFW_context_OpenGL* RGFW_window_getContextEx_OpenGL(RGFW_window* win, RGFW_screen screen);
+RGFWDEF RGFW_contextOpenGL* RGFW_windowGetContextExOpenGL(RGFW_window* win, RGFW_screen screen);
 #endif
 
-RGFWDEF void* RGFW_window_getUserPtr(RGFW_window* win); /*!< gets the userPtr of the window | returns RGFW_window.userPtr */
-RGFWDEF void RGFW_window_setUserPtr(RGFW_window* win, void* ptr); /*!< sets the userPtr of the window | writes to RGFW_window.userPtr */
 
-RGFWDEF RGFW_window_src* RGFW_window_getSrc(RGFW_window* win); /*!< returns fat pointer of window, which is sourced from the window casted to the fast pointer */
+RGFWDEF void* RGFW_window_getUserPtr(RGFW_window* win);
+RGFWDEF void RGFW_window_setUserPtr(RGFW_window* win, void* ptr);
+
+RGFWDEF RGFW_bool RGFW_window_isQueuingEvents(RGFW_window* win);
+RGFWDEF void RGFW_window_setQueueEvents(RGFW_window* win, RGFW_bool is_queuing_events);
+
+RGFWDEF RGFW_window_src* RGFW_window_getSrc(RGFW_window* win);
 
 
-RGFWDEF RGFW_window* RGFW_createWindow(
-	RGFW_videoMode mode, /* TODO(EimaMei): document */
-	RGFW_windowFlags flags /* extra arguments ((u32)0 means no flags used)*/
-); /*!< function to create a window and struct */
-
+/* TODO */
+RGFWDEF RGFW_window* RGFW_createWindow(RGFW_videoMode mode, RGFW_windowFlags flags);
 RGFWDEF RGFW_window* RGFW_createWindowPtr(
 	RGFW_videoMode mode, /* TODO(EimaMei): document */
 	RGFW_windowFlags flags, /* extra arguments (NULL / (u32)0 means no flags used) */
@@ -634,109 +878,31 @@ RGFWDEF RGFW_window* RGFW_createWindowContextless(RGFW_windowFlags flags);
 /* TODO */
 RGFWDEF RGFW_window* RGFW_createWindowPtrContextless(RGFW_windowFlags flags, RGFW_window* win);
 
-
-/* TODO */
-RGFWDEF RGFW_bool RGFW_window_createContext_buffer(RGFW_window* win, RGFW_videoMode mode,
-	RGFW_pixelFormat format, RGFW_bool is_native);
-
-/* TODO */
-RGFWDEF void RGFW_window_freeContext_buffer(RGFW_window* win);
-
-
-/* supports OpenGL and software rendering */
-RGFWDEF void RGFW_window_swapBuffers_buffer(RGFW_window* win); /*!< swap the rendering buffer */
-/* TODO(EimaMei): New function. */
-RGFWDEF void RGFW_window_makeCurrent_buffer(RGFW_window* win, RGFW_context_buffer* buffer);
-
+/*! window managment functions */
+RGFWDEF void RGFW_window_close(RGFW_window* win); /*!< close the window and free leftover data */
 
 
 /* TODO */
-RGFWDEF RGFW_bool RGFW_createContext_buffer(RGFW_screen screen, RGFW_videoMode mode,
-	RGFW_pixelFormat format, RGFW_bool is_native, RGFW_context_buffer* out_b);
+RGFWDEF void RGFW_window_pollEvents(RGFW_window* win);
 /* TODO */
-RGFWDEF RGFW_bool RGFW_createContextPtr_buffer(u8* buffers[2], RGFW_screen screen,
-	RGFW_videoMode mode, RGFW_pixelFormat format, RGFW_bool is_native, RGFW_context_buffer* out_b);
-/* TODO */
-RGFWDEF void RGFW_context_free_buffer(RGFW_context_buffer* buffer);
-
-
-/* TODO(EimaMei): New function. */
-RGFWDEF RGFW_bool RGFW_context_bufferSetFormat(RGFW_context_buffer* b, RGFW_pixelFormat format);
-/* TODO(EimaMei): New function. */
-RGFWDEF void RGFW_context_bufferSetNative(RGFW_context_buffer* b, RGFW_bool is_native);
-/* TODO(EimaMei): New function. */
-RGFWDEF void RGFW_context_bufferSetDoubleBuffering(RGFW_context_buffer* b, RGFW_bool enable);
-/* TODO(EimaMei): New function. */
-RGFWDEF void RGFW_context_bufferFlipBuffers(RGFW_context_buffer* b);
+RGFWDEF RGFW_bool RGFW_window_checkEvent(RGFW_window* win, const RGFW_event** out_event);
 
 /* TODO */
-RGFWDEF RGFW_screen RGFW_context_bufferGetScreen(RGFW_context_buffer* b);
-/* TODO(EimaMei): New function. */
-RGFWDEF u8* RGFW_context_bufferGetBuffer(RGFW_context_buffer* b);
+RGFWDEF RGFW_bool RGFW_window_eventPush(RGFW_window* win, const RGFW_event* event);
 /* TODO */
-RGFWDEF ssize_t RGFW_context_bufferGetBufferCount(RGFW_context_buffer* b);
-/* TODO(EimaMei): New function. */
-RGFWDEF ssize_t RGFW_context_bufferGetCurrent(RGFW_context_buffer* b);
-/* TODO */
-RGFWDEF RGFW_area RGFW_context_bufferGetResolution(RGFW_context_buffer* b);
-
-/* TODO(EimaMei): New function. */
-RGFWDEF RGFW_pixelFormat RGFW_context_bufferGetFormat(RGFW_context_buffer* b);
-/* TODO(EimaMei): New function. */
-RGFWDEF RGFW_bool RGFW_context_bufferIsNative(RGFW_context_buffer* b);
-/* TODO(EimaMei): New function. */
-RGFWDEF RGFW_bool RGFW_context_bufferIsDoubleBuffered(RGFW_context_buffer* b);
-/* TODO */
-RGFWDEF RGFW_bool RGFW_context_bufferIsStereoscopic(RGFW_context_buffer* b);
+RGFWDEF const RGFW_event* RGFW_window_eventPop(RGFW_window* win);
 
 
+/* TODO */
+RGFWDEF void RGFW_windowSwapBuffers(RGFW_window* win);
+/* TODO(EimaMei): New function. */
+RGFWDEF void RGFW_windowMakeCurrent(RGFW_window* win, RGFW_context* ctx);
 
 /*! set the window flags (will undo flags if they don't match the old ones) */
 RGFWDEF void RGFW_window_setFlags(RGFW_window* win, RGFW_windowFlags flags);
 
-
-/*!
-	this function checks an *individual* event (and updates window structure attributes)
-	this means, using this function without a while loop may cause event lag
-
-	ex.
-
-	while (RGFW_window_checkEvent(win) != NULL) [this keeps checking events until it reaches the last one]
-
-	this function is optional if you choose to use event callbacks,
-	although you still need some way to tell RGFW to process events eg. `RGFW_window_checkEvents`
-*/
-
-RGFWDEF RGFW_bool RGFW_window_checkEvent(RGFW_window* win, const RGFW_event** ev_out);
-
-/*!
-	for RGFW_window_eventWait and RGFW_window_checkEvents
-	waitMS -> Allows the function to keep checking for events even after `RGFW_window_checkEvent == NULL`
-			  if waitMS == 0, the loop will not wait for events
-			  if waitMS > 0, the loop will wait that many miliseconds after there are no more events until it returns
-			  if waitMS == -1 or waitMS == the max size of an unsigned 32-bit int, the loop will not return until it gets another event
-*/
-typedef RGFW_ENUM(i32, RGFW_eventWait) {
-	RGFW_eventWaitNone = 0,
-	RGFW_eventWaitNext = -1
-};
-
-/*! sleep until RGFW gets an event or the timer ends (defined by OS) */
-RGFWDEF void RGFW_window_eventWait(RGFW_window* win, i32 waitMS);
-
-/*!
-	check all the events until there are none left.
-	Return true if the window should close, otherwise false.
-*/
-RGFWDEF RGFW_bool RGFW_window_checkEvents(RGFW_window* win, RGFW_eventWait waitMS);
-
-/*!
-	tell RGFW_window_eventWait to stop waiting (to be ran from another thread)
-*/
-RGFWDEF void RGFW_stopCheckEvents(void);
-
-/*! window managment functions */
-RGFWDEF void RGFW_window_close(RGFW_window* win); /*!< close the window and free leftover data */
+/* Returns the controller strucutr associated with the port. */
+RGFWDEF RGFW_controller* RGFW_window_controllerGet(RGFW_window* win, ssize_t port);
 
 /*
 	makes it so `RGFW_window_shouldClose` returns true or overrides a window close
@@ -747,48 +913,60 @@ RGFWDEF void RGFW_window_setShouldClose(RGFW_window* win, RGFW_bool shouldClose)
 /*! if the window should close (RGFW_close was sent or escape was pressed) */
 RGFWDEF RGFW_bool RGFW_window_shouldClose(RGFW_window* win);
 
+
 /* TODO(EimaMei): new function. */
-RGFWDEF RGFW_bool RGFW_window_consoleInit(RGFW_window* win);
+RGFWDEF RGFW_bool RGFW_windowInitConsole(RGFW_window* win);
 
 
-/** @} */
 
-/** @} */
-
-/** * @defgroup Input
-* @{ */
-
-RGFWDEF RGFW_bool RGFW_isPressed(RGFW_controller* controller, RGFW_button button); /*!< if key is pressed (key code)*/
-
-RGFWDEF RGFW_bool RGFW_wasPressed(RGFW_controller* controller, RGFW_button button); /*!< if key was pressed (checks previous state only) (key code) */
-
-RGFWDEF RGFW_bool RGFW_isHeld(RGFW_controller* controller, RGFW_button button); /*!< if key is held (key code) */
-RGFWDEF RGFW_bool RGFW_isReleased(RGFW_controller* controller, RGFW_button button); /*!< if key is released (key code) */
+RGFWDEF RGFW_bool RGFW_isHeld(const RGFW_controller* controller, RGFW_button mask);
+RGFWDEF RGFW_bool RGFW_isDown(const RGFW_controller* controller, RGFW_button mask);
+RGFWDEF RGFW_bool RGFW_isUp(const RGFW_controller* controller, RGFW_button mask);
 
 
-/* Returns the amount of currently connected controllers.*/
-RGFWDEF ssize_t RGFW_controllerGetCount(RGFW_window* win);
-
-/* Returns the controller strucutr associated with the port. */
-RGFWDEF RGFW_controller* RGFW_controllerGet(RGFW_window* win, ssize_t port);
-/* TODO(EimaMei): NEW FUNCTION */
-RGFWDEF void RGFW_controllerPointerEnable(RGFW_controller* controller,
-		RGFW_pointerType pointer, RGFW_bool enable);
-/* TODO(EimaMei): NEW FUNCTION */
-RGFWDEF void RGFW_controllerMotionEnable(RGFW_controller* controller,
-		RGFW_motionType motion, RGFW_bool enable);
+/* TODO */
+RGFWDEF RGFW_buttonType RGFW_buttonGetType(RGFW_button mask);
+/* TODO */
+RGFWDEF RGFW_bool RGFW_iterateButtonMask(RGFW_button* buttons_mask, RGFW_buttonType* out_button);
 
 
 /* TODO(EimaMei): NEW FUNCTION */
-RGFWDEF const char* RGFW_controllerName(RGFW_controllerType type);
+RGFWDEF RGFW_button RGFW_controller_getButtonMaskBits(const RGFW_controller* controller);
+/* TODO */
+RGFWDEF RGFW_button RGFW_controller_getButtonMaskFromAPI(const RGFW_controller* controller, u32 mask);
+
 /* TODO(EimaMei): NEW FUNCTION */
-RGFWDEF const char* RGFW_buttonName(RGFW_button button);
+RGFWDEF ssize_t RGFW_controller_getButtonCount(const RGFW_controller* controller);
 /* TODO(EimaMei): NEW FUNCTION */
-RGFWDEF const char* RGFW_axisName(RGFW_axisType axis);
+RGFWDEF void RGFW_controller_getRangeAxis(const RGFW_controller* controller, RGFW_axisType* out_start, RGFW_axisType* out_end);
 /* TODO(EimaMei): NEW FUNCTION */
-RGFWDEF const char* RGFW_pointerName(RGFW_pointerType type);
+RGFWDEF void RGFW_controller_getRangePointer(const RGFW_controller* controller, RGFW_pointerType* out_start, RGFW_pointerType* out_end);
 /* TODO(EimaMei): NEW FUNCTION */
-RGFWDEF const char* RGFW_motionName(RGFW_motionType type);
+RGFWDEF void RGFW_controller_getRangeMotion(const RGFW_controller* controller, RGFW_motionType* out_start, RGFW_motionType* out_end);
+
+
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF const char* RGFW_controllerGetName(const RGFW_controller* controller);
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF const char* RGFW_controllerGetNameButton(const RGFW_controller* controller,
+	RGFW_buttonType button);
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF const char* RGFW_controllerGetNameAxis(const RGFW_controller* controller,
+	RGFW_axisType axis);
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF const char* RGFW_controllerGetNamePointer(const RGFW_controller* controller,
+	RGFW_pointerType type);
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF const char* RGFW_controllerGetNameMotion(const RGFW_controller* controller,
+	RGFW_motionType type);
+
+
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF void RGFW_controller_enablePointer(RGFW_controller* controller,
+	RGFW_pointerType pointer, RGFW_bool enable);
+/* TODO(EimaMei): NEW FUNCTION */
+RGFWDEF void RGFW_controller_enableMotion(RGFW_controller* controller,
+	RGFW_motionType motion, RGFW_bool enable);
 
 
 /** * @defgroup error handling
@@ -854,6 +1032,62 @@ RGFWDEF RGFW_debugFunc RGFW_setDebugCallback(RGFW_debugFunc func);
 
 
 
+/* */
+RGFWDEF void RGFW_bufferMakeWithDefaultSettings(RGFW_contextBuffer* out_buffer,
+	RGFW_videoMode mode, RGFW_pixelFormat format);
+
+/* TODO */
+RGFWDEF RGFW_bool RGFW_bufferCreateContext(RGFW_contextBuffer* out_buffer);
+/* TODO */
+RGFWDEF void RGFW_bufferFreeContext(RGFW_contextBuffer* buffer);
+
+/* TODO */
+RGFWDEF RGFW_bool RGFW_bufferAllocFramebuffers(RGFW_contextBuffer* out_buffer);
+/* TODO */
+RGFWDEF RGFW_bool RGFW_bufferFreeFramebuffers(RGFW_contextBuffer* out_buffer);
+
+
+/* TODO(EimaMei): New function. */
+RGFWDEF RGFW_bool RGFW_bufferSetFormat(RGFW_contextBuffer* b, RGFW_pixelFormat format);
+/* TODO(EimaMei): New function. */
+RGFWDEF void RGFW_bufferSetNative(RGFW_contextBuffer* b, RGFW_bool is_native);
+/* TODO(EimaMei): New function. */
+RGFWDEF void RGFW_bufferSetDoubleBuffered(RGFW_contextBuffer* b, RGFW_bool enable);
+/* TODO(EimaMei): New function. */
+RGFWDEF void RGFW_bufferFlipFramebuffers(RGFW_contextBuffer* b);
+
+/* TODO(EimaMei): New function. */
+RGFWDEF u8* RGFW_bufferGetFramebuffer(RGFW_contextBuffer* b);
+
+/* TODO(EimaMei): New function. */
+RGFWDEF RGFW_pixelFormat RGFW_contextGetFormat(const RGFW_contextBuffer* b);
+/* TODO(EimaMei): New function. */
+RGFWDEF RGFW_bool RGFW_bufferIsNative(const RGFW_contextBuffer* b);
+/* TODO(EimaMei): New function. */
+RGFWDEF RGFW_bool RGFW_bufferIsDoubleBuffered(const RGFW_contextBuffer* b);
+/* TODO(EimaMei): New function. */
+RGFWDEF ssize_t RGFW_contextBufferGetCurrent(const RGFW_contextBuffer* b);
+
+/* TODO */
+RGFWDEF RGFW_screen RGFW_bufferGetScreen(RGFW_contextBuffer* b);
+/* TODO */
+RGFWDEF ssize_t RGFW_bufferGetFramebufferCount(RGFW_contextBuffer* b);
+/* TODO */
+RGFWDEF RGFW_area RGFW_bufferGetResolution(RGFW_contextBuffer* b);
+/* TODO */
+RGFWDEF RGFW_bool RGFW_bufferIsStereoscopic(RGFW_contextBuffer* b);
+
+
+/* TODO */
+RGFWDEF RGFW_bool RGFW_windowCreateContextBuffer(RGFW_window* win, RGFW_videoMode mode,
+	RGFW_pixelFormat format, RGFW_bool is_native);
+
+/* TODO */
+RGFWDEF void RGFW_windowFreeContextBuffer(RGFW_window* win);
+
+
+
+
 #if defined(RGFW_OPENGL)
 
 /**
@@ -869,22 +1103,13 @@ RGFWDEF RGFW_debugFunc RGFW_setDebugCallback(RGFW_debugFunc func);
  * - Nintendo 3DS - OpenGL ES 1.1* (see remarks).
  *
  * ## Remarks
- * TODO: Multiple screens 
+ * TODO: Multiple screens
  * ### Nintendo 3DS
  * TODO: GLASS, libctru fork.
 */
 
 /**
- * OpenGL Context type
- *
- * The structure is used as an opaque data type to an OpenGL context. 
- *
- * \sa RGFW_createContext_OpenGL
- */
-typedef struct RGFW_context_OpenGL RGFW_context_OpenGL;
-
-/**
- * OpenGL context initializiation integer values 
+ * OpenGL context initializiation integer values
  *
  * OpenGL hints are used to set desired parameters for when creating a new OpenGL
  * context. These are treated as 'hints' since the OpenGL driver is only obligated
@@ -903,7 +1128,7 @@ typedef struct RGFW_context_OpenGL RGFW_context_OpenGL;
  *
  * When a specific hint value is not supported but its minimum value is, the hint
  * value is changed to its minimum after the context has been created.
- * 
+ *
  * \sa RGFW_setHint_OpenGL
  * \sa RGFW_getHint_OpenGL
  */
@@ -968,11 +1193,11 @@ typedef RGFW_ENUM(i32, RGFW_glHint)  {
 };
 
 /**
- * OpenGL context hint values 
+ * OpenGL context hint values
  *
  * Certain RGFW_glHint require a specific value instead of a regular number or
  * boolean. Any specific value follows the naming scheme of `RGFW_<glHint>_<value>`.
- * 
+ *
  * \sa RGFW_glHint
  */
 typedef RGFW_ENUM(i32, RGFW_glValue)  {
@@ -1021,15 +1246,15 @@ RGFWDEF i32 RGFW_getHint_OpenGL(RGFW_glHint hint);
  */
 RGFWDEF void* RGFW_getCurrentContext_OpenGL(void);
 
-/* === RGFW_context_OpenGL === */
+/* === RGFW_contextOpenGL === */
 
 /* TODO */
-RGFWDEF RGFW_bool RGFW_createContext_OpenGL(RGFW_screen screen, RGFW_videoMode mode, RGFW_context_OpenGL* out_gl);
+RGFWDEF RGFW_bool RGFW_createContext_OpenGL(RGFW_screen screen, RGFW_videoMode mode, RGFW_contextOpenGL* out_gl);
 /* TODO */
-RGFWDEF void RGFW_context_free_OpenGL(RGFW_context_OpenGL* gl);
+RGFWDEF void RGFW_context_free_OpenGL(RGFW_contextOpenGL* gl);
 
 /* TODO */
-RGFWDEF void RGFW_context_swapInterval_OpenGL(RGFW_context_OpenGL* gl, i32 swap_interval);
+RGFWDEF void RGFW_context_swapInterval_OpenGL(RGFW_contextOpenGL* gl, i32 swap_interval);
 
 /* === */
 
@@ -1043,144 +1268,9 @@ RGFWDEF void RGFW_window_swapInterval_OpenGL(RGFW_window* win, i32 swap_interval
 /* TODO */
 RGFWDEF void RGFW_window_swapBuffers_OpenGL(RGFW_window* win); /*!< swap the rendering buffer */
 /* TODO(EimaMei): New function. */
-RGFWDEF void RGFW_window_makeCurrent_OpenGL(RGFW_window* win, RGFW_context_OpenGL* out_gl);
+RGFWDEF void RGFW_window_makeCurrent_OpenGL(RGFW_window* win, RGFW_contextOpenGL* out_gl);
 
 #endif
-
-
-/* TODO(EimaMei): Explain the differences between Desktop and Embedded. */
-/*! standard event queue, used for injecting events and returning source API callback events like any other queue check */
-/* these are all used internally by RGFW */
-RGFW_event* RGFW_eventQueuePush(RGFW_window* win);
-const RGFW_event* RGFW_eventQueuePop(RGFW_window* win);
-
-/* for C++ / C89 */
-#define RGFW_eventQueuePushEx(eventInit) { RGFW_event e; eventInit; RGFW_eventQueuePush(e); }
-
-/*!
-	key codes and mouse icon enums
-*/
-typedef RGFW_ENUM(u8, RGFW_key) {
-	RGFW_keyNULL = 0,
-	RGFW_keyEscape = '\033',
-	RGFW_keyBacktick = '`',
-	RGFW_key0 = '0',
-	RGFW_key1 = '1',
-	RGFW_key2 = '2',
-	RGFW_key3 = '3',
-	RGFW_key4 = '4',
-	RGFW_key5 = '5',
-	RGFW_key6 = '6',
-	RGFW_key7 = '7',
-	RGFW_key8 = '8',
-	RGFW_key9 = '9',
-
-	RGFW_keyMinus = '-',
-	RGFW_keyEquals = '=',
-	RGFW_keyBackSpace = '\b',
-	RGFW_keyTab = '\t',
-	RGFW_keySpace = ' ',
-
-	RGFW_keyA = 'a',
-	RGFW_keyB = 'b',
-	RGFW_keyC = 'c',
-	RGFW_keyD = 'd',
-	RGFW_keyE = 'e',
-	RGFW_keyF = 'f',
-	RGFW_keyG = 'g',
-	RGFW_keyH = 'h',
-	RGFW_keyI = 'i',
-	RGFW_keyJ = 'j',
-	RGFW_keyK = 'k',
-	RGFW_keyL = 'l',
-	RGFW_keyM = 'm',
-	RGFW_keyN = 'n',
-	RGFW_keyO = 'o',
-	RGFW_keyP = 'p',
-	RGFW_keyQ = 'q',
-	RGFW_keyR = 'r',
-	RGFW_keyS = 's',
-	RGFW_keyT = 't',
-	RGFW_keyU = 'u',
-	RGFW_keyV = 'v',
-	RGFW_keyW = 'w',
-	RGFW_keyX = 'x',
-	RGFW_keyY = 'y',
-	RGFW_keyZ = 'z',
-
-	RGFW_keyPeriod = '.',
-	RGFW_keyComma = ',',
-	RGFW_keySlash = '/',
-	RGFW_keyBracket = '[',
-	RGFW_keyCloseBracket = ']',
-	RGFW_keySemicolon = ';',
-	RGFW_keyApostrophe = '\'',
-	RGFW_keyBackSlash = '\\',
-	RGFW_keyReturn = '\n',
-	RGFW_keyEnter = RGFW_keyReturn,
-
-	RGFW_keyDelete = '\177', /* 127 */
-
-	RGFW_keyF1,
-	RGFW_keyF2,
-	RGFW_keyF3,
-	RGFW_keyF4,
-	RGFW_keyF5,
-	RGFW_keyF6,
-	RGFW_keyF7,
-	RGFW_keyF8,
-	RGFW_keyF9,
-	RGFW_keyF10,
-	RGFW_keyF11,
-	RGFW_keyF12,
-
-	RGFW_keyCapsLock,
-	RGFW_keyShiftL,
-	RGFW_keyControlL,
-	RGFW_keyAltL,
-	RGFW_keySuperL,
-	RGFW_keyShiftR,
-	RGFW_keyControlR,
-	RGFW_keyAltR,
-	RGFW_keySuperR,
-	RGFW_keyUp,
-	RGFW_keyDown,
-	RGFW_keyLeft,
-	RGFW_keyRight,
-	RGFW_keyInsert,
-	RGFW_keyEnd,
-	RGFW_keyHome,
-	RGFW_keyPageUp,
-	RGFW_keyPageDown,
-
-	RGFW_keynumLock,
-	RGFW_keyKP_Slash,
-	RGFW_keymultiply,
-	RGFW_keyKP_Minus,
-	RGFW_keyKP_1,
-	RGFW_keyKP_2,
-	RGFW_keyKP_3,
-	RGFW_keyKP_4,
-	RGFW_keyKP_5,
-	RGFW_keyKP_6,
-	RGFW_keyKP_7,
-	RGFW_keyKP_8,
-	RGFW_keyKP_9,
-	RGFW_keyKP_0,
-	RGFW_keyKP_Period,
-	RGFW_keyKP_Return,
-	RGFW_keyscrollLock,
-	RGFW_keyprintScreen,
-	RGFW_keypause,
-	RGFW_keyLast = 256 /* padding for alignment ~(175 by default) */
- };
-
-
-/*! converts api keycode to the RGFW unmapped/physical key */
-RGFWDEF RGFW_button RGFW_apiKeyToRGFW(u32 keycode);
-/*! converts RGFW keycode to the unmapped/physical api key */
-RGFWDEF u32 RGFW_rgfwToApiKey(RGFW_button keycode);
-
 
 #ifdef RGFW_3DS
 /* TODO(EimaMei): Move these somewhere more appropriate. */
@@ -1203,40 +1293,41 @@ RGFWDEF RGFW_bool RGFW_platform_OpenGL_rotateScreen(GLuint shader_program, const
  * by the library. Usually this returns a mode that has a standard resolution,
  * refresh rate and technique for drawing scanlines that works across all models. */
 RGFWDEF RGFW_videoMode RGFW_videoModeOptimal(void);
-/* Returns a video mode that's considered to be the most high-quality for the
- * system. This usually entails a mode with the highest resolution, refresh rate
- * and/or using non-interlaced scanning. Note that return of this can differ per
- * specific model. */
-RGFWDEF RGFW_videoMode RGFW_videoModeHighest(void);
 /* TODO(EimaMei): New function. */
-RGFWDEF RGFW_area RGFW_videoModeResolution(RGFW_videoMode mode);
-/* TODO(EimaMei): New function. */
-RGFWDEF const char* RGFW_videoModeStr(RGFW_videoMode mode);
+RGFWDEF void RGFW_videoModeResolution(RGFW_videoMode mode,
+	ssize_t* out_width, ssize_t* out_height);
 
 /* TODO(EimaMei): New function. */
 RGFWDEF RGFW_videoMode RGFW_pixelFormatOptimal(void);
 /* TODO(EimaMei): New function. */
-RGFWDEF i32 RGFW_pixelFormatBPP(RGFW_pixelFormat mode);
+RGFWDEF ssize_t RGFW_pixelFormatBytesPerPixel(RGFW_pixelFormat format);
+
+
 /* TODO(EimaMei): New function. */
-RGFWDEF const char* RGFW_pixelFormatStr(RGFW_pixelFormat mode);
+RGFWDEF const char* RGFW_videoModeStr(RGFW_videoMode mode);
+/* TODO(EimaMei): New function. */
+RGFWDEF const char* RGFW_pixelFormatStr(RGFW_pixelFormat format);
 
 
 #ifdef RGFW_IMPLEMENTATION
 
+const RGFW_button RGFW_BUTTON_MASK_BITS_LUT[RGFW_controllerTypeCount];
 
-/*
-RGFW_IMPLEMENTATION starts with generic RGFW defines
+const ssize_t RGFW_BUTTON_COUNT_LUT[RGFW_controllerTypeCount];
+const ssize_t RGFW_AXIS_RANGE_LUT[RGFW_controllerTypeCount][2];
+const ssize_t RGFW_POINTER_RANGE_LUT[RGFW_controllerTypeCount][2];
+const ssize_t RGFW_MOTION_RANGE_LUT[RGFW_controllerTypeCount][2];
 
-This is the start of keycode data
-*/
+const char* RGFW_CONTROLLER_NAME_LUT[RGFW_controllerTypeCount];
+const char* RGFW_AXIS_NAME_LUT[RGFW_axisTypeCount];
+const char* RGFW_POINTER_NAME_LUT[RGFW_pointerTypeCount];
+const char* RGFW_MOTION_NAME_LUT[RGFW_motionTypeCount];
 
+ssize_t RGFW_VIDEO_RESOLUTION_LUT[RGFW_videoModeCount][2];
+ssize_t RGFW_FORMAT_BYTES_PER_PIXEL_LUT[RGFW_pixelFormatCount];
 
-
-/*
-	the c++ compiler doesn't support setting up an array like,
-	we'll have to do it during runtime using a function & this messy setup
-*/
-
+const char* RGFW_VIDEO_MODE_NAME_LUT[RGFW_videoModeCount];
+const char* RGFW_PIXEL_FORMAT_NAME_LUT[RGFW_pixelFormatCount];
 
 
 /* var - VARIABLE | mask - UINT | set - RGFW_bool
@@ -1246,31 +1337,34 @@ This is the start of keycode data
 	else     (var) &= ~(mask); \
 } while (0)
 
-RGFWDEF void RGFW_resetKeyPrev(RGFW_window* win);
 
 
-void RGFW_resetKeyPrev(RGFW_window* win) {
-	/* TODO(EimaMei): This feels inneficient to do each frame. Must be resolved. */
-	ssize_t i, j;
-	for (i = 0; i < RGFW_MAX_CONTROLLER_DEVICES; i += 1) {
-		RGFW_controller* controller = &win->controllers[i];
-		if (!controller->connected) {
-			continue;
-		}
 
-		for (j = controller->button_start; j < controller->button_end; j += 1) {
-			RGFW_MASK_SET(win->controllers[i].buttons[j], RGFW_buttonStatePrevious, RGFW_FALSE);
-		}
-	}
+RGFW_contextType RGFW_contextGetType(const RGFW_context* ctx) {
+	RGFW_ASSERT(ctx != NULL);
+	return ctx->type;
 }
 
-/*
-	this is the end of keycode data
-*/
+void* RGFW_contextGetData(RGFW_context* ctx) {
+	RGFW_ASSERT(ctx != NULL);
+	return &ctx->data;
+}
 
-/*
-	event callback defines start here
-*/
+
+RGFW_contextBuffer* RGFW_contextGetBuffer(RGFW_context* ctx) {
+	RGFW_ASSERT(ctx != NULL);
+	RGFW_ASSERT(ctx->type == RGFW_contextTypeBuffer);
+	return &ctx->data.buffer;
+}
+
+#ifdef RGFW_OPENGL
+RGFWDEF RGFW_contextOpenGL* RGFW_contextGetOpenGL(RGFW_context* ctx) {
+	RGFW_ASSERT(ctx != NULL);
+	RGFW_ASSERT(ctx->type == RGFW_contextTypeBuffer);
+	return &ctx->data.gl;
+}
+#endif
+
 
 
 #define RGFW_CALLBACK_DEFINE(return_type, name, member_name) \
@@ -1355,10 +1449,6 @@ RGFW_debugFunc RGFW_setDebugCallback(RGFW_debugFunc func) {
 		win->callbacks.motion(win, controller, type); \
 	} do {} while(0)
 
-#ifdef RGFW_DEBUG
-#include <stdio.h>
-#endif
-
 void RGFW_sendDebugInfo(RGFW_debugType type, RGFW_error err, RGFW_debugContext ctx, const char* msg) {
 	#if defined(RGFW_3DS) && defined(RGFW_OPENGL)
 	if (RGFW_getHint_OpenGL(RGFW_glNoError)) { return ; }
@@ -1383,76 +1473,71 @@ void RGFW_sendDebugInfo(RGFW_debugType type, RGFW_error err, RGFW_debugContext c
 	#endif
 }
 
-RGFW_bool RGFW_window_checkEvents(RGFW_window* win, i32 waitMS) {
-	RGFW_window_eventWait(win, waitMS);
-
-	const RGFW_event* ev;
-	while (RGFW_window_checkEvent(win, &ev)) {}
-
-	return !RGFW_window_shouldClose(win);
-}
-
 
 size_t RGFW_sizeofWindow(void) { return sizeof(RGFW_window); }
 size_t RGFW_sizeofWindowSrc(void) { return sizeof(RGFW_window_src); }
 
 
-RGFW_context_buffer* RGFW_window_getCurrent_buffer(RGFW_window* win) {
+RGFW_context* RGFW_windowGetCurrent(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
-	return win->buffer;
+	return win->current;
 }
 
-RGFW_context_buffer* RGFW_window_getContext_buffer(RGFW_window* win) {
-	#ifndef RGFW_3DS
+RGFW_context* RGFW_windowGetContext(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
-	return &win->src.buffer;
+
+	#ifndef RGFW_3DS
+	return &win->src.ctx;
 	#else
-	return RGFW_window_getContextEx_buffer(win, RGFW_screenPrimary);
+	return RGFW_windowGetContextEx(win, !(win->_flags & RGFW_windowTopScreen));
 	#endif
 }
 
-RGFW_context_buffer* RGFW_window_getContextEx_buffer(RGFW_window* win, RGFW_screen screen) {
+RGFW_context* RGFW_windowGetContextEx(RGFW_window* win, RGFW_screen screen) {
 	RGFW_ASSERT(win != NULL);
 	RGFW_ASSERT(screen >= 0 && screen < RGFW_screenCount);
 
 	#ifndef RGFW_3DS
-	return &win->src.buffer;
+	return &win->src.ctx;
 	#else
-	return &win->src.buffer[screen];
+	return &win->src.ctx[!(win->_flags & RGFW_windowTopScreen)];
 	#endif
 }
+
+
+RGFW_contextBuffer* RGFW_windowGetCurrentBuffer(RGFW_window* win) {
+	return RGFW_contextGetBuffer(RGFW_windowGetCurrent(win));
+}
+
+RGFW_contextBuffer* RGFW_windowGetContextBuffer(RGFW_window* win) {
+	return RGFW_contextGetBuffer(RGFW_windowGetContext(win));
+}
+
+RGFW_contextBuffer* RGFW_windowGetContextExBuffer(RGFW_window* win, RGFW_screen screen) {
+	return RGFW_contextGetBuffer(RGFW_windowGetContextEx(win, screen));
+}
+
 
 #ifdef RGFW_OPENGL
-
-RGFW_context_OpenGL* RGFW_window_getCurrent_OpenGL(RGFW_window* win) {
-	RGFW_ASSERT(win != NULL);
-	return win->gl;
+RGFW_contextOpenGL* RGFW_windowGetCurrentOpenGL(RGFW_window* win) {
+	return RGFW_contextGetOpenGL(RGFW_windowGetCurrent(win));
 }
 
-RGFW_context_OpenGL* RGFW_window_getContext_OpenGL(RGFW_window* win) {
-	#ifndef RGFW_3DS
-	RGFW_ASSERT(win != NULL);
-	return &win->src.gl;
-	#else
-	return RGFW_window_getContextEx_OpenGL(win, RGFW_screenPrimary);
-	#endif
+RGFW_contextOpenGL* RGFW_windowGetContextBuffer(RGFW_window* win) {
+	return RGFW_contextGetOpenGL(RGFW_windowGetContext(win));
 }
 
-RGFW_context_OpenGL* RGFW_window_getContextEx_OpenGL(RGFW_window* win, RGFW_screen screen) {
-	RGFW_ASSERT(win != NULL);
-	RGFW_ASSERT(screen >= 0 && screen < RGFW_screenCount);
-
-	#ifndef RGFW_3DS
-	return &win->src.gl;
-	#else
-	return &win->src.gl[screen];
-	#endif
+RGFW_contextOpenGL* RGFW_windowGetContextExBuffer(RGFW_window* win, RGFW_screen screen) {
+	return RGFW_contextGetOpenGL(RGFW_windowGetContextEx(win, screen));
 }
-
 #endif
+
 
 void* RGFW_window_getUserPtr(RGFW_window* win) { RGFW_ASSERT(win != NULL); return win->userPtr; }
 void RGFW_window_setUserPtr(RGFW_window* win, void* ptr) { RGFW_ASSERT(win != NULL); win->userPtr = ptr; }
+
+RGFW_bool RGFW_window_isQueuingEvents(RGFW_window* win) { RGFW_ASSERT(win != NULL); return win->queue_events; }
+void RGFW_window_setQueueEvents(RGFW_window* win, RGFW_bool is_queuing_events) { RGFW_ASSERT(win != NULL); win->queue_events = is_queuing_events; }
 
 RGFW_window_src* RGFW_window_getSrc(RGFW_window* win) { RGFW_ASSERT(win != NULL); return &win->src; }
 
@@ -1471,42 +1556,29 @@ RGFW_window* RGFW_createWindow(RGFW_videoMode mode, RGFW_windowFlags flags) {
 	return RGFW_createWindowPtr(mode, flags | RGFW_WINDOW_ALLOC, win);
 }
 
-RGFW_window* RGFW_createWindowContextless(RGFW_windowFlags flags) {
-	RGFW_ASSERT((flags & (RGFW_windowOpenGL | RGFW_windowBuffer)) == 0);
-	return RGFW_createWindow(0, flags);
-}
-
-RGFW_window* RGFW_createWindowPtrContextless(RGFW_windowFlags flags, RGFW_window* win) {
-	return RGFW_createWindowPtr(0, flags, win);
-}
-
 RGFWDEF RGFW_bool RGFW_create_window_platform(RGFW_window* win);
 
 RGFW_window* RGFW_createWindowPtr(RGFW_videoMode mode, RGFW_windowFlags flags,
 		RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
 
-	win->eventLen = 0;
-	win->stopCheckEvents_bool = RGFW_FALSE;
+	win->event_len = 0;
 	win->_flags = flags;
+	win->queue_events = RGFW_FALSE;
+	win->polled_events = RGFW_FALSE;
+	win->current = NULL;
 
-	win->buffer = NULL;
-	#ifdef RGFW_OPENGL
-	win->gl = NULL;
-	#endif
-
-	win->controllerCount = 0;
 	RGFW_MEMSET(win->controllers, 0, sizeof(win->controllers));
 	RGFW_MEMSET(&win->callbacks, 0, sizeof(win->callbacks));
 
 	RGFW_bool res = RGFW_create_window_platform(win);
-	if (res == false) { return NULL; }	
+	if (res == RGFW_FALSE) { return NULL; }
 	RGFW_window_setFlags(win, win->_flags);
 
 	switch (win->_flags & (RGFW_windowBuffer | RGFW_windowOpenGL)) {
 		case 0: break;
 		case RGFW_windowBuffer: {
-			res = RGFW_window_createContext_buffer(win, mode, RGFW_pixelFormatRGBA8, RGFW_FALSE); 
+			res = RGFW_windowCreateContextBuffer(win, mode, RGFW_pixelFormatRGBA8, RGFW_FALSE);
 		} break;
 
 		#ifdef RGFW_OPENGL
@@ -1527,106 +1599,303 @@ RGFW_window* RGFW_createWindowPtr(RGFW_videoMode mode, RGFW_windowFlags flags,
 	return win;
 }
 
+RGFW_window* RGFW_createWindowContextless(RGFW_windowFlags flags) {
+	RGFW_ASSERT((flags & (RGFW_windowOpenGL | RGFW_windowBuffer)) == 0);
+	return RGFW_createWindow(0, flags);
+}
+
+RGFW_window* RGFW_createWindowPtrContextless(RGFW_windowFlags flags, RGFW_window* win) {
+	return RGFW_createWindowPtr(0, flags, win);
+}
+
+
 RGFWDEF void RGFW_window_close_platform(RGFW_window* win);
 
 void RGFW_window_close(RGFW_window* win) {
-	RGFW_window_freeContext_buffer(win);
+	RGFW_windowFreeContextBuffer(win);
 	#ifdef RGFW_OPENGL
 	RGFW_window_freeContext_OpenGL(win);
 	#endif
 
 	RGFW_window_close_platform(win);
 
+	#ifndef RGFW__BACKEND_FREE_WINDOW_IN_CLOSE
 	if ((win->_flags & RGFW_WINDOW_ALLOC)) {
 		RGFW_FREE(win);
 	}
+	#endif
 }
 
+RGFW_bool RGFW_window_eventPush(RGFW_window* win, const RGFW_event* event) {
+	RGFW_ASSERT(win != NULL);
+	RGFW_ASSERT(win->event_len >= 0);
 
-RGFW_event* RGFW_eventQueuePush(RGFW_window* win) {
-	RGFW_ASSERT(win->eventLen >= 0);
-
-	if (win->eventLen >= RGFW_COUNTOF(win->events)) {
+	if (win->event_len >= RGFW_COUNTOF(win->events)) {
 		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorEventQueue, RGFW_DEBUG_CTX(NULL, 0), "Event queue limit 'RGFW_MAX_EVENTS' has been reached.");
-		return NULL;
+		return RGFW_FALSE;
 	}
 
-	win->eventLen += 1;
-	return &win->events[RGFW_COUNTOF(win->events) - win->eventLen];
+	win->event_len += 1;
+	win->events[RGFW_COUNTOF(win->events) - win->event_len] = *event;
+	return RGFW_TRUE;
 }
 
-const RGFW_event* RGFW_eventQueuePop(RGFW_window* win) {
-	RGFW_ASSERT(win->eventLen >= 0 && win->eventLen <= RGFW_COUNTOF(win->events));
+const RGFW_event* RGFW_window_eventPop(RGFW_window* win) {
+	RGFW_ASSERT(win != NULL);
+	RGFW_ASSERT(win->event_len >= 0 && win->event_len <= RGFW_COUNTOF(win->events));
 
-	if (win->eventLen >= 0) {
+	if (win->event_len <= 0) {
 		return NULL;
 	}
+	RGFW_ASSERT(win->queue_events == RGFW_TRUE);
 
-	RGFW_event* ev = &win->events[RGFW_COUNTOF(win->events) - win->eventLen];
-	win->eventLen -= 1;
+	RGFW_event* ev = &win->events[RGFW_COUNTOF(win->events) - win->event_len];
+	win->event_len -= 1;
 
 	return ev;
 }
+
+RGFW_bool RGFW_window_checkEvent(RGFW_window* win, const RGFW_event** out_event) {
+	RGFW_ASSERT(win != NULL);
+	RGFW_ASSERT(out_event != NULL);
+
+	if (win->event_len == 0 && win->polled_events == RGFW_FALSE) {
+		RGFW_window_pollEvents(win);
+	}
+
+	const RGFW_event* event = RGFW_window_eventPop(win);
+	*out_event = event;
+	win->polled_events = (event != NULL);
+
+	return (event != NULL);
+}
+
 
 void RGFW_window_setFlags(RGFW_window* win, RGFW_windowFlags flags) {
 	win->_flags = flags | (win->_flags & RGFW_INTERNAL_FLAGS);
 }
 
-RGFW_bool RGFW_window_createContext_buffer(RGFW_window* win, RGFW_videoMode mode,
+RGFW_bool RGFW_windowCreateContextBuffer(RGFW_window* win, RGFW_videoMode mode,
 		RGFW_pixelFormat format, RGFW_bool is_native) {
 	RGFW_ASSERT(win != NULL);
-	RGFW_window_freeContext_buffer(win);
+	RGFW_windowFreeContextBuffer(win);
 
-	#if RGFW_screenCount == 1
-		#error "TODO"
-		RGFW_bool res = ...;
-		RGFW_window_makeCurrent_buffer(win, win->src.buffer);
-	#else
-		for (RGFW_screen screen = 0; screen < RGFW_screenCount; screen += 1) {		
-			RGFW_bool res = RGFW_createContext_buffer(screen, mode, format, is_native, &win->src.buffer[screen]);
-			if (res == RGFW_FALSE) { return RGFW_FALSE; }
-		}
+	for (RGFW_screen screen = 0; screen < RGFW_screenCount; screen += 1) {
+		RGFW_context* ctx = RGFW_windowGetContextEx(win, screen);
+		ctx->type = RGFW_contextTypeBuffer;
 
-		#ifdef RGFW_3DS
-		RGFW_window_makeCurrent_buffer(win, &win->src.buffer[!(win->_flags & RGFW_windowTopScreen)]);
-		#endif
-	#endif
+		RGFW_contextBuffer* b = &ctx->data.buffer;
+		RGFW_bufferMakeWithDefaultSettings(b, mode, format);
+		b->screen = screen;
+		b->is_native = is_native;
 
+		RGFW_bool res = RGFW_bufferCreateContext(b);
+		if (res == RGFW_FALSE) { return RGFW_FALSE; }
+	}
+	RGFW_windowMakeCurrent(win, RGFW_windowGetContext(win));
+
+	#ifdef RGFW_3DS
 	if (!win->src.lcd_is_on) {
 		gspWaitForVBlank();
 		GSPGPU_SetLcdForceBlack(RGFW_FALSE);
 		win->src.lcd_is_on = RGFW_TRUE;
 	}
+	#endif
 
 	win->_flags |= RGFW_windowBuffer;
 	return RGFW_TRUE;
 }
 
 
+RGFW_bool RGFW_bufferSetFormat(RGFW_contextBuffer* b, RGFW_pixelFormat format) {
+	if (b == NULL) { return RGFW_FALSE; }
 
-RGFW_bool RGFW_isPressed(RGFW_controller* controller, RGFW_button button) {
+	/* TODO(EimaMei): Have a way to save the original bpp for performance reasons. */
+	if (RGFW_pixelFormatBytesPerPixel(b->format) < RGFW_pixelFormatBytesPerPixel(format)) {
+		RGFW_bufferFreeContext(b);
+		b->format = format;
+		return RGFW_bufferCreateContext(b);
+	}
+	else {
+		b->format = format;
+	}
+
+	return RGFW_TRUE;
+}
+
+void RGFW_bufferSetNative(RGFW_contextBuffer* b, RGFW_bool is_native) {
+	RGFW_ASSERT(b != NULL);
+	b->is_native = RGFW_BOOL(is_native);
+}
+
+void RGFW_bufferSetDoubleBuffered(RGFW_contextBuffer* b, RGFW_bool is_double_buffered) {
+	RGFW_ASSERT(b != NULL);
+	b->is_double_buffered = RGFW_BOOL(is_double_buffered);
+}
+
+void RGFW_bufferFlipFramebuffers(RGFW_contextBuffer* b) {
+	RGFW_ASSERT(b != NULL);
+	b->current ^= 1;
+}
+
+
+u8* RGFW_bufferGetFramebuffer(RGFW_contextBuffer* b) {
+	RGFW_ASSERT(b != NULL);
+	return b->buffers[b->current];
+}
+
+
+RGFW_pixelFormat RGFW_contextGetFormat(const RGFW_contextBuffer* b) {
+	RGFW_ASSERT(b != NULL);
+	return b->format;
+}
+
+RGFW_bool RGFW_bufferIsNative(const RGFW_contextBuffer* b) {
+	RGFW_ASSERT(b != NULL);
+	return b->is_native;
+}
+
+RGFW_bool RGFW_bufferIsDoubleBuffered(const RGFW_contextBuffer* b) {
+	RGFW_ASSERT(b != NULL);
+	return b->is_double_buffered;
+}
+
+ssize_t RGFW_contextBufferGetCurrent(const RGFW_contextBuffer* b) {
+	RGFW_ASSERT(b != NULL);
+	return b->current;
+}
+
+
+RGFW_screen RGFW_bufferGetScreen(RGFW_contextBuffer* b) {
+	RGFW_ASSERT(b != NULL);
+	#ifndef RGFW_3DS
+	return RGFW_screenPrimary;
+	#else
+	return b->screen;
+	#endif
+}
+
+ssize_t RGFW_bufferGetFramebufferCount(RGFW_contextBuffer* b) {
+	RGFW_ASSERT(b != NULL);
+	return b->is_double_buffered ? 2 : 1;
+}
+
+RGFW_bool RGFW_bufferIsStereoscopic(RGFW_contextBuffer* b) {
+	RGFW_ASSERT(b != NULL);
+	#ifndef RGFW_3DS
+	return RGFW_FALSE;
+	#else
+	return b->screen == RGFW_screenTop && b->mode == RGFW_videoMode3D;
+	#endif
+}
+
+
+
+
+RGFW_controller* RGFW_window_controllerGet(RGFW_window* win, ssize_t port) {
+	RGFW_ASSERT(win != NULL);
+	RGFW_ASSERT(port >= 0 && port < RGFW_MAX_CONTROLLERS);
+	return &win->controllers[port];
+}
+
+
+RGFW_bool RGFW_isHeld(const RGFW_controller* controller, RGFW_button mask) {
 	RGFW_ASSERT(controller != NULL);
-	RGFW_ASSERT(button >= controller->button_start && button < controller->button_end);
-	return (controller->buttons[button] & RGFW_buttonStateCurrent) != 0;
+	RGFW_ASSERT((mask & ~RGFW_controller_getButtonMaskBits(controller)) == 0);
+	return (controller->buttons_held & mask) == mask;
 }
 
-RGFW_bool RGFW_wasPressed(RGFW_controller* controller, RGFW_button button) {
+RGFW_bool RGFW_isDown(const RGFW_controller* controller, RGFW_button mask) {
 	RGFW_ASSERT(controller != NULL);
-	RGFW_ASSERT(button >= controller->button_start && button < controller->button_end);
-	return (controller->buttons[button] & RGFW_buttonStatePrevious) != 0;
+	RGFW_ASSERT((mask & ~RGFW_controller_getButtonMaskBits(controller)) == 0);
+	return (controller->buttons_down & mask) == mask;
 }
 
-RGFW_bool RGFW_isHeld(RGFW_controller* controller, RGFW_button button) {
-	return RGFW_isPressed(controller, button) && RGFW_wasPressed(controller, button);
+RGFW_bool RGFW_isUp(const RGFW_controller* controller, RGFW_button mask) {
+	RGFW_ASSERT(controller != NULL);
+	RGFW_ASSERT((mask & ~RGFW_controller_getButtonMaskBits(controller)) == 0);
+	return (controller->buttons_up & mask) == mask;
 }
 
-RGFW_bool RGFW_isReleased(RGFW_controller* controller, RGFW_button button) {
-	return !RGFW_isPressed(controller, button) && RGFW_wasPressed(controller, button);
+
+RGFW_buttonType RGFW_buttonGetType(RGFW_button mask) {
+	ssize_t count = 0;
+	while ((mask & 1) == 0) {
+		count += 1;
+		mask >>= 1;
+	}
+	return count;
 }
 
-ssize_t RGFW_controllerGetCount(RGFW_window* win) {
-	return win->controllerCount;
+RGFW_bool RGFW_iterateButtonMask(RGFW_button* buttons_mask, RGFW_buttonType* out_button) {
+	RGFW_ASSERT(buttons_mask != NULL);
+	RGFW_ASSERT(out_button != NULL);
+	if (*buttons_mask == 0) { return RGFW_FALSE; }
+
+	RGFW_buttonType type = RGFW_buttonGetType(*buttons_mask);
+	*buttons_mask &= ~RGFW_BIT(type);
+	*out_button = type;
+
+	return RGFW_TRUE;
 }
+
+
+RGFW_button RGFW_controller_getButtonMaskBits(const RGFW_controller* controller) {
+	RGFW_ASSERT(controller != NULL);
+	return RGFW_BUTTON_MASK_BITS_LUT[controller->type];
+}
+
+
+ssize_t RGFW_controller_getButtonCount(const RGFW_controller* controller) {
+	RGFW_ASSERT(controller != NULL);
+	return RGFW_BUTTON_COUNT_LUT[controller->type];
+}
+
+void RGFW_controller_getRangeAxis(const RGFW_controller* controller,
+		RGFW_axisType* out_start, RGFW_axisType* out_end) {
+	RGFW_ASSERT(controller != NULL);
+	if (out_start) { *out_start = RGFW_AXIS_RANGE_LUT[controller->type][0]; }
+	if (out_end)   { *out_end   = RGFW_AXIS_RANGE_LUT[controller->type][1]; }
+}
+
+void RGFW_controller_getRangePointer(const RGFW_controller* controller,
+		RGFW_pointerType* out_start, RGFW_pointerType* out_end) {
+	RGFW_ASSERT(controller != NULL);
+	if (out_start) { *out_start = RGFW_POINTER_RANGE_LUT[controller->type][0]; }
+	if (out_end)   { *out_end   = RGFW_POINTER_RANGE_LUT[controller->type][1]; }
+}
+
+void RGFW_controller_getRangeMotion(const RGFW_controller* controller,
+		RGFW_motionType* out_start, RGFW_motionType* out_end) {
+	RGFW_ASSERT(controller != NULL);
+	if (out_start) { *out_start = RGFW_MOTION_RANGE_LUT[controller->type][0]; }
+	if (out_end)   { *out_end   = RGFW_MOTION_RANGE_LUT[controller->type][1]; }
+}
+
+
+const char* RGFW_controllerGetName(const RGFW_controller* controller) {
+	RGFW_ASSERT(controller != NULL);
+	return RGFW_CONTROLLER_NAME_LUT[controller->type];
+}
+
+const char* RGFW_controllerGetNameAxis(const RGFW_controller* controller,
+		RGFW_axisType axis) {
+	RGFW_ASSERT(controller != NULL);
+	return RGFW_AXIS_NAME_LUT[axis];
+}
+
+const char* RGFW_controllerGetNamePointer(const RGFW_controller* controller,
+		RGFW_pointerType type) {
+	RGFW_ASSERT(controller != NULL);
+	return RGFW_POINTER_NAME_LUT[type];
+}
+
+const char* RGFW_controllerGetNameMotion(const RGFW_controller* controller,
+		RGFW_motionType type) {
+	RGFW_ASSERT(controller != NULL);
+	return RGFW_MOTION_NAME_LUT[type];
+}
+
 
 
 RGFW_bool RGFW_window_shouldClose(RGFW_window* win) {
@@ -1643,6 +1912,30 @@ void RGFW_window_setShouldClose(RGFW_window* win, RGFW_bool shouldClose) {
 		win->_flags &= ~(u32)RGFW_EVENT_QUIT;
 	}
 }
+
+
+void RGFW_videoModeResolution(RGFW_videoMode mode, ssize_t* out_width, ssize_t* out_height) {
+	RGFW_ASSERT(mode >= 0 && mode < RGFW_videoModeCount);
+	if (out_width)  {  *out_width = RGFW_VIDEO_RESOLUTION_LUT[mode][0]; }
+	if (out_height) { *out_height = RGFW_VIDEO_RESOLUTION_LUT[mode][1]; }
+}
+
+ssize_t RGFW_pixelFormatBytesPerPixel(RGFW_pixelFormat format) {
+	RGFW_ASSERT(format >= 0 && format < RGFW_pixelFormatCount);
+	return RGFW_FORMAT_BYTES_PER_PIXEL_LUT[format];
+}
+
+
+const char* RGFW_pixelFormatStr(RGFW_pixelFormat format) {
+	RGFW_ASSERT(format >= 0 && format < RGFW_pixelFormatCount);
+	return RGFW_PIXEL_FORMAT_NAME_LUT[format];
+}
+
+const char* RGFW_videoModeStr(RGFW_videoMode mode) {
+	RGFW_ASSERT(mode >= 0 && mode < RGFW_videoModeCount);
+	return RGFW_VIDEO_MODE_NAME_LUT[mode];
+}
+
 
 #if defined(RGFW_OPENGL)
 
@@ -1690,19 +1983,6 @@ i32 RGFW_getHint_OpenGL(RGFW_glHint hint) {
 
 #endif
 
-/*
-This is where OS specific stuff starts
-*/
-
-
-
-/*
-
-
-Start of 3DS
-
-
-*/
 
 #ifdef RGFW_3DS
 
@@ -1730,7 +2010,7 @@ i32 RGFW_countTrailingZeros(u32 x) {
 #endif
 
 
-const char* RGFW_controllerName(RGFW_controllerType type) {
+const char* RGFW_controllerGetName(RGFW_controllerType type) {
 	RGFW_ASSERT(type >= 0 && type < RGFW_controllerTypeCount);
 
 	static const char* NAME_LUT[RGFW_controllerTypeCount] = {
@@ -1739,14 +2019,7 @@ const char* RGFW_controllerName(RGFW_controllerType type) {
 	return NAME_LUT[type];
 }
 
-
-RGFW_controller* RGFW_controllerGet(RGFW_window* win, ssize_t port) {
-	RGFW_ASSERT(port >= 0 && port < RGFW_MAX_CONTROLLER_DEVICES);
-	return &win->controllers[port];
-}
-
-
-void RGFW_controllerPointerEnable(RGFW_controller* controller,
+void RGFW_controller_enablePointer(RGFW_controller* controller,
 		RGFW_pointerType pointer, RGFW_bool enable) {
 	RGFW_ASSERT(controller != NULL);
 	RGFW_ASSERT(pointer >= 0 && pointer < RGFW_pointerTypeCount);
@@ -1754,7 +2027,7 @@ void RGFW_controllerPointerEnable(RGFW_controller* controller,
 	controller->enabled_pointers[pointer] = enable;
 }
 
-void RGFW_controllerMotionEnable(RGFW_controller* controller, RGFW_motionType motion,
+void RGFW_controller_enableMotion(RGFW_controller* controller, RGFW_motionType motion,
 		RGFW_bool enable) {
 	RGFW_ASSERT(controller != NULL);
 	RGFW_ASSERT(motion >= 0 && motion < RGFW_motionTypeCount);
@@ -1778,7 +2051,7 @@ void RGFW_controllerMotionEnable(RGFW_controller* controller, RGFW_motionType mo
 	controller->enabled_motions[motion] = enable;
 }
 
-const char* RGFW_buttonName(RGFW_button button) {
+const char* RGFW_controllerGetNameButton(RGFW_buttonType button) {
 	RGFW_ASSERT(button >= 0 && button < RGFW_controllerButtonCount);
 
 	static const char* NAME_LUT[RGFW_controllerButtonCount] = {
@@ -1804,7 +2077,7 @@ const char* RGFW_buttonName(RGFW_button button) {
 	return NAME_LUT[button];
 }
 
-const char* RGFW_axisName(RGFW_axisType axis) {
+const char* RGFW_controllerGetNameAxis(RGFW_axisType axis) {
 	RGFW_ASSERT(axis >= 0 && axis < RGFW_axisTypeCount);
 
 	static const char* NAME_LUT[RGFW_axisTypeCount] = {
@@ -1815,7 +2088,7 @@ const char* RGFW_axisName(RGFW_axisType axis) {
 }
 
 
-const char* RGFW_pointerName(RGFW_pointerType type) {
+const char* RGFW_controllerGetNamePointer(RGFW_pointerType type) {
 	RGFW_ASSERT(type >= 0 && type < RGFW_pointerTypeCount);
 
 	static const char* NAME_LUT[RGFW_pointerTypeCount] = {
@@ -1824,7 +2097,7 @@ const char* RGFW_pointerName(RGFW_pointerType type) {
 	return NAME_LUT[type];
 }
 
-const char* RGFW_motionName(RGFW_motionType type) {
+const char* RGFW_controllerGetNameMotion(RGFW_motionType type) {
 	RGFW_ASSERT(type >= 0 && type < RGFW_motionTypeCount);
 
 	static const char* NAME_LUT[RGFW_motionTypeCount] = {
@@ -1835,11 +2108,11 @@ const char* RGFW_motionName(RGFW_motionType type) {
 }
 
 
-RGFW_button RGFW_apiKeyToRGFW(u32 keycode) {
+RGFW_buttonType RGFW_apiKeyToRGFW(u32 keycode) {
 	keycode &= RGFW_ACCEPTED_CTRU_INPUTS;
 	if (keycode == 0) { return RGFW_buttonInvalid; }
 
-	RGFW_button button = RGFW_countTrailingZeros(keycode);
+	RGFW_buttonType button = RGFW_countTrailingZeros(keycode);
 	switch (button) {
 		case 14: return RGFW_ZL;
 		case 15: return RGFW_ZR;
@@ -1851,7 +2124,7 @@ RGFW_button RGFW_apiKeyToRGFW(u32 keycode) {
 	return button;
 }
 
-u32 RGFW_rgfwToApiKey(RGFW_button button) {
+u32 RGFW_rgfwToApiKey(RGFW_buttonType button) {
 	RGFW_ASSERT(button >= 0 && button < RGFW_controllerButtonCount);
 
 	static const u32 CTRU_RGFW_KEY_LUT[RGFW_controllerButtonCount] = {
@@ -1883,8 +2156,8 @@ void RGFW__aptHookCallback(APT_HookType hook, void* param) {
 	RGFW_window* win = param;
 
 	static const RGFW_eventType APT_HOOK_LUT[APTHOOK_COUNT] = {
-		RGFW_windowFocusOut,
-		RGFW_windowFocusIn,
+		RGFW_eventFocusOut,
+		RGFW_eventFocusIn,
 		RGFW_deviceSleep,
 		RGFW_deviceWakeup,
 		RGFW_quit
@@ -1896,7 +2169,7 @@ void RGFW__aptHookCallback(APT_HookType hook, void* param) {
 	event->type = APT_HOOK_LUT[hook];
 
 	if (hook <= APTHOOK_ONRESTORE) {
-		RGFW_windowFocusCallback(win, event->type == RGFW_windowFocusIn);
+		RGFW_windowFocusCallback(win, event->type == RGFW_eventFocusIn);
 	}
 	else if (hook <= APTHOOK_ONWAKEUP) {
 		RGFW_windowDeviceSleepCallback(win, event->type == RGFW_deviceSleep);
@@ -1907,7 +2180,6 @@ void RGFW__aptHookCallback(APT_HookType hook, void* param) {
 }
 
 RGFW_bool RGFW_create_window_platform(RGFW_window* win) {
-	win->controllerCount = 1;
 	if ((win->_flags & RGFW_windowDualScreen) == 0) {
 		win->_flags |= RGFW_windowTopScreen;
 	}
@@ -1921,21 +2193,6 @@ RGFW_bool RGFW_create_window_platform(RGFW_window* win) {
 	RGFW_window_src* src = &win->src;
 	src->has_checked_events = RGFW_FALSE;
 	src->lcd_is_on = RGFW_FALSE;
-
-	for (RGFW_screen i = 0; i < RGFW_screenCount; i += 1) {
-		RGFW_context_buffer* b = &src->buffer[i];
-		b->buffers[0] = NULL;
-		b->buffers[1] = NULL;
-		b->format = -1;
-		b->is_double_buffered = RGFW_TRUE;
-		b->is_buffer_allocated = RGFW_FALSE;
-
-		#ifdef RGFW_OPENGL
-		RGFW_context_OpenGL* gl = &src->gl[i];
-		gl->ctx = NULL;
-		gl->framebuffer = gl->renderbuffer = 0;
-		#endif
-	}
 
 	aptHook(&src->apt_hook, RGFW__aptHookCallback, win);
 
@@ -1958,10 +2215,10 @@ RGFW_bool RGFW_create_window_platform(RGFW_window* win) {
 }
 
 /* NOTE(EimaMei): Taken from libctru gfx.c */
-void _RGFW__gspPresentFramebuffer(RGFW_context_buffer* b, u8* buffer);
+void _RGFW__gspPresentFramebuffer(RGFW_contextBuffer* b, u8* buffer);
 
-void _RGFW__gspPresentFramebuffer(RGFW_context_buffer* b, u8* buffer) {
-	u32 stride = GSP_SCREEN_WIDTH * (u32)RGFW_pixelFormatBPP(b->format);
+void _RGFW__gspPresentFramebuffer(RGFW_contextBuffer* b, u8* buffer) {
+	u32 stride = GSP_SCREEN_WIDTH * (u32)RGFW_pixelFormatBytesPerPixel(b->format);
 	u32 pixel_format = (u32)b->format | (1 << 8);
 
 	u8* fb_b = buffer;
@@ -1983,17 +2240,17 @@ void _RGFW__gspPresentFramebuffer(RGFW_context_buffer* b, u8* buffer) {
 
 #ifndef RGFW_BUFFER_NO_CONVERSION
 
-u8* RGFW_window_bufferToNative(RGFW_context_buffer* b);
-u8* RGFW_window_bufferToNative(RGFW_context_buffer* b) {
-	u8* src = RGFW_context_bufferGetBuffer(b);
+u8* RGFW_window_bufferToNative(RGFW_contextBuffer* b);
+u8* RGFW_window_bufferToNative(RGFW_contextBuffer* b) {
+	u8* src = RGFW_bufferGetFramebuffer(b);
 
 	if (b->is_native) {
 		return src;
 	}
 	u8* dst = b->buffers_native[b->current];
 
-	const i32 bpp = RGFW_pixelFormatBPP(b->mode);
-	const ssize_t width  = RGFW_context_bufferGetResolution(b).w,
+	const i32 bpp = RGFW_pixelFormatBytesPerPixel(b->mode);
+	const ssize_t width  = RGFW_bufferGetResolution(b).w,
 				  height = 240;
 	for (ssize_t i = 0; i < width; i += 1) {
 		for (ssize_t j = height - 1; j >= 0; j -= 1) {
@@ -2025,29 +2282,8 @@ u8* RGFW_window_bufferToNative(RGFW_context_buffer* b) {
 }
 #endif
 
-RGFW_bool RGFW_createContext_buffer(RGFW_screen screen, RGFW_videoMode mode,
-		RGFW_pixelFormat format, RGFW_bool is_native, RGFW_context_buffer* out_b) {
-	RGFW_area area = (screen == RGFW_screenTop)
-		? RGFW_videoModeResolution(mode)
-		: RGFW_AREA(320, 240);
-	ssize_t size = area.w * area.h * RGFW_pixelFormatBPP(format);
-
-	u8* buffers = (u8*)RGFW_ALLOC_SYS((size_t)(2 * size));
-	if (buffers == NULL) {
-		RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOutOfMemory, RGFW_DEBUG_CTX(NULL, (u32)screen), "Ran out of memory when allocating a buffer.");
-		return RGFW_FALSE;
-	}
-
-	u8* buffers_list[2];
-	buffers_list[0] = &buffers[0 * size];
-	buffers_list[1] = &buffers[1 * size];
-	out_b->is_buffer_allocated = RGFW_TRUE;
-
-	return RGFW_createContextPtr_buffer(buffers_list, screen, mode, format, is_native, out_b);
-}
-
-RGFW_bool RGFW_createContextPtr_buffer(u8* buffers[2], RGFW_screen screen, RGFW_videoMode mode,
-		RGFW_pixelFormat format, RGFW_bool is_native, RGFW_context_buffer* out_b) {
+RGFW_bool RGFW_bufferCreateContextEx(u8* buffers[2], RGFW_screen screen, RGFW_videoMode mode,
+		RGFW_pixelFormat format, RGFW_bool is_native, RGFW_contextBuffer* out_b) {
 	RGFW_ASSERT(out_b != NULL);
 	RGFW_ASSERT(buffers[0] != NULL);
 	RGFW_ASSERT(screen >= 0 && screen < RGFW_screenCount);
@@ -2057,12 +2293,12 @@ RGFW_bool RGFW_createContextPtr_buffer(u8* buffers[2], RGFW_screen screen, RGFW_
 	RGFW_area area = (screen == RGFW_screenTop)
 		? RGFW_videoModeResolution(mode)
 		: RGFW_AREA(240, 320);
-	RGFW_context_buffer* b = out_b;
+	RGFW_contextBuffer* b = out_b;
 	b->screen = screen;
 	b->mode = mode;
 	b->format = format;
 	b->current = 0;
-	b->size = (u32)(area.w * area.h * RGFW_pixelFormatBPP(format));
+	b->size = (u32)(area.w * area.h * RGFW_pixelFormatBytesPerPixel(format));
 	b->buffers[0] = buffers[0];
 	b->buffers[1] = buffers[1];
 	b->is_native = is_native;
@@ -2088,24 +2324,7 @@ RGFW_bool RGFW_createContextPtr_buffer(u8* buffers[2], RGFW_screen screen, RGFW_
 	return RGFW_TRUE;
 }
 
-void RGFW_window_freeContext_buffer(RGFW_window* win) {
-	RGFW_ASSERT(win != NULL);
-
-	if (win->_flags & RGFW_windowBuffer) {
-		for (RGFW_screen screen = 0; screen < RGFW_screenCount; screen += 1) {
-			RGFW_context_buffer* b = &win->src.buffer[screen];
-			if (win->buffer == b) {
-				RGFW_window_makeCurrent_buffer(win, NULL);
-			}
-			RGFW_context_free_buffer(b);
-		}
-		win->_flags &= ~(RGFW_windowFlags)RGFW_windowBuffer;
-	}
-
-	win->buffer = NULL;
-}
-
-void RGFW_context_free_buffer(RGFW_context_buffer* b) {
+void RGFW_bufferFree(RGFW_contextBuffer* b) {
 	RGFW_ASSERT(b != NULL);
 
 	if (b->is_buffer_allocated) {
@@ -2122,11 +2341,11 @@ void RGFW_context_free_buffer(RGFW_context_buffer* b) {
 	b->buffers[1] = NULL;
 }
 
-void RGFW_window_swapBuffers_buffer(RGFW_window* win) {
+void RGFW_windowSwapBuffers(RGFW_window* win) {
 	RGFW_ASSERT(win != NULL);
 
 	for (RGFW_screen screen = 0; screen < RGFW_screenCount; screen += 1) {
-		RGFW_context_buffer* b = &win->src.buffer[screen];
+		RGFW_contextBuffer* b = &win->src.buffer[screen];
 		#ifndef RGFW_BUFFER_NO_CONVERSION
 		u8* buffer = RGFW_window_bufferToNative(b);
 		#else
@@ -2141,79 +2360,10 @@ void RGFW_window_swapBuffers_buffer(RGFW_window* win) {
 	gspWaitForVBlank();
 }
 
-void RGFW_window_makeCurrent_buffer(RGFW_window* win, RGFW_context_buffer* buffer) {
-	win->buffer = buffer;
-}
-
-RGFW_bool RGFW_context_bufferSetFormat(RGFW_context_buffer* b, RGFW_pixelFormat format) {
-	if (b == NULL) { return RGFW_FALSE; }
-
-	/* TODO(EimaMei): Have a way to save the original bpp for performance reasons. */
-	if (RGFW_pixelFormatBPP(b->format) < RGFW_pixelFormatBPP(format)) {
-		RGFW_context_free_buffer(b);
-		return RGFW_createContext_buffer(b->screen, b->mode, format, b->is_native, b);
-	}
-	else {
-		b->format = format;
-	}
-
-	return RGFW_TRUE;
-}
-
-void RGFW_context_bufferSetNative(RGFW_context_buffer* b, RGFW_bool is_native) {
-	RGFW_ASSERT(b != NULL);
-	b->is_native = RGFW_BOOL(is_native);
-
-	#ifndef RGFW_BUFFER_NO_CONVERSION
-	if (is_native == RGFW_FALSE) {
-		RGFW_FREE_SYS(b->buffers_native[0]);
-	}
-	#endif
-}
-
-void RGFW_context_bufferSetDoubleBuffering(RGFW_context_buffer* b, RGFW_bool is_double_buffered) {
-	RGFW_ASSERT(b != NULL);
-	b->is_double_buffered = RGFW_BOOL(is_double_buffered);
-}
-
-void RGFW_context_bufferFlipBuffers(RGFW_context_buffer* b) {
-	RGFW_ASSERT(b != NULL);
-	b->current ^= 1;
-}
-
-RGFW_screen RGFW_context_bufferGetScreen(RGFW_context_buffer* b) {
-	RGFW_ASSERT(b != NULL);
-	#ifndef RGFW_3DS
-	return RGFW_screenPrimary;
-	#else
-	return b->screen;
-	#endif
-}
-
-u8* RGFW_context_bufferGetBuffer(RGFW_context_buffer* b) {
-	RGFW_ASSERT(b != NULL);
-	return b->buffers[b->current];
-}
-
-ssize_t RGFW_context_bufferGetBufferCount(RGFW_context_buffer* b) {
-	RGFW_ASSERT(b != NULL);
-	return b->is_double_buffered ? 2 : 1;	
-}
-
-RGFW_pixelFormat RGFW_context_bufferGetFormat(RGFW_context_buffer* b) {
-	RGFW_ASSERT(b != NULL);
-	return b->format;
-}
-
-ssize_t RGFW_context_bufferGetCurrent(RGFW_context_buffer* b) {
-	RGFW_ASSERT(b != NULL);
-	return b->current;
-}
-
-RGFW_area RGFW_context_bufferGetResolution(RGFW_context_buffer* b) {
+RGFW_area RGFW_bufferGetResolution(RGFW_contextBuffer* b) {
 	RGFW_ASSERT(b != NULL);
 
-	if (RGFW_context_bufferIsNative(b)) {
+	if (RGFW_bufferIsNative(b)) {
 		return (b->screen == RGFW_screenTop)
 			? RGFW_videoModeResolution(b->mode)
 			: RGFW_AREA(240, 320);
@@ -2226,29 +2376,9 @@ RGFW_area RGFW_context_bufferGetResolution(RGFW_context_buffer* b) {
 	}
 }
 
-RGFW_bool RGFW_context_bufferIsNative(RGFW_context_buffer* b) {
-	RGFW_ASSERT(b != NULL);
-	return b->is_native;
-}
-
-RGFW_bool RGFW_context_bufferIsDoubleBuffered(RGFW_context_buffer* b) {
-	RGFW_ASSERT(b != NULL);
-	return b->is_double_buffered;
-}
-
-RGFW_bool RGFW_context_bufferIsStereoscopic(RGFW_context_buffer* b) {
-	RGFW_ASSERT(b != NULL);
-	#ifndef RGFW_3DS
-	return RGFW_FALSE;
-	#else
-	return b->screen == RGFW_screenTop && b->mode == RGFW_videoMode3D;
-	#endif
-}
-
-
 #ifdef RGFW_OPENGL
 
-RGFW_bool RGFW_createContext_OpenGL(RGFW_screen screen, RGFW_videoMode mode, RGFW_context_OpenGL* out_gl) {
+RGFW_bool RGFW_createContext_OpenGL(RGFW_screen screen, RGFW_videoMode mode, RGFW_contextOpenGL* out_gl) {
 	RGFW_ASSERT(screen >= 0 && screen <= RGFW_screenCount);
 	RGFW_ASSERT(out_gl != NULL);
 
@@ -2400,7 +2530,7 @@ RGFW_bool RGFW_createContext_OpenGL(RGFW_screen screen, RGFW_videoMode mode, RGF
 	return RGFW_TRUE;
 }
 
-void RGFW_context_free_OpenGL(RGFW_context_OpenGL* out_gl) {
+void RGFW_context_free_OpenGL(RGFW_contextOpenGL* out_gl) {
 	RGFW_ASSERT(out_gl != NULL);
 	if (out_gl->ctx == NULL) { return; }
 
@@ -2413,7 +2543,7 @@ void RGFW_context_free_OpenGL(RGFW_context_OpenGL* out_gl) {
 	out_gl->ctx = NULL;
 }
 
-void RGFW_context_swapInterval_OpenGL(RGFW_context_OpenGL* gl, i32 swap_interval) {
+void RGFW_context_swapInterval_OpenGL(RGFW_contextOpenGL* gl, i32 swap_interval) {
 	RGFW_ASSERT(gl != NULL);
 	if (gl->ctx) {
 		glassSetVSync(gl->ctx, RGFW_BOOL(swap_interval));
@@ -2454,7 +2584,7 @@ void RGFW_window_freeContext_OpenGL(RGFW_window* win) {
 	if ((win->_flags & RGFW_windowOpenGL) == 0) {
 		return;
 	}
-	
+
 	if (win->gl == &win->src.gl[RGFW_screenTop] || win->gl == &win->src.gl[RGFW_screenBottom]) {
 		RGFW_window_makeCurrent_OpenGL(win, NULL);
 	}
@@ -2463,7 +2593,7 @@ void RGFW_window_freeContext_OpenGL(RGFW_window* win) {
 		case RGFW_windowTopScreen: RGFW_context_free_OpenGL(&win->src.gl[RGFW_screenTop]); break;
 		case RGFW_windowBottomScreen: RGFW_context_free_OpenGL(&win->src.gl[RGFW_screenBottom]); break;
 		case RGFW_windowDualScreen: {
-			RGFW_context_free_OpenGL(&win->src.gl[RGFW_screenTop]); 
+			RGFW_context_free_OpenGL(&win->src.gl[RGFW_screenTop]);
 			RGFW_context_free_OpenGL(&win->src.gl[RGFW_screenBottom]);
 		} break;
 	}
@@ -2482,7 +2612,7 @@ void RGFW_window_swapBuffers_OpenGL(RGFW_window* win) {
 	glassSwapContextBuffers(win->src.gl[RGFW_screenTop].ctx, win->src.gl[RGFW_screenBottom].ctx);
 }
 
-void RGFW_window_makeCurrent_OpenGL(RGFW_window* win, RGFW_context_OpenGL* out_gl) {
+void RGFW_window_makeCurrent_OpenGL(RGFW_window* win, RGFW_contextOpenGL* out_gl) {
 	RGFW_ASSERT(win != NULL);
 
 	win->gl = out_gl;
@@ -2510,10 +2640,6 @@ RGFW_videoMode RGFW_videoModeOptimal(void) {
 	return RGFW_videoMode2D;
 }
 
-RGFW_videoMode RGFW_videoModeHighest(void) {
-	return (RGFW_platformGetModel() != RGFW_systemModel2DS) ? RGFW_videoModeWide : RGFW_videoMode2D;
-}
-
 RGFW_area RGFW_videoModeResolution(RGFW_videoMode mode) {
 	RGFW_ASSERT(mode >= 0 && mode <= RGFW_videoModeCount);
 
@@ -2521,40 +2647,15 @@ RGFW_area RGFW_videoModeResolution(RGFW_videoMode mode) {
 	return RGFW_AREA(240, WIDTH_LUT[mode]);
 }
 
-const char* RGFW_videoModeStr(RGFW_videoMode mode) {
-	RGFW_ASSERT(mode >= 0 && mode <= RGFW_videoModeCount);
-
-	static const char* NAMES_LUT[RGFW_videoModeCount] = {
-		"RGFW_videoMode2D",
-		"RGFW_videoMode3D",
-		"RGFW_videoModeWide"
-	};
-	return NAMES_LUT[mode];
-}
-
-
 RGFW_videoMode RGFW_pixelFormatOptimal(void) {
 	return RGFW_pixelFormatBGR8;
 }
 
-i32 RGFW_pixelFormatBPP(RGFW_pixelFormat mode) {
+i32 RGFW_pixelFormatBytesPerPixel(RGFW_pixelFormat mode) {
 	RGFW_ASSERT(mode >= 0 && mode <= RGFW_pixelFormatCount);
 
 	static const i32 BPP_LUT[RGFW_pixelFormatCount] = {4, 3, 2, 2, 2};
 	return BPP_LUT[mode];
-}
-
-const char* RGFW_pixelFormatStr(RGFW_pixelFormat mode) {
-	RGFW_ASSERT(mode >= 0 && mode <= RGFW_pixelFormatCount);
-
-	static const char* NAMES_LUT[RGFW_pixelFormatCount] = {
-		"RGFW_pixelFormatRGBA8",
-		"RGFW_pixelFormatBGR8",
-		"RGFW_pixelFormatRGB565",
-		"RGFW_pixelFormatRGB5_A1",
-		"RGFW_pixelFormatRGBA4",
-	};
-	return NAMES_LUT[mode];
 }
 
 /* NOTE(EimaMei): sys/iosupport.h stuff alongside some initialization stuff
@@ -2578,22 +2679,22 @@ extern const struct _RGFW_devoptab_t* devoptab_list[];
 extern PrintConsole* currentConsole;
 extern PrintConsole defaultConsole;
 
-RGFW_bool RGFW_window_consoleInit(RGFW_window* win) {
+RGFW_bool RGFW_windowInitConsole(RGFW_window* win) {
 	/* TODO(EimaMei): Remove this entire function and replace it with a helper library
 	 * and function. */
 	/* NOTE(EimaMei): Taken from libctru console.c */
 	static RGFW_bool console_initialized = RGFW_FALSE;
 
 	if (win->buffer == NULL) {
-		RGFW_bool res = RGFW_window_createContext_buffer(win, RGFW_videoModeOptimal(), RGFW_pixelFormatRGB565, RGFW_TRUE);
+		RGFW_bool res = RGFW_windowCreateContextBuffer(win, RGFW_videoModeOptimal(), RGFW_pixelFormatRGB565, RGFW_TRUE);
 
 		if (res == RGFW_FALSE) {
 			return RGFW_FALSE;
 		}
 	}
-	RGFW_context_bufferSetNative(win->buffer, RGFW_TRUE);
-	RGFW_context_bufferSetFormat(win->buffer, RGFW_pixelFormatRGB565);
-	RGFW_context_bufferSetDoubleBuffering(win->buffer, RGFW_FALSE);
+	RGFW_bufferSetNative(win->buffer, RGFW_TRUE);
+	RGFW_bufferSetFormat(win->buffer, RGFW_pixelFormatRGB565);
+	RGFW_bufferSetDoubleBuffered(win->buffer, RGFW_FALSE);
 
 	if (!console_initialized) {
 		/* NOTE(EimaMei): Taken from libctru console.c */
@@ -2626,7 +2727,7 @@ RGFW_bool RGFW_window_consoleInit(RGFW_window* win) {
 	}*/
 
 	consoleClear();
-	RGFW_window_swapBuffers_buffer(win);
+	RGFW_windowSwapBuffers(win);
 	return RGFW_TRUE;
 }
 
@@ -2645,9 +2746,9 @@ RGFW_bool RGFW_window_checkEvent(RGFW_window* win, const RGFW_event** ev_out) {
 	/* TODO(EimaMei): Add a "checkEvents" version that just gets the states. */
 
 	/* check queued events */
-	if (win->eventLen > 0) {
-		*ev_out = &win->events[RGFW_COUNTOF(win->events) - win->eventLen];
-		win->eventLen -= 1;
+	if (win->event_len > 0) {
+		*ev_out = &win->events[RGFW_COUNTOF(win->events) - win->event_len];
+		win->event_len -= 1;
 		return RGFW_TRUE;
 	}
 
@@ -2751,7 +2852,7 @@ RGFW_bool RGFW_window_checkEvent(RGFW_window* win, const RGFW_event** ev_out) {
 	}
 
 	while (pressed & RGFW_ACCEPTED_CTRU_INPUTS) {
-		RGFW_button button = RGFW_apiKeyToRGFW(pressed);
+		RGFW_buttonType button = RGFW_apiKeyToRGFW(pressed);
 		RGFW_ASSERT(button != -1);
 
 		RGFW_event* ev = RGFW_eventQueuePush(win);
@@ -2768,7 +2869,7 @@ RGFW_bool RGFW_window_checkEvent(RGFW_window* win, const RGFW_event** ev_out) {
 	}
 
 	while (released & RGFW_ACCEPTED_CTRU_INPUTS) {
-		RGFW_button button = RGFW_apiKeyToRGFW(released);
+		RGFW_buttonType button = RGFW_apiKeyToRGFW(released);
 		RGFW_ASSERT(button != -1);
 
 		RGFW_event* ev = RGFW_eventQueuePush(win);
@@ -2836,6 +2937,743 @@ RGFW_bool RGFW_platform_OpenGL_rotateScreen(GLuint shader_program, const char* m
 }
 
 #endif
+
+#endif /* RGFW_3DS */
+
+#ifdef RGFW_WII
+
+const RGFW_button RGFW_BUTTON_MASK_BITS_LUT[RGFW_controllerTypeCount] = {
+	RGFW_buttonMask_WiiRemote,
+	RGFW_buttonMask_Nunchuk,
+	0
+};
+
+const ssize_t RGFW_BUTTON_COUNT_LUT[RGFW_controllerTypeCount] = {
+	RGFW_buttonCount_WiiRemote,
+	RGFW_buttonCount_Nunchuk,
+	0
+};
+const ssize_t RGFW_AXIS_RANGE_LUT[RGFW_controllerTypeCount][2] = {
+	{-1, -1},
+	{RGFW_axisLeftX, RGFW_axisLeftY + 1},
+	{-1, -1}
+};
+const ssize_t RGFW_POINTER_RANGE_LUT[RGFW_controllerTypeCount][2] = {
+	{RGFW_pointerInfrared, RGFW_pointerInfrared + 1},
+	{RGFW_pointerInfrared, RGFW_pointerInfrared + 1},
+	{-1, -1}
+};
+const ssize_t RGFW_MOTION_RANGE_LUT[RGFW_controllerTypeCount][2] = {
+	{RGFW_motionAccelerometer, RGFW_motionAccelerometer + 1},
+	{RGFW_motionAccelerometer, RGFW_motionNunchukAccelerometer + 1},
+	{-1, -1}
+};
+
+const char* RGFW_CONTROLLER_NAME_LUT[RGFW_controllerTypeCount] = {
+	"Wii Remote", "Nunchuk", "Unknown"
+};
+const char* RGFW_BUTTON_NAMES_NUNCHUK_LUT[RGFW_buttonCount_Nunchuk] = {
+	"2", "1", "B", "A", "Minus", "Home", "Left", "Right", "Down", "Up", "Plus",
+	"Z", "C"
+};
+const char* RGFW_AXIS_NAME_LUT[RGFW_axisTypeCount] = {
+	"Nunchuk X", "Nunchuk Y"
+};
+const char* RGFW_POINTER_NAME_LUT[RGFW_pointerTypeCount] = {
+	"IR Sensor"
+};
+const char* RGFW_MOTION_NAME_LUT[RGFW_motionTypeCount] = {
+	"Accelerometer", "Gyroscope", "Nunchuk accelerometer"
+};
+
+ssize_t RGFW_VIDEO_RESOLUTION_LUT[RGFW_videoModeCount][2] = {
+	{320, 240}, {720, 480}, {720, 480},
+	{320, 264}, {720, 528}, {720, 576},
+	{320, 240}, {720, 480}, {720, 480},
+	{320, 240}, {720, 480}, {720, 480},
+};
+
+ssize_t RGFW_FORMAT_BYTES_PER_PIXEL_LUT[RGFW_pixelFormatCount] = {
+	4, 2
+};
+
+const char* RGFW_VIDEO_MODE_NAME_LUT[RGFW_videoModeCount] = {
+	"RGFW_videoModeNTSC_240i",
+	"RGFW_videoModeNTSC_480i",
+	"RGFW_videoModeNTSC_480p",
+
+	"RGFW_videoModePAL_264i",
+	"RGFW_videoModePAL_528p",
+	"RGFW_videoModePAL_576i",
+
+	"RGFW_videoModeMPAL_240i",
+	"RGFW_videoModeMPAL_480i",
+	"RGFW_videoModeMPAL_480p",
+
+	"RGFW_videoModePAL60hz_240i",
+	"RGFW_videoModePAL60hz_480i",
+	"RGFW_videoModePAL60hz_480p",
+};
+
+const char* RGFW_PIXEL_FORMAT_NAME_LUT[RGFW_pixelFormatCount] = {
+	"RGFW_pixelFormatRGBA8", "RGFW_pixelFormatYUV"
+};
+
+u32 RGFW__EXIT_STATE;
+
+extern int usleep (__useconds_t __useconds);
+
+RGFW_button RGFW_apiKeyToRGFW_WiiRemote(u32 mask);
+RGFW_button RGFW_apiKeyToRGFW_Nunchuk(u32 mask);
+
+void RGFW__callbackWiiReset(u32 irq, void* ctx);
+void RGFW__callbackWiiPower(void);
+void RGFW__callbackWiiRemotePower(i32 channel);
+
+void RGFW__wiiControllerOnConnect(RGFW_controller* controller, ssize_t port, RGFW_bool is_connected);
+
+
+RGFW_button RGFW_apiKeyToRGFW_WiiRemote(u32 mask) {
+	return ((mask & (u32)~0x1F) >> 2) | (mask & 0x1F);
+}
+
+RGFW_button RGFW_apiKeyToRGFW_Nunchuk(u32 mask) {
+	return ((mask & ~0xFFFFu) >> 5) | RGFW_apiKeyToRGFW_WiiRemote(mask & 0xFFFF);
+}
+
+void RGFW__callbackWiiReset(u32 irq, void* ctx) { RGFW__EXIT_STATE = SYS_RETURNTOMENU; RGFW_UNUSED(irq); RGFW_UNUSED(ctx); }
+void RGFW__callbackWiiPower(void) { RGFW__EXIT_STATE = SYS_POWEROFF_STANDBY; }
+void RGFW__callbackWiiRemotePower(i32 channel) { RGFW__EXIT_STATE = SYS_POWEROFF_STANDBY; RGFW_UNUSED(channel); }
+
+void RGFW__wiiControllerOnConnect(RGFW_controller* controller, ssize_t port, RGFW_bool is_connected) {
+	controller->port = port;
+	controller->connected = is_connected;
+
+	if (is_connected) {
+		WPADData* data = WPAD_Data(port);
+		ssize_t connect_retries = 0;
+
+		data->exp.type = 0xFF;
+		while (data->exp.type == 0xFF && connect_retries < 1000) {
+			WPAD_ReadPending(port, NULL);
+			connect_retries += 1;
+			usleep(1000);
+		}
+
+		switch (data->exp.type) {
+			case WPAD_EXP_NONE: controller->type = RGFW_controllerTypeWiiRemote; break;
+			case WPAD_EXP_NUNCHUK: {
+				controller->type = RGFW_controllerTypeNunchuk;
+				controller->axes[RGFW_axisLeftX].deadzone = 0.2f;
+				controller->axes[RGFW_axisLeftY].deadzone = 0.2f;
+			} break;
+			default: controller->type = RGFW_controllerTypeUnknown;
+		}
+	}
+	else {
+		//RGFW_MEMSET(controller->enabled_motions, 0, sizeof(controller->enabled_motions));
+		//RGFW_MEMSET(controller->enabled_pointers, 0, sizeof(controller->enabled_pointers));
+	}
+}
+
+void RGFW__wiiControllerAxis(RGFW_window* win, RGFW_controller* controller, RGFW_axisType type, WPADData* data) {
+	float pos;
+	float min, max;
+
+	switch (controller->type) {
+		case RGFW_controllerTypeNunchuk: {
+			struct joystick_t* js = &data->exp.nunchuk.js;
+			if (type == RGFW_axisLeftX) {
+				pos = js->pos.x;
+				max = js->max.x;
+				min = js->min.x;
+			}
+			else {
+				pos = js->pos.y;
+				max = js->max.y;
+				min = js->min.y;
+			}
+		} break;
+	}
+
+	/* NOTE(EimaMei): Normalizing the axis to be from -1 to 1. */
+	RGFW_axis* axis = &controller->axes[type];
+	axis->value = ((pos - min) / (max - min)) * 2.0f - 1.0f;
+
+	RGFW_windowAxisCallback(win, controller, type);
+	if (win->queue_events) {
+		RGFW_event event;
+		event.type = RGFW_eventAxis;
+		event.axis.controller = controller;
+		event.axis.which = type;
+		event.axis.value = axis->value;
+		event.axis.deadzone = axis->deadzone;
+		RGFW_window_eventPush(win, &event);
+	}
+}
+
+void RGFW__wiiControllerSensor(RGFW_window* win, RGFW_controller* controller, WPADData* data) {
+	/* NOTE(EimaMei): For some reason the authors of wiiuse decided not to include these in the header. Why? */
+	enum {
+		IR_STATE_DEAD = 0,
+		IR_STATE_GOOD,
+		IR_STATE_SINGLE,
+		IR_STATE_LOST,
+	};
+	ir_t* ir = &data->ir;
+	if (!controller->enabled_pointers[RGFW_pointerInfrared] || ir->state == IR_STATE_LOST || ir->state == IR_STATE_DEAD) {
+		return ;
+	}
+	controller->pointers[RGFW_pointerInfrared][0] = (i32)ir->ax;
+	controller->pointers[RGFW_pointerInfrared][1] = (i32)ir->ay;
+	RGFW_windowPointerCallback(win, controller, RGFW_pointerInfrared);
+
+	if (win->queue_events) {
+		RGFW_event event;
+		event.type = RGFW_eventPointer;
+		event.pointer.controller = controller;
+		event.pointer.which = RGFW_pointerInfrared;
+		event.pointer.x = controller->pointers[RGFW_pointerInfrared][0];
+		event.pointer.y = controller->pointers[RGFW_pointerInfrared][1];
+		RGFW_window_eventPush(win, &event);
+	}
+}
+
+/* NOTE(EimaMei): Converion code stolen from SDL: https://github.com/libsdl-org/SDL/blob/91be1b054ab5547f93e0d0485c0797042825ff41/src/joystick/hidapi/SDL_hidapi_wii.c.
+ * To be fair, I can't even find the sources behind SDL's magic numbers and converions.
+ * Whatever... */
+void RGFW__wiiControllerMotion_wiimote(RGFW_window* win, RGFW_controller* controller) {
+	if (!controller->enabled_motions[RGFW_motionAccelerometer]) {
+		return;
+	}
+
+	struct wiimote_t* wiimote = win->src.wiimotes[controller->port];
+	float* motion = (float*)&controller->motions[RGFW_motionAccelerometer];
+	motion[0] = (float)(wiimote->accel.x - wiimote->accel_calib.cal_zero.x) / wiimote->accel_calib.cal_g.x * 9.80665f;
+	motion[1] = (float)(wiimote->accel.z - wiimote->accel_calib.cal_zero.z) / wiimote->accel_calib.cal_g.z * 9.80665f;
+	motion[2] = (float)(wiimote->accel.y - wiimote->accel_calib.cal_zero.y) / wiimote->accel_calib.cal_g.y * 9.80665f;
+
+	RGFW_windowMotionCallback(win, controller, RGFW_motionAccelerometer);
+	if (win->queue_events) {
+		RGFW_event event;
+		event.type = RGFW_eventMotion;
+		event.motion.controller = controller;
+		event.motion.which = RGFW_motionAccelerometer;
+		event.motion.x = motion[0];
+		event.motion.y = motion[1];
+		event.motion.z = motion[2];
+		RGFW_window_eventPush(win, &event);
+	}
+}
+
+void RGFW__wiiControllerMotion_nunchuk(RGFW_window* win, RGFW_controller* controller) {
+	if (!controller->enabled_motions[RGFW_motionNunchukAccelerometer]) {
+		return;
+	}
+
+	const nunchuk_t* nunchuk = &win->src.wiimotes[controller->port]->exp.nunchuk;
+	float* motion = (float*)&controller->motions[RGFW_motionNunchukAccelerometer];
+	motion[0] = (float)(nunchuk->accel.x - nunchuk->accel_calib.cal_zero.x) / nunchuk->accel_calib.cal_g.x * 9.80665f;
+	motion[1] = (float)(nunchuk->accel.z - nunchuk->accel_calib.cal_zero.z) / nunchuk->accel_calib.cal_g.z * 9.80665f;
+	motion[2] = (float)(nunchuk->accel.y - nunchuk->accel_calib.cal_zero.y) / nunchuk->accel_calib.cal_g.y * 9.80665f;
+
+	RGFW_windowMotionCallback(win, controller, RGFW_motionNunchukAccelerometer);
+	if (win->queue_events) {
+		RGFW_event event;
+		event.type = RGFW_eventMotion;
+		event.motion.controller = controller;
+		event.motion.which = RGFW_motionNunchukAccelerometer;
+		event.motion.x = motion[0];
+		event.motion.y = motion[1];
+		event.motion.z = motion[2];
+		RGFW_window_eventPush(win, &event);
+	}
+}
+
+RGFW_bool RGFW_create_window_platform(RGFW_window* win) {
+	VIDEO_Init();
+
+	PAD_Init();
+	WPAD_Init();
+
+	#ifndef RGFW_WII_NO_WAIT_FOR_CONNECTION
+	RGFW_bool wpad_is_active = RGFW_FALSE;
+	#endif
+
+	for (ssize_t i = 0; i < RGFW_MAX_CONTROLLERS; i += 1) {
+		WPADData* data = WPAD_Data(i);
+		ssize_t connect_retries = 0;
+
+		#ifndef RGFW_WII_NO_WAIT_FOR_CONNECTION
+			if (!wpad_is_active) { data->err = 1984; }
+
+			i32 status;
+			do {
+				status = WPAD_Probe(i, NULL);
+				connect_retries += 1;
+				usleep(1000);
+			} while (connect_retries < 5000 && (data->err == 1984 || status == WPAD_ERR_NOT_READY));
+
+			wpad_is_active = RGFW_TRUE;
+			connect_retries = 0;
+		#else
+			ssize_t status = WPAD_Probe(i, NULL);
+		#endif
+
+		RGFW_controller* controller = &win->controllers[i];
+		if (status != 0) {
+			controller->connected = RGFW_FALSE;
+			continue;
+		}
+
+		RGFW__wiiControllerOnConnect(controller, i, RGFW_TRUE);
+	}
+
+	/* TODO(EimaMei): document why this works. */
+	win->src.wiimotes = wiiuse_init(-1, NULL);
+
+	SYS_SetResetCallback(RGFW__callbackWiiReset);
+	SYS_SetPowerCallback(RGFW__callbackWiiPower);
+	WPAD_SetPowerButtonCallback(RGFW__callbackWiiRemotePower);
+
+	return RGFW_TRUE;
+}
+
+void RGFW_window_close_platform(RGFW_window* win) {
+	WPAD_Shutdown();
+
+	if ((win->_flags & RGFW_WINDOW_ALLOC)) {
+		RGFW_FREE(win);
+	}
+
+	if (RGFW__EXIT_STATE != 0) {
+		SYS_ResetSystem(RGFW__EXIT_STATE, 0, 0);
+	}
+}
+
+
+void RGFW_window_pollEvents(RGFW_window* win) {
+	RGFW_ASSERT(win != NULL);
+
+	if (win->polled_events) {
+		win->event_len = 0;
+	}
+
+	if (RGFW__EXIT_STATE != 0) {
+		RGFW_windowQuitCallback(win);
+		RGFW_window_setShouldClose(win, RGFW_TRUE);
+
+		if (win->queue_events) {
+			RGFW_event event;
+			event.type = RGFW_eventQuit;
+			RGFW_window_eventPush(win, &event);
+		}
+		return;
+	}
+
+	for (ssize_t i = 0; i < RGFW_MAX_CONTROLLERS; i += 1) {
+		RGFW_controller* controller = &win->controllers[i];
+		i32 res = WPAD_ReadPending(i, NULL);
+
+		if (res < WPAD_ERR_NONE) {
+			if (controller->connected) {
+				RGFW__wiiControllerOnConnect(controller, i, RGFW_FALSE);
+				RGFW_windowControllerCallback(win, controller, RGFW_FALSE);
+
+				if (win->queue_events) {
+					RGFW_event event;
+					event.type = RGFW_eventControllerDisconnected;
+					event.controller.controller = controller;
+					RGFW_window_eventPush(win, &event);
+				}
+			}
+			continue;
+		}
+
+		WPADData* state = WPAD_Data(i);
+		RGFW_controllerType old_controller_type = controller->type;
+
+		if (!controller->connected) {
+			RGFW__wiiControllerOnConnect(controller, i, RGFW_TRUE);
+			RGFW_windowControllerCallback(win, controller, RGFW_TRUE);
+
+			if (win->queue_events) {
+				RGFW_event event;
+				event.type = RGFW_eventControllerConnected;
+				event.controller.controller = controller;
+				RGFW_window_eventPush(win, &event);
+			}
+		}
+		else if (controller->type != state->exp.type) {
+			RGFW__wiiControllerOnConnect(controller, i, RGFW_TRUE);
+		}
+
+		switch (controller->type) {
+			case RGFW_controllerTypeWiiRemote: {
+				controller->buttons_up   = RGFW_apiKeyToRGFW_WiiRemote(state->btns_u & 0xFFFF);
+				if (old_controller_type == RGFW_controllerTypeNunchuk) {
+					controller->buttons_up |= (controller->buttons_held & (RGFW_C | RGFW_Z));
+				}
+
+				controller->buttons_held = RGFW_apiKeyToRGFW_WiiRemote(state->btns_h & 0xFFFF);
+				controller->buttons_down = RGFW_apiKeyToRGFW_WiiRemote(state->btns_d & 0xFFFF);
+
+				RGFW__wiiControllerSensor(win, controller, state);
+				RGFW__wiiControllerMotion_wiimote(win, controller);
+			} break;
+
+			case RGFW_controllerTypeNunchuk: {
+				controller->buttons_held = RGFW_apiKeyToRGFW_Nunchuk(state->btns_h);
+				controller->buttons_down = RGFW_apiKeyToRGFW_Nunchuk(state->btns_d),
+				controller->buttons_up   = RGFW_apiKeyToRGFW_Nunchuk(state->btns_u);
+
+				nunchuk_t* nunchuk = &state->exp.nunchuk;
+				if (nunchuk->js.pos.x != nunchuk->js.center.x) {
+					RGFW__wiiControllerAxis(win, controller, RGFW_axisLeftX, state);
+				}
+				if (nunchuk->js.pos.y != nunchuk->js.center.y) {
+					RGFW__wiiControllerAxis(win, controller, RGFW_axisLeftY, state);
+				}
+
+				RGFW__wiiControllerSensor(win, controller, state);
+				RGFW__wiiControllerMotion_wiimote(win, controller);
+				RGFW__wiiControllerMotion_nunchuk(win, controller);
+			} break;
+
+			default: {
+				continue;
+			}
+		}
+
+		if (controller->buttons_held != 0) {
+			RGFW_windowButtonCallback(win, controller, controller->buttons_held, RGFW_TRUE);
+
+			if (win->queue_events) {
+				RGFW_event event;
+				event.type = RGFW_eventButtonDown;
+				event.button.controller = controller;
+				event.button.buttons = controller->buttons_held;
+				event.button.buttons_down = controller->buttons_down;
+				event.button.raw_buttons = state->btns_h;
+				event.button.raw_buttons_down = state->btns_d;
+				RGFW_window_eventPush(win, &event);
+			}
+		}
+
+		if (controller->buttons_up != 0) {
+			RGFW_windowButtonCallback(win, controller, controller->buttons_up, RGFW_FALSE);
+
+			if (win->queue_events) {
+				RGFW_event event;
+				event.type = RGFW_eventButtonUp;
+				event.button.controller = controller;
+				event.button.buttons = controller->buttons_up;
+				event.button.buttons_down = 0;
+				event.button.raw_buttons = state->btns_u;
+				event.button.raw_buttons_down = 0;
+				RGFW_window_eventPush(win, &event);
+			}
+		}
+	}
+}
+
+void RGFW_windowSwapBuffers(RGFW_window* win) {
+	RGFW_ASSERT(win != NULL);
+
+	switch (RGFW_contextGetType(win->current)) {
+		case RGFW_contextTypeBuffer: {
+			RGFW_contextBuffer* b = RGFW_contextGetBuffer(win->current);
+			VIDEO_WaitVSync();
+		} break;
+	}
+}
+
+void RGFW_windowMakeCurrent(RGFW_window* win, RGFW_context* ctx) {
+	win->current = ctx;
+}
+
+
+RGFW_bool RGFW_windowInitConsole(RGFW_window* win) {
+	RGFW_ASSERT(win != NULL);
+
+	if (win->current == NULL) {
+		RGFW_bool res = RGFW_windowCreateContextBuffer(win, RGFW_videoModeOptimal(), RGFW_pixelFormatYUV, RGFW_TRUE);
+
+		if (res == RGFW_FALSE) {
+			return RGFW_FALSE;
+		}
+	}
+
+	RGFW_contextBuffer* b = RGFW_windowGetCurrentBuffer(win);
+	RGFW_bufferSetNative(b, RGFW_TRUE);
+	RGFW_bufferSetFormat(b, RGFW_pixelFormatYUV);
+	RGFW_bufferSetDoubleBuffered(b, RGFW_FALSE);
+
+	console_init(
+		RGFW_bufferGetFramebuffer(b),
+		0, 0, b->gx_video_mode->fbWidth, b->gx_video_mode->xfbHeight,
+		b->gx_video_mode->fbWidth * VI_DISPLAY_PIX_SZ
+	);
+
+	return RGFW_TRUE;
+}
+
+RGFW_button RGFW_controller_getButtonMaskFromAPI(const RGFW_controller* controller,
+		u32 mask) {
+	RGFW_ASSERT(controller != NULL);
+	switch (controller->type) {
+		case RGFW_controllerTypeWiiRemote: return RGFW_apiKeyToRGFW_WiiRemote(mask);
+		case RGFW_controllerTypeNunchuk: return RGFW_apiKeyToRGFW_Nunchuk(mask);
+	}
+	return 0;
+}
+
+
+const char* RGFW_controllerGetNameButton(const RGFW_controller* controller,
+		RGFW_buttonType button) {
+	RGFW_ASSERT(controller != NULL);
+	RGFW_ASSERT(button >= 0 && button < RGFW_controller_getButtonCount(controller));
+
+	switch (controller->type) {
+		case RGFW_controllerTypeWiiRemote:
+		case RGFW_controllerTypeNunchuk:
+			return RGFW_BUTTON_NAMES_NUNCHUK_LUT[button];
+	}
+
+	return "N/A";
+}
+
+
+void RGFW_controller_enablePointer(RGFW_controller* controller, RGFW_pointerType pointer,
+		RGFW_bool enable) {
+	RGFW_ASSERT(controller != NULL);
+	RGFW_ASSERT(pointer >= 0 && pointer < RGFW_pointerTypeCount);
+
+	#ifdef RGFW_DEBUG
+	ssize_t start, end;
+	RGFW_controller_getRangePointer(controller, &start, &end);
+	RGFW_ASSERT(start != -1 && end != -1);
+	RGFW_ASSERT(pointer >= start && pointer < end);
+	#endif
+
+	switch (pointer) {
+		case RGFW_pointerInfrared: {
+			if (enable) {
+				enable = (WPAD_SetDataFormat(controller->port, WPAD_FMT_BTNS_ACC_IR)) == 0;
+			}
+			else {
+				WPAD_SetDataFormat(
+					controller->port,
+					(controller->enabled_motions[RGFW_motionAccelerometer])
+						? WPAD_FMT_BTNS_ACC
+						: WPAD_FMT_BTNS
+				);
+			}
+		} break;
+
+		/*case RGFW_motionGyroscope: {
+			if (enable) HIDUSER_EnableGyroscope();
+			else        HIDUSER_DisableGyroscope();
+		} break;*/
+	}
+
+	controller->enabled_pointers[pointer] = enable;
+}
+
+void RGFW_controller_enableMotion(RGFW_controller* controller, RGFW_motionType motion,
+		RGFW_bool enable) {
+	RGFW_ASSERT(controller != NULL);
+	RGFW_ASSERT(motion >= 0 && motion < RGFW_motionTypeCount);
+
+	#ifdef RGFW_DEBUG
+	ssize_t start, end;
+	RGFW_controller_getRangeMotion(controller, &start, &end);
+	RGFW_ASSERT(start != -1 && end != -1);
+	RGFW_ASSERT(motion >= start && motion < end);
+	#endif
+
+	switch (motion) {
+		case RGFW_motionAccelerometer: {
+			if (enable) {
+				if (!controller->enabled_pointers[RGFW_pointerInfrared]) {
+					enable = (WPAD_SetDataFormat(controller->port, WPAD_FMT_BTNS_ACC)) == 0;
+				}
+			}
+			else {
+				WPAD_SetDataFormat(
+					controller->port,
+					(controller->enabled_pointers[RGFW_pointerInfrared])
+						? WPAD_FMT_BTNS_ACC_IR
+						: WPAD_FMT_BTNS
+				);
+			}
+		} break;
+
+		/*case RGFW_motionGyroscope: {
+			if (enable) HIDUSER_EnableGyroscope();
+			else        HIDUSER_DisableGyroscope();
+		} break;*/
+	}
+
+	controller->enabled_motions[motion] = enable;
+}
+
+
+
+void RGFW_bufferMakeWithDefaultSettings(RGFW_contextBuffer* out_buffer,
+		RGFW_videoMode mode, RGFW_pixelFormat format) {
+	RGFW_ASSERT(out_buffer != NULL);
+	RGFW_ASSERT(mode >= 0 && mode < RGFW_videoModeCount);
+	RGFW_ASSERT(format >= 0 && format < RGFW_pixelFormatCount);
+
+	RGFW_contextBuffer* b = out_buffer;
+	b->mode = mode;
+	b->format = format;
+	b->buffers[0] = NULL;
+	b->buffers[1] = NULL;
+	b->current = 0;
+	b->gx_video_mode = NULL;
+
+	b->is_buffer_allocated = RGFW_FALSE;
+	b->is_double_buffered = RGFW_TRUE;
+	b->is_native = RGFW_FALSE;
+
+	#ifndef RGFW_BUFFER_NO_CONVERSION
+	b->buffers_native[0] = NULL;
+	b->buffers_native[1] = NULL;
+	#endif
+}
+
+
+void RGFW__wiiCheckGXMode(RGFW_contextBuffer* b) {
+	if (b->gx_video_mode != NULL) { return; }
+
+	switch (b->mode) {
+		case RGFW_videoModeNTSC_240i: b->gx_video_mode = &TVNtsc240Int;   break;
+		case RGFW_videoModeNTSC_480i: b->gx_video_mode = &TVNtsc480IntDf; break;
+		case RGFW_videoModeNTSC_480p: b->gx_video_mode = &TVNtsc480Prog;  break;
+
+		case RGFW_videoModePAL_264i: b->gx_video_mode = &TVPal264Int;        break;
+		case RGFW_videoModePAL_576i: b->gx_video_mode = &TVPal576IntDfScale; break;
+		case RGFW_videoModePAL_576p: b->gx_video_mode = &TVPal576ProgScale;  break;
+
+		case RGFW_videoModeMPAL_240i: b->gx_video_mode = &TVMpal240Int;    break;
+		case RGFW_videoModeMPAL_480i: b->gx_video_mode = &TVMpal480IntDf;  break;
+		case RGFW_videoModeMPAL_480p: b->gx_video_mode = &TVMpal480Prog;   break;
+
+		case RGFW_videoModePAL60hz_240i: b->gx_video_mode = &TVEurgb60Hz240Int;   break;
+		case RGFW_videoModePAL60hz_480i: b->gx_video_mode = &TVEurgb60Hz480IntDf; break;
+		case RGFW_videoModePAL60hz_480p: b->gx_video_mode = &TVEurgb60Hz480Prog;  break;
+	}
+}
+
+RGFW_bool RGFW_bufferCreateContext(RGFW_contextBuffer* b) {
+	RGFW_ASSERT(b != NULL);
+
+	if (b->buffers[0] == NULL) {
+		RGFW_bool res = RGFW_bufferAllocFramebuffers(b);
+		if (!res) {
+			RGFW_sendDebugInfo(RGFW_debugTypeError, RGFW_errorOutOfMemory, RGFW_DEBUG_CTX(NULL, 0), "Ran out of memory when allocating framebuffers.");
+			return RGFW_FALSE;
+		}
+	}
+
+	RGFW__wiiCheckGXMode(b);
+	VIDEO_Configure(b->gx_video_mode);
+
+	u8* fb = RGFW_bufferGetFramebuffer(b);
+	VIDEO_SetNextFramebuffer(fb);
+	VIDEO_ClearFrameBuffer(b->gx_video_mode, fb, COLOR_BLACK);
+	VIDEO_SetBlack(RGFW_FALSE);
+	VIDEO_Flush();
+
+	VIDEO_WaitVSync();
+	if(b->gx_video_mode->viTVMode & VI_NON_INTERLACE) VIDEO_WaitVSync();
+
+	return RGFW_TRUE;
+}
+
+void RGFW_bufferFreeContext(RGFW_contextBuffer* b) {
+	RGFW_bufferFreeFramebuffers(b);
+	b->buffers[0] = NULL;
+	b->buffers[1] = NULL;
+}
+
+extern void *memalign (size_t, size_t);
+
+RGFW_bool RGFW_bufferAllocFramebuffers(RGFW_contextBuffer* b) {
+	RGFW_ASSERT(b != NULL);
+
+	if (b->buffers[0] != NULL) { RGFW_bufferFreeFramebuffers(b); }
+	RGFW__wiiCheckGXMode(b);
+
+	for (size_t i = 0; i < 2; i += 1) {
+		b->buffers[i] = memalign(VIDEO_GetFrameBufferSize(b->gx_video_mode), 32);
+		if (b->buffers[i] == NULL) { return RGFW_FALSE; }
+
+		b->buffers[i] = MEM_K0_TO_K1(b->buffers[i]);
+	}
+	b->is_buffer_allocated = RGFW_TRUE;
+
+	return RGFW_TRUE;
+}
+
+RGFW_bool RGFW_bufferFreeFramebuffers(RGFW_contextBuffer* b) {
+	RGFW_ASSERT(b != NULL);
+
+	free(b->buffers[0]);
+	free(b->buffers[1]);
+
+	return RGFW_TRUE;
+}
+
+
+
+void RGFW_windowFreeContextBuffer(RGFW_window* win) {
+
+}
+
+
+RGFW_videoMode RGFW_videoModeOptimal(void) {
+	u32 tvmode = CONF_GetVideo();
+
+	if (CONF_GetProgressiveScan() > 0 && VIDEO_HaveComponentCable()) {
+		switch (tvmode) {
+			case CONF_VIDEO_NTSC:
+				return RGFW_videoModeNTSC_480p;
+
+			case CONF_VIDEO_PAL:
+				return (CONF_GetEuRGB60() > 0)
+					? RGFW_videoModePAL60hz_480p
+					: RGFW_videoModePAL_576p;
+
+			case CONF_VIDEO_MPAL:
+				return RGFW_videoModeMPAL_480p;
+
+			default:
+				return RGFW_videoModeNTSC_480p;
+		}
+	}
+	else {
+		switch (tvmode) {
+			case CONF_VIDEO_NTSC:
+				return RGFW_videoModeNTSC_480i;
+
+			case CONF_VIDEO_PAL:
+				return (CONF_GetEuRGB60() > 0)
+					? RGFW_videoModePAL60hz_480i
+					: RGFW_videoModePAL_576i;
+
+			case CONF_VIDEO_MPAL:
+				return RGFW_videoModePAL60hz_480i;
+
+			default:
+				return RGFW_videoModeNTSC_480i;
+		}
+	}
+}
+
+RGFW_videoMode RGFW_pixelFormatOptimal(void) { return RGFW_pixelFormatYUV; }
 
 #endif
 

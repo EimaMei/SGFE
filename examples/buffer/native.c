@@ -29,15 +29,15 @@ int main(void) {
 	#endif
 
 	RGFW_window* win = RGFW_createWindowContextless(RGFW_windowFlagsNone);
-	RGFW_bool res = RGFW_window_createContext_buffer(
+	RGFW_bool res = RGFW_windowCreateContextBuffer(
 		win, mode, RGFW_pixelFormatOptimal(), RGFW_TRUE
 	);
 	if (res == RGFW_FALSE) { return 1; }
 
-	CPU_Surface s = surface_make(RGFW_window_getContext_buffer(win), CPU_colorMake(255, 255, 255, 255));
+	CPU_Surface s = surface_make(RGFW_windowGetContextBuffer(win), CPU_colorMake(255, 255, 255, 255));
 	surface_clear_buffers(&s);
 
-	RGFW_area win_res = RGFW_context_bufferGetResolution(s.ctx);
+	RGFW_area win_res = RGFW_bufferGetResolution(s.ctx);
 	#ifdef RGFW_3DS
 	/* NOTE(EimaMei): Native buffers have their resolution flipped as internally 
 	 * the 3DS framebuffers are treated as "portraits" that are rotated by 90 degrees
@@ -49,7 +49,7 @@ int main(void) {
 	/* NOTE(EimaMei): For stereoscopic images we have to divide the width in half
 	 * since we don't want Lonic (from the left eye image) moving to the right one
 	 * since that'll create a distorted view. */
-	if (RGFW_context_bufferIsStereoscopic(win->buffer)) {
+	if (RGFW_bufferIsStereoscopic(win->buffer)) {
 		win_res.w /= 2;
 	}
 	RGFW_rect r = RGFW_RECT(100, 100, img_lonic_width, img_lonic_height);
@@ -82,7 +82,7 @@ int main(void) {
 		surface_rect(&s, RGFW_RECT(15, 15, 64, 64), CPU_colorMake(0, 255, 0, 255));
 		surface_bitmap(&s, r, img_lonic_data);
 
-		RGFW_window_swapBuffers_buffer(win);
+		RGFW_windowSwapBuffers(win);
 		surface_clear_dirty_rects(&s);
 	}
 

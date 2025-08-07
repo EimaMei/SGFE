@@ -12,3 +12,5 @@ what RGFW could be like if it were on consoles.
 |     Platform     |   RGFW Version   |              Description              |
 |:----------------:|:----------------:|:-------------------------------------:|
 |  Nintendo 3DS    |  RGFW 1.7.5-dev  | Homebrew port utilizing devkitPro.    |
+|:----------------:|:----------------:|:-------------------------------------:|
+|  Nintendo Wii    |  RGFW 1.7.5-dev  | Homebrew port utilizing devkitPro.    |

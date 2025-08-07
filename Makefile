@@ -1,5 +1,6 @@
 # Parameter explanations:
-#   CC - compiler used by the Makefile. Can be whatever you desire.
+#   CC - compiler used by the Makefile. Setting it to 'DEFAULT' automatically picks
+# the default/expected compiler used for the target.
 #
 #   PLATFORM - sets the platform target to compile for. Current values: WIN32_GNU,
 # WIN32_MSVC, OS_X, LINUX, WASM_WASI, WASM_EMCC, 3DS, DEFAULT. Selecting 'DEFAULT'
@@ -13,7 +14,7 @@
 # 	LANGUAGE - selects which programming language to target. Currently C and C++
 # are the only valid options.
 
-CC        = arm-none-eabi-gcc
+CC        = DEFAULT
 PLATFORM  = 3DS
 MODE      = FAST
 LANGUAGE  = C
@@ -26,6 +27,7 @@ NAME   = basic
 SRC    = examples/buffer/native.c
 OUTPUT = build
 EMULATOR = FALSE
+CONSOLE_IP = NONE
 
 
 
@@ -90,35 +92,16 @@ endif
 
 GNU_INCLUDES = -I"." -I"include"
 
-
-ifeq ($(PLATFORM),DEFAULT)
-	ifneq (,$(filter $(CC),mingw32-gcc x86_64-w64-mingw32-g++ w64gcc w32gcc))
-		PLATFORM = WIN32_GNU
-	else ifneq (,$(filter $(CC),cl))
-		PLATFORM = WIN32_MSVC
-	else ifneq (,$(filter $(CC), wasi))
-		PLATFORM = WASM_WASI
-	else ifneq (,$(filter $(CC), emcc))
-		PLATFORM = WASM_EMCC
-	else
-		DETECTED_OS := $(shell uname 2>/dev/null || echo Unknown)
-
-		ifeq ($(DETECTED_OS),Darwin)
-			PLATFORM = OS_X
-		else ifeq ($(DETECTED_OS),Linux)
-			PLATFORM = LINUX
-		else
-			$(error Unsupported platform. Please refer to the Makefile for supported platofmrs.)
-		endif
-	endif
-endif
-
 ifeq ($(PLATFORM),3DS)
 	ifeq ($(strip $(DEVKITPRO)),)
 		$(error DEVKITPRO must be set in your environment: export DEVKITPRO=<path to devkitpro>)
 	endif
 	ifeq ($(strip $(DEVKITARM)),)
 		$(error DEVKITARM must be set in your environment: export DEVKITARM=<path to devkitARM>)
+	endif
+
+	ifeq ($(CC),DEFAULT)
+	CC = arm-none-eabi-gcc
 	endif
 
 	DESCRIPTION = RGFW examples for the Nintendo 3DS
@@ -128,10 +111,34 @@ ifeq ($(PLATFORM),3DS)
 	FLAGS = $(GNU_FLAGS) -specs=3dsx.specs -D __3DS__ -mword-relocations -ffunction-sections -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 	INCLUDES = -I"resources/3DS/include" $(GNU_INCLUDES) -I"$(CURDIR)" -I"$(DEVKITPRO)/libctru/include" -I"$(DEVKITARM)/include"
 
-	LIBS = -L"resources/3DS/lib" -lGLASSv2 -lkygx -lrip -L$(DEVKITPRO)/libctru/lib/ -lctru -lm
+	LIBS = -L"resources/wii/lib" -lGLASSv2 -lkygx -lrip -L$(DEVKITPRO)/libctru/lib/ -lctru -lm
 	EXE_OUT = .3dsx
 
 	export PATH := $(DEVKITPRO)/tools/bin:$(DEVKITARM)/bin:$(DEVKITPRO)/portlibs/3ds/bin:$(PATH)
+
+else ifeq ($(PLATFORM),WII)
+	ifeq ($(strip $(DEVKITPRO)),)
+		$(error DEVKITPRO must be set in your environment: export DEVKITPRO=<path to devkitpro>)
+	endif
+	ifeq ($(strip $(DEVKITPPC)),)
+		$(error DEVKITPPC must be set in your environment: export DEVKITPPC=<path to devkitARM>)
+	endif
+
+	ifeq ($(CC),DEFAULT)
+	CC = powerpc-eabi-gcc
+	endif
+
+	DESCRIPTION = RGFW examples for the Nintendo Wii
+	AUTHOR      = EimaMei
+	ICON        = resources/wii/default_icon.png
+
+	FLAGS = $(GNU_FLAGS) -D GEKKO -mrvl -mcpu=750 -meabi -mhard-float
+	INCLUDES = -I"resources/wii/include" $(GNU_INCLUDES) -I"$(CURDIR)" -I"$(DEVKITPRO)/libogc/include"
+
+	LIBS = -L"resources/wii/lib" -L$(DEVKITPRO)/libogc/lib/wii -lm -lwiiuse -lbte -logc
+	EXE_OUT = .dol
+
+	export PATH := $(DEVKITPRO)/tools/bin:$(DEVKITPPC)/bin:$(DEVKITPRO)/portlibs/wii/bin:$(PATH)
 
 else
 	$(error Unsupported platform. Please refer to the Makefile for supported platofmrs.)
@@ -146,10 +153,14 @@ all: $(OUTPUT) $(EXE) run
 
 # Run the executable.
 run: $(EXE)
-ifneq ($(PLATFORM),3DS)
-	./$(EXE)
-else
+ifeq ($(PLATFORM),3DS)
 	3dslink -r -1 $(EXE)
+else ifeq ($(PLATFORM),WII)
+    ifneq ($(CONSOLE_IP),NONE)
+	export WIILOAD=tcp:$(CONSOLE_IP) && wiiload $(EXE)
+	else
+	wiiload $(EXE)
+    endif
 endif
 
 # Clean the 'build' folder.
@@ -158,12 +169,13 @@ clean:
 
 $(EXE): $(SRC) RGFW_embedded.h Makefile examples/*
 ifeq ($(PLATFORM),3DS)
-	$(CC) $(FLAGS) $(INCLUDES) $(SRC) $(LIBS) -o "$(OUTPUT)/$(NAME).elf"
-
-    ifeq ($(EXE_OUT),.3dsx)
+	$(CC) $(FLAGS) $(EXTRA_FLAGS) $(INCLUDES) $(SRC) $(LIBS) -o "$(OUTPUT)/$(NAME).elf"
 	smdhtool --create "$(NAME)" "$(DESCRIPTION)" "$(AUTHOR)" "$(ICON)" "$(OUTPUT)/$(NAME).smdh"
 	3dsxtool "$(OUTPUT)/$(NAME).elf" "$(OUTPUT)/$(NAME).3dsx" --smdh="$(OUTPUT)/$(NAME).smdh"
-    endif
+
+else ifeq ($(PLATFORM),WII)
+	$(CC) $(FLAGS) $(EXTRA_FLAGS) $(INCLUDES) $(SRC) $(LIBS) -o "$(OUTPUT)/$(NAME).elf"
+	elf2dol "$(OUTPUT)/$(NAME).elf" "$(OUTPUT)/$(NAME).dol"
 
 else
 	$(CC) $(FLAGS) $(SRC) $(INCLUDES) $(LIBS) $(CC_OUT)"$@"

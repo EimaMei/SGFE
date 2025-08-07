@@ -24,8 +24,8 @@ void uniform_color_fs(float* fs_input, Shader_Builtins* builtins, void* uniforms
 
 static 
 void portableGL_ctx_init(RGFW_window* win, glContext* gl_out) {
-	u8* buffer = RGFW_context_bufferGetBuffer(win->buffer);
-	RGFW_area res = RGFW_context_bufferGetResolution(win->buffer);
+	u8* buffer = RGFW_bufferGetFramebuffer(win->buffer);
+	RGFW_area res = RGFW_bufferGetResolution(win->buffer);
 	init_glContext(gl_out, (u32**)&buffer, res.w, res.h, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
 }
 
@@ -33,9 +33,9 @@ int main() {
 	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowBuffer);
 	if (win == NULL) { return 1; }
 
-	RGFW_context_buffer* ctx = RGFW_window_getContext_buffer(win);
-	u8* buffer = RGFW_context_bufferGetBuffer(ctx);
-	RGFW_area res = RGFW_context_bufferGetResolution(ctx);
+	RGFW_contextBuffer* ctx = RGFW_windowGetContextBuffer(win);
+	u8* buffer = RGFW_bufferGetFramebuffer(ctx);
+	RGFW_area res = RGFW_bufferGetResolution(ctx);
 
 	glContext context;
 	init_glContext(&context, (u32**)&buffer, res.w, res.h, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
@@ -73,8 +73,8 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 
-		RGFW_window_swapBuffers_buffer(win);
-		pglSetBackBuffer(RGFW_context_bufferGetBuffer(ctx));
+		RGFW_windowSwapBuffers(win);
+		pglSetBackBuffer(RGFW_bufferGetFramebuffer(ctx));
 	}
 
 	free_glContext(&context);

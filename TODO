@@ -13,8 +13,6 @@ TODO (in no particular order):
 - Document how not specifying a graphical API will make Embedded fallback to other ones.
 - Document examples/README.md
 - Update CHANGELOG
-- Explain how swapBuffers differs from swapBuffers_OpenGL and _buffers
-- make RGFW_context
 - Add changes from Desktop to Embedded
 - add a gyro example.
 - (3DS) Add anti-aliasing for OpenGL.
@@ -27,26 +25,48 @@ back the window flags for it.
 - Add an example where the "non-primary" screen is only used.
 - Add a sizeof and getters/setters for each opaque struct type.
 - Rework debug systems to be more flexible.
-- Add a point about RGFW_screenPrimary being available on all platforms.
 - swapInterval example
-- Make createContext functions cross-platform/global.
 - Implement better header guard.
 - Pick a better name for RGFW Embedded.
-- remove RGFW_windowInitAllAPIs
+- Add timestamp to events.
+- Controller battery event (battery update, dead, etc).
+- Document all RGFW_<PLATFORM> macros.
+- Linked list for controllers.
+- Add ways to disable certain events.
+- Add "update complete" event.
+- Add a "end poll" event and function.
+- (Wii) GameCube controller support.
+- Update basic example to not use "motion_enable" once the abbility to disable events is present.
+- "Update controller" function (see SDL).
+- Update controller axes/motions/pointers/buttons/etc functions (see above).
+- Enable "pointer" for basic example.
+- Add a controller event that'd notify the user of specific events. For wii it'd be adding/removing extensions to the wii remote.
+- (3DS) Add an error if the users selects RGFW_videoModeWide on non 3DS and New 2DS XL consoles.
+- Get region (NTSC/PAL?) function.
+- Get cable function.
+- Add a window flag to use native mode instead.
+- Make "setNative" alloc non-native buffers if false is specified and buffers are null.
+- (3DS) RGFW_windowMakeCurrentBuffer should call "present" function
+- (Wii) Fix bug where nunchuk controllers are eligible for gyroscope support.
+- (Wii) Add video refresh event.
+- (3DS) Add video refresh event.
+- Remove swapBuffers in the callbacks example and replace it with a video fresh event.
+- Add rumble functionality.
 
 Maybe:
 - (3DS) Find a way to not use gfxInitDefault for GLASS.
+- OpenGL hint to request specific values instead of relying on minimums.
 - RGFW_window_swapInterval for buffer rendering.
-- VRAM alloc functions?
 - Knob?
+- Add angle to sensor.
+- Replace wpad code with wiiuse.
 
 Distant TODO:
 - Create a portable stdout/stderr library that'd write the text on screen.
 
 Planned backends:
-- Wii (pretty likely)
 - Dreamcast (later on, maybe)
 
 Console library TODO:
 - Create a console structure that creates its own context and renders on top of the user output.
-- Make it creatable/independent of RGFW_window and its init function.
+- Make it creatable/independent of RGFW_window and of createWindow init function.

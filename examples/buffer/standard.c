@@ -11,10 +11,10 @@ int main(void) {
 	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowBuffer);
 	if (win == NULL) { return 1; }
 
-	CPU_Surface s = surface_make(RGFW_window_getContext_buffer(win), CPU_colorMake(255, 255, 255, 255));
+	CPU_Surface s = surface_make(RGFW_windowGetContextBuffer(win), CPU_colorMake(255, 255, 255, 255));
 	surface_clear_buffers(&s);
 
-	RGFW_area win_res = RGFW_context_bufferGetResolution(s.ctx);
+	RGFW_area win_res = RGFW_bufferGetResolution(s.ctx);
 	RGFW_rect r = RGFW_RECT(100, 100, img_lonic_width, img_lonic_height);
 
 	while (!RGFW_window_shouldClose(win)) {
@@ -45,7 +45,7 @@ int main(void) {
 		surface_rect(&s, RGFW_RECT(15, 15, 64, 64), CPU_colorMake(0, 255, 0, 255));
 		surface_bitmap(&s, r, img_lonic_data);
 
-		RGFW_window_swapBuffers_buffer(win);
+		RGFW_windowSwapBuffers(win);
 		surface_clear_dirty_rects(&s);
 	}
 
