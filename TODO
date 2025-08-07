@@ -60,6 +60,7 @@ Maybe:
 - Knob?
 - Add angle to sensor.
 - Replace wpad code with wiiuse.
+- (Wii) Add a "fade out" effect when exiting.
 
 Distant TODO:
 - Create a portable stdout/stderr library that'd write the text on screen.
