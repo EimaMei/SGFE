@@ -334,7 +334,7 @@ SILK_API string silkGetError(void);
 
 // 3rd-Party Module template:
 // This is the template for 3rd-Party depencency modules inclosures.
-// Important information is that it only accounts for single-header libraries (i.e. STB, RGFW etc.)
+// Important information is that it only accounts for single-header libraries (i.e. STB, SGFE etc.)
 //
 // #if defined(SILK_INCLUDE_MODULE_{dependency})
 //     #if !defined(SILK_MODULE_{dependency}_PATH)

@@ -1,8 +1,8 @@
-#define RGFW_IMPLEMENTATION
-#include <RGFW_embedded.h>
+#define SGFE_IMPLEMENTATION
+#include <SGFE.h>
 #include <resources/controls.h>
 
-#if RGFW_3DS
+#if SGFE_3DS
 	#define SILK_PIXELBUFFER_WIDTH  400
 	#define SILK_PIXELBUFFER_HEIGHT 240
 #endif
@@ -12,22 +12,22 @@
 
 
 int main(void) {
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowBuffer);
+	SGFE_window* win = SGFE_createWindow(SGFE_videoModeOptimal(), SGFE_windowBuffer);
 
-	while (!RGFW_window_shouldClose(win)) {
-		const RGFW_event* event;
-		while (RGFW_window_checkEvent(win, &event)) {
-			if (event->type == RGFW_buttonPressed && event->button == BUTTON_START) {
-				RGFW_window_setShouldClose(win, RGFW_TRUE);
+	while (!SGFE_window_shouldClose(win)) {
+		const SGFE_event* event;
+		while (SGFE_window_checkEvent(win, &event)) {
+			if (event->type == SGFE_buttonPressed && event->button == BUTTON_START) {
+				SGFE_window_setShouldClose(win, SGFE_TRUE);
 				break;
 			}
 		}
 
-		RGFW_contextBuffer* ctx = RGFW_windowGetContextBuffer(win);
-		pixel* buffer = (pixel*)(void*)RGFW_bufferGetFramebuffer(ctx);
+		SGFE_contextBuffer* ctx = SGFE_windowGetContextBuffer(win);
+		pixel* buffer = (pixel*)(void*)SGFE_bufferGetFramebuffer(ctx);
 		silkClearPixelBufferColor(buffer, 0x11AA0033);
 
-		RGFW_area res = RGFW_bufferGetResolution(ctx);
+		SGFE_area res = SGFE_bufferGetResolution(ctx);
 		i32 buf_width = res.w,
 			buf_height = res.h;
 
@@ -40,7 +40,7 @@ int main(void) {
 			0xff0000ff
 		);
 
-		const char* text = "Hello, RGFW!";
+		const char* text = "Hello, SGFE!";
 		const size_t text_size = 8;
 		const i32 text_spacing = 1;
 
@@ -58,8 +58,8 @@ int main(void) {
 			0xff000000
 		);
 
-		RGFW_windowSwapBuffers(win);
+		SGFE_windowSwapBuffers(win);
 	}
 
-	RGFW_window_close(win);
+	SGFE_windowClose(win);
 }

@@ -1,12 +1,12 @@
-#define RGFW_OPENGL
-#define RGFW_IMPLEMENTATION
-#include <RGFW_embedded.h>
+#define SGFE_OPENGL
+#define SGFE_IMPLEMENTATION
+#include <SGFE.h>
 #include <resources/controls.h>
 #include "gles1_vshader.h"
 
 static
-GLuint load_shader(GLenum shader_type, const u8* binary_source, ssize_t binary_size) {
-	#ifdef RGFW_3DS
+GLuint load_shader(GLenum shader_type, const u8* binary_source, isize binary_size) {
+	#ifdef SGFE_3DS
 	#ifndef GL_SHADER_BINARY_PICA
 	#define GL_SHADER_BINARY_PICA 0x6000
 	#endif
@@ -32,10 +32,10 @@ static const vertex vertices[] = {
 };
 
 int main(void) {
-	RGFW_setHint_OpenGL(RGFW_glMajor, 1);
-	RGFW_setHint_OpenGL(RGFW_glMinor, 0);
-	RGFW_setHint_OpenGL(RGFW_glProfile, RGFW_glProfile_ES);
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowOpenGL);
+	SGFE_setHint_OpenGL(SGFE_glMajor, 1);
+	SGFE_setHint_OpenGL(SGFE_glMinor, 0);
+	SGFE_setHint_OpenGL(SGFE_glProfile, SGFE_glProfile_ES);
+	SGFE_window* win = SGFE_createWindow(SGFE_videoModeOptimal(), SGFE_windowOpenGL);
 
 	/* === OpenGL init === */
 	glEnable(GL_BLEND);
@@ -59,13 +59,13 @@ int main(void) {
 		}
 	}
 	glUseProgram(shader_program);
-	#ifdef RGFW_3DS
+	#ifdef SGFE_3DS
 	/* NOTE(EimaMei): The Nintendo 3DS internally uses a "portrait" resolution
 	 * for its screens, meaning bottom left is (-1.0, 1.0) while top right is
 	 * (1.0, -1.0). You can either handle this issue on your own by having a matrix
-	 * that's always rotated by 90 degrees clockwise or let RGFW do that for you
+	 * that's always rotated by 90 degrees clockwise or let SGFE do that for you
 	 * by inputting a mat4 uniform variable and calling the "fixScreen" function. */
-	RGFW_platform_OpenGL_rotateScreen(shader_program, "RGFW_PROJECTION");
+	SGFE_platform_OpenGL_rotateScreen(shader_program, "SGFE_PROJECTION");
 	#endif
 	glDeleteProgram(shader_program);
 
@@ -80,18 +80,18 @@ int main(void) {
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 
-	while (RGFW_window_checkEvents(win, 0)) {
-		if (RGFW_isPressed(RGFW_controllerGet(win, 0), BUTTON_START)) {
-			RGFW_window_setShouldClose(win, RGFW_TRUE);
+	while (SGFE_window_checkEvents(win, 0)) {
+		if (SGFE_isPressed(SGFE_controllerGet(win, 0), BUTTON_START)) {
+			SGFE_window_setShouldClose(win, SGFE_TRUE);
 			continue;
 		}
 
 		glClear(GL_COLOR_BUFFER_BIT);
-		glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, SGFE_COUNTOF(vertices));
 
-		RGFW_window_swapBuffers_OpenGL(win);
+		SGFE_window_swapBuffers_OpenGL(win);
 	}
 
 	glDeleteBuffers(1, &vbo);
-	RGFW_window_close(win);
+	SGFE_windowClose(win);
 }

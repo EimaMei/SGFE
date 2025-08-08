@@ -1,4 +1,4 @@
-.fvec RGFW_PROJECTION[4]
+.fvec SGFE_PROJECTION[4]
 
 .out outpos position
 .out outclr color
@@ -8,10 +8,10 @@
 
 .proc main
     ; Force 1 on the W component and do projection * inpos.
-    dph outpos.x, inpos, RGFW_PROJECTION[0]
-    dph outpos.y, inpos, RGFW_PROJECTION[1]
-    dph outpos.z, inpos, RGFW_PROJECTION[2]
-    dph outpos.w, inpos, RGFW_PROJECTION[3]
+    dph outpos.x, inpos, SGFE_PROJECTION[0]
+    dph outpos.y, inpos, SGFE_PROJECTION[1]
+    dph outpos.z, inpos, SGFE_PROJECTION[2]
+    dph outpos.w, inpos, SGFE_PROJECTION[3]
 
     ; Set the output color.
     mov outclr, inclr

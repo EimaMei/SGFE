@@ -104,7 +104,7 @@ ifeq ($(PLATFORM),3DS)
 	CC = arm-none-eabi-gcc
 	endif
 
-	DESCRIPTION = RGFW examples for the Nintendo 3DS
+	DESCRIPTION = SGFE examples for the Nintendo 3DS
 	AUTHOR      = EimaMei
 	ICON        = resources/3DS/default_icon.png
 
@@ -128,7 +128,7 @@ else ifeq ($(PLATFORM),WII)
 	CC = powerpc-eabi-gcc
 	endif
 
-	DESCRIPTION = RGFW examples for the Nintendo Wii
+	DESCRIPTION = SGFE examples for the Nintendo Wii
 	AUTHOR      = EimaMei
 	ICON        = resources/wii/default_icon.png
 
@@ -167,7 +167,7 @@ endif
 clean:
 	rm -rf $(OUTPUT)/*
 
-$(EXE): $(SRC) RGFW_embedded.h Makefile examples/*
+$(EXE): $(SRC) SGFE.h Makefile examples/*
 ifeq ($(PLATFORM),3DS)
 	$(CC) $(FLAGS) $(EXTRA_FLAGS) $(INCLUDES) $(SRC) $(LIBS) -o "$(OUTPUT)/$(NAME).elf"
 	smdhtool --create "$(NAME)" "$(DESCRIPTION)" "$(AUTHOR)" "$(ICON)" "$(OUTPUT)/$(NAME).smdh"

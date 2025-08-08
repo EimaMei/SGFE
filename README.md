@@ -1,16 +1,16 @@
-# RGFW Embedded
-RGFW Embedded is an officially endorsed implementation of the RGFW library for embedded
-systems, primarily consoles. The goal of this fork is to make the porting process of RGFW apps considerably easier on these archaic platforms
-whilst making sure the library itself is tailored made for them. This means that
-new features will be added unique to the base RGFW while some will be stripped
-away or even removed.
+# Sili's General Framework for Embedded
+SGFE is a cross-platform library designed to ease porting desktop applications to
+embedded systems (primarily consoles) whilst ensuring that the library is tailored 
+made and optimized for them.
 
-RGFW Embedded **is not** a direct implementation of RGFW. It's a reimagining of
-what RGFW could be like if it were on consoles.
+The library is made in conjunction with [RGFW](https://github.com/ColleagueRiley/RGFW),
+meaning you can apply the same concepts from it and get your applications running
+very easily and seamlessly.
+
 
 # Supported platforms
-|     Platform     |   RGFW Version   |              Description              |
-|:----------------:|:----------------:|:-------------------------------------:|
-|  Nintendo 3DS    |  RGFW 1.7.5-dev  | Homebrew port utilizing devkitPro.    |
-|:----------------:|:----------------:|:-------------------------------------:|
-|  Nintendo Wii    |  RGFW 1.7.5-dev  | Homebrew port utilizing devkitPro.    |
+|     Platform     |              Description              |
+|:----------------:|:-------------------------------------:|
+|  Nintendo 3DS    | Homebrew port utilizing devkitPro.    |
+|:----------------:|:-------------------------------------:|
+|  Nintendo Wii    | Homebrew port utilizing devkitPro.    |

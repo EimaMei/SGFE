@@ -2,9 +2,9 @@
 #define ROW_MAJOR
 #include "portablegl.h"
 
-#define RGFW_INT_DEFINED
-#define RGFW_IMPLEMENTATION
-#include <RGFW_embedded.h>
+#define SGFE_INT_DEFINED
+#define SGFE_IMPLEMENTATION
+#include <SGFE.h>
 #include <resources/controls.h>
 
 
@@ -15,7 +15,7 @@ typedef struct My_Uniforms
 
 static
 void identity_vs(float* vs_output, vec4* vertex_attribs, Shader_Builtins* builtins, void* uniforms) {
-	#ifdef RGFW_3DS
+	#ifdef SGFE_3DS
 	static const float deg90_rotation_matrix[4][4] = {
 		{ 0.0f,  1.0f, 0.0f, 0.0f },
 		{-1.0f,  0.0f, 0.0f, 0.0f },
@@ -35,15 +35,15 @@ void uniform_color_fs(float* fs_input, Shader_Builtins* builtins, void* uniforms
 }
 
 int main() {
-	RGFW_window* win = RGFW_createWindowContextless(RGFW_windowFlagsNone);
-	RGFW_bool is_initialized = RGFW_windowCreateContextBuffer(
-		win, RGFW_videoModeOptimal(), RGFW_pixelFormatRGBA8, RGFW_TRUE
+	SGFE_window* win = SGFE_createWindowContextless(SGFE_windowFlagsNone);
+	SGFE_bool is_initialized = SGFE_windowCreateContextBuffer(
+		win, SGFE_videoModeOptimal(), SGFE_pixelFormatRGBA8, SGFE_TRUE
 	);
 	if (!is_initialized) { return 1; }
 
-	RGFW_contextBuffer* ctx = RGFW_windowGetContextBuffer(win);
-	u8* buffer = RGFW_bufferGetFramebuffer(ctx);
-	RGFW_area res = RGFW_bufferGetResolution(ctx);
+	SGFE_contextBuffer* ctx = SGFE_windowGetContextBuffer(win);
+	u8* buffer = SGFE_bufferGetFramebuffer(ctx);
+	SGFE_area res = SGFE_bufferGetResolution(ctx);
 
 	glContext context;
 	init_glContext(&context, (u32**)&buffer, res.w, res.h, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
@@ -69,11 +69,11 @@ int main() {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glClearColor(1, 1, 1, 1);
 
-	while (!RGFW_window_shouldClose(win)) {
-		const RGFW_event* event;
-		while (RGFW_window_checkEvent(win, &event)) {
-			if (event->type == RGFW_buttonPressed && event->button == BUTTON_START) {
-				RGFW_window_setShouldClose(win, RGFW_TRUE);
+	while (!SGFE_window_shouldClose(win)) {
+		const SGFE_event* event;
+		while (SGFE_window_checkEvent(win, &event)) {
+			if (event->type == SGFE_buttonPressed && event->button == BUTTON_START) {
+				SGFE_window_setShouldClose(win, SGFE_TRUE);
 				break;
 			}
 		}
@@ -81,11 +81,11 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 
-		RGFW_windowSwapBuffers(win);
-		pglSetBackBuffer(RGFW_bufferGetFramebuffer(ctx));
+		SGFE_windowSwapBuffers(win);
+		pglSetBackBuffer(SGFE_bufferGetFramebuffer(ctx));
 	}
 
 	free_glContext(&context);
 
-	RGFW_window_close(win);
+	SGFE_windowClose(win);
 }

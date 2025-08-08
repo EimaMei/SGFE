@@ -21,120 +21,120 @@ void myFree(void* ptr, int line, const char* file) {
 	free(ptr);
 }
 
-#define RGFW_ALLOC(size) myAlloc(size, __LINE__, __FILE__)
-#define RGFW_FREE(size) myFree(size, __LINE__, __FILE__)
+#define SGFE_ALLOC(size) myAlloc(size, __LINE__, __FILE__)
+#define SGFE_FREE(size) myFree(size, __LINE__, __FILE__)
 
-#define RGFW_DEBUG
-#define RGFW_IMPLEMENTATION
-#include <RGFW_embedded.h>
+#define SGFE_DEBUG
+#define SGFE_IMPLEMENTATION
+#include <SGFE.h>
 #include <resources/controls.h>
 
 
 static
-void callback_error(RGFW_debugType type, RGFW_error error, RGFW_debugContext ctx, const char* msg) {
-	if (type != RGFW_debugTypeError || error == RGFW_errorNone) {
+void callback_error(SGFE_debugType type, SGFE_error error, SGFE_debugContext ctx, const char* msg) {
+	if (type != SGFE_debugTypeError || error == SGFE_errorNone) {
 		return;
 	}
 
-	printf("RGFW ERROR: %s\n", msg);
+	printf("SGFE ERROR: %s\n", msg);
 }
 
 static
-void callback_sleep(RGFW_window* win, RGFW_bool is_sleeping) {
+void callback_sleep(SGFE_window* win, SGFE_bool is_sleeping) {
 	printf("Device %s\n", is_sleeping ? "sleeps" : "wakes up");
 }
 
 static
-void callback_focus(RGFW_window* win, RGFW_bool is_focused) {
+void callback_focus(SGFE_window* win, SGFE_bool is_focused) {
 	printf("Device %s\n", is_focused ? "is focused" : "isn't focused");
 }
 
 static
-void callback_quit(RGFW_window* win) {
+void callback_quit(SGFE_window* win) {
 	printf("window quit\n");
 }
 
 static
-void callback_videoMode(RGFW_window* win, RGFW_videoMode video_mode) {
+void callback_videoMode(SGFE_window* win, SGFE_videoMode video_mode) {
 	printf("TODO\n");
 }
 
 static
-void callback_controller(RGFW_window* win, RGFW_controller* controller, RGFW_bool connected) {
-	printf("'%s' has been %s\n", RGFW_controllerGetName(controller), connected ? "connected" : "disconnected");
+void callback_controller(SGFE_window* win, SGFE_controller* controller, SGFE_bool connected) {
+	printf("'%s' has been %s\n", SGFE_controllerGetName(controller), connected ? "connected" : "disconnected");
 }
 
 static
-void callback_button(RGFW_window* win, RGFW_controller* controller, RGFW_button buttons, RGFW_bool pressed) {
+void callback_button(SGFE_window* win, SGFE_controller* controller, SGFE_button buttons, SGFE_bool pressed) {
 	printf("key %s:", pressed ? "pressed" : "released");
 
-	RGFW_buttonType button;
-	RGFW_button copy = buttons;
-	while (RGFW_iterateButtonMask(&copy, &button)) {
-		printf(" %s", RGFW_controllerGetNameButton(controller, button));
+	SGFE_buttonType button;
+	SGFE_button copy = buttons;
+	while (SGFE_iterateButtonMask(&copy, &button)) {
+		printf(" %s", SGFE_controllerGetNameButton(controller, button));
 	}
 	printf("\n");
 
-	RGFW_window_setShouldClose(win, RGFW_BOOL(buttons & BUTTON_START));
+	SGFE_window_setShouldClose(win, SGFE_BOOL(buttons & BUTTON_START));
 }
 
 static
-void callback_axis(RGFW_window* win, RGFW_controller* controller, RGFW_axisType which) {
-	RGFW_axis* axis = &controller->axes[which];
+void callback_axis(SGFE_window* win, SGFE_controller* controller, SGFE_axisType which) {
+	SGFE_axis* axis = &controller->axes[which];
 	if (fabsf(axis->value) < axis->deadzone) {
 		return;
 	}
 
 	printf(
 		"%s: value (%f); deadzone (%f)\n",
-		RGFW_controllerGetNameAxis(controller, which),
+		SGFE_controllerGetNameAxis(controller, which),
 		axis->value, axis->deadzone
 	);
 }
 
 static
-void callback_pointer(RGFW_window* win, RGFW_controller* controller, RGFW_pointerType which) {
-	ssize_t x = controller->pointers[which][0],
+void callback_pointer(SGFE_window* win, SGFE_controller* controller, SGFE_pointerType which) {
+	isize x = controller->pointers[which][0],
 			y = controller->pointers[which][1];
 
 	printf(
 		"%s: %ix%i\n",
-		RGFW_controllerGetNamePointer(controller, which),
+		SGFE_controllerGetNamePointer(controller, which),
 		x, y
 	);
 }
 
 static
-void callback_motion(RGFW_window* win, RGFW_controller* controller, RGFW_motionType which) {
+void callback_motion(SGFE_window* win, SGFE_controller* controller, SGFE_motionType which) {
 	float x = controller->motions[which][0],
 		  y = controller->motions[which][1],
 		  z = controller->motions[which][2];
 
 	printf(
 		"%s: %fx%fx%f\n",
-		RGFW_controllerGetNameMotion(controller, which),
+		SGFE_controllerGetNameMotion(controller, which),
 		x, y, z
 	);
 }
 
 
 int main(void) {
-	RGFW_window* win = RGFW_createWindowContextless(RGFW_windowFlagsNone);
-	RGFW_windowInitConsole(win);
+	SGFE_window* win = SGFE_createWindowContextless(SGFE_windowFlagsNone);
+	SGFE_windowInitTerminalOutput(win);
 
-	RGFW_setDebugCallback(callback_error);
-	RGFW_setDeviceSleepCallback(win, callback_sleep);
-	RGFW_setWindowQuitCallback(win, callback_quit);
-	RGFW_setWindowFocusCallback(win, callback_focus);
-	RGFW_setControllerCallback(win, callback_controller);
-	RGFW_setButtonCallback(win, callback_button);
-	RGFW_setAxisCallback(win, callback_axis);
-	RGFW_setPointerCallback(win, callback_pointer);
-	RGFW_setMotionCallback(win, callback_motion);
+	SGFE_setDebugCallback(callback_error);
+	SGFE_setDeviceSleepCallback(win, callback_sleep);
+	SGFE_setWindowQuitCallback(win, callback_quit);
+	SGFE_setWindowFocusCallback(win, callback_focus);
+	SGFE_setControllerCallback(win, callback_controller);
+	SGFE_setButtonCallback(win, callback_button);
+	SGFE_setAxisCallback(win, callback_axis);
+	SGFE_setPointerCallback(win, callback_pointer);
+	SGFE_setMotionCallback(win, callback_motion);
 
-	while (!RGFW_window_shouldClose(win)) {
-		RGFW_window_pollEvents(win);
-		RGFW_windowSwapBuffers(win);
+	while (!SGFE_window_shouldClose(win)) {
+		SGFE_window_pollEvents(win);
+		SGFE_windowSwapBuffers(win);
 	}
-	RGFW_window_close(win);
+	SGFE_windowClose(win);
 }

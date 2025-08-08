@@ -1,13 +1,13 @@
 
-#define RGFW_OPENGL
-#define RGFW_IMPLEMENTATION
-#include <RGFW_embedded.h>
+#define SGFE_OPENGL
+#define SGFE_IMPLEMENTATION
+#include <SGFE.h>
 #include <resources/controls.h>
 #include "../gles/gles1_vshader.h"
 
 static
-GLuint load_shader(GLenum shader_type, const u8* binary_source, ssize_t binary_size) {
-	#ifdef RGFW_3DS
+GLuint load_shader(GLenum shader_type, const u8* binary_source, isize binary_size) {
+	#ifdef SGFE_3DS
 	#ifndef GL_SHADER_BINARY_PICA
 	#define GL_SHADER_BINARY_PICA 0x6000
 	#endif
@@ -55,13 +55,13 @@ void scene_setup(u32* vbo) {
 		}
 	}
 	glUseProgram(shader_program);
-	#ifdef RGFW_3DS
+	#ifdef SGFE_3DS
 	/* NOTE(EimaMei): The Nintendo 3DS internally uses a "portrait" resolution
 	 * for its screens, meaning bottom left is (-1.0, 1.0) while top right is
 	 * (1.0, -1.0). You can either handle this issue on your own by having a matrix
-	 * that's always rotated by 90 degrees clockwise or let RGFW do that for you
+	 * that's always rotated by 90 degrees clockwise or let SGFE do that for you
 	 * by inputting a mat4 uniform variable and calling the "fixScreen" function. */
-	RGFW_platform_OpenGL_rotateScreen(shader_program, "RGFW_PROJECTION");
+	SGFE_platform_OpenGL_rotateScreen(shader_program, "SGFE_PROJECTION");
 	#endif
 	glDeleteProgram(shader_program);
 
@@ -77,51 +77,51 @@ void scene_setup(u32* vbo) {
 }
 
 int main(void) {
-	RGFW_setHint_OpenGL(RGFW_glMajor, 1);
-	RGFW_setHint_OpenGL(RGFW_glMinor, 0);
-	RGFW_setHint_OpenGL(RGFW_glProfile, RGFW_glProfile_ES);
+	SGFE_setHint_OpenGL(SGFE_glMajor, 1);
+	SGFE_setHint_OpenGL(SGFE_glMinor, 0);
+	SGFE_setHint_OpenGL(SGFE_glProfile, SGFE_glProfile_ES);
 
-#ifdef RGFW_3DS
-	RGFW_window* win = RGFW_createWindow(RGFW_videoModeOptimal(), RGFW_windowOpenGL | RGFW_windowDualScreen);
-	RGFW_contextOpenGL *top = RGFW_windowGetContextExOpenGL(win, RGFW_screenTop),
-						*bottom = RGFW_windowGetContextExOpenGL(win, RGFW_screenBottom);
+#ifdef SGFE_3DS
+	SGFE_window* win = SGFE_createWindow(SGFE_videoModeOptimal(), SGFE_windowOpenGL | SGFE_windowDualScreen);
+	SGFE_contextOpenGL *top = SGFE_windowGetContextExOpenGL(win, SGFE_screenTop),
+						*bottom = SGFE_windowGetContextExOpenGL(win, SGFE_screenBottom);
 
 	u32 vbo[2];
-	RGFW_window_makeCurrent_OpenGL(win, top);
+	SGFE_window_makeCurrent_OpenGL(win, top);
 	scene_setup(&vbo[0]);
 
-	RGFW_window_makeCurrent_OpenGL(win, bottom);
+	SGFE_window_makeCurrent_OpenGL(win, bottom);
 	scene_setup(&vbo[1]);
 #else
 	#error "This platform does not support multiple screens."
 #endif
 
-	while (RGFW_window_checkEvents(win, 0)) {
-		if (RGFW_isPressed(RGFW_controllerGet(win, 0), BUTTON_START)) {
-			RGFW_window_setShouldClose(win, RGFW_TRUE);
+	while (SGFE_window_checkEvents(win, 0)) {
+		if (SGFE_isPressed(SGFE_controllerGet(win, 0), BUTTON_START)) {
+			SGFE_window_setShouldClose(win, SGFE_TRUE);
 			continue;
 		}
 
-#ifdef RGFW_3DS
-		RGFW_window_makeCurrent_OpenGL(win, top); {
+#ifdef SGFE_3DS
+		SGFE_window_makeCurrent_OpenGL(win, top); {
 			glClear(GL_COLOR_BUFFER_BIT);
-			glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, SGFE_COUNTOF(vertices));
 		}
 
-		RGFW_window_makeCurrent_OpenGL(win, bottom); {
+		SGFE_window_makeCurrent_OpenGL(win, bottom); {
 			glClear(GL_COLOR_BUFFER_BIT);
-			glDrawArrays(GL_TRIANGLE_STRIP, 0, RGFW_COUNTOF(vertices));
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, SGFE_COUNTOF(vertices));
 		}
 #endif
 
-		RGFW_window_swapBuffers_OpenGL(win);
+		SGFE_window_swapBuffers_OpenGL(win);
 	}
 
-	RGFW_window_makeCurrent_OpenGL(win, top);
+	SGFE_window_makeCurrent_OpenGL(win, top);
 	glDeleteBuffers(1, &vbo[0]);
 
-	RGFW_window_makeCurrent_OpenGL(win, bottom);
+	SGFE_window_makeCurrent_OpenGL(win, bottom);
 	glDeleteBuffers(1, &vbo[1]);
 
-	RGFW_window_close(win);
+	SGFE_windowClose(win);
 }
