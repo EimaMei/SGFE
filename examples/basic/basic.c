@@ -12,7 +12,7 @@ void controller_printInfo(SGFE_controller* controller);
 int main(void) {
 	/* In SGFE, the "window" is the structure in which the SGFE library stores everything
 	 * inside. It is essentially the global state of the application.*/
-	SGFE_window* win = SGFE_createWindowContextless(SGFE_windowFlagsNone);
+	SGFE_window* win = SGFE_windowMakeContextless(SGFE_windowFlagsNone);
 	/* On consoles you usually don't have easy (or any) access to a real terminal.
 	 * To get around this SGFE enables you to turn the entire window into a terminal
 	 * output screen.
@@ -32,15 +32,14 @@ int main(void) {
 	SGFE_bool motion_enabled = SGFE_FALSE;
 
 	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
-		controller_printInfo(SGFE_window_controllerGet(win, i));
+		controller_printInfo(SGFE_windowGetController(win, i));
 	}
-
-	while (!SGFE_window_shouldClose(win)) {
+	while (!SGFE_windowShouldClose(win)) {
 		const SGFE_event* event = NULL;
-		while (SGFE_window_checkEvent(win, &event)) {
+		while (SGFE_windowCheckEvent(win, &event)) {
 			switch (event->type) {
 				case SGFE_eventQuit: {
-					SGFE_window_setShouldClose(win, SGFE_TRUE);
+					SGFE_windowSetShouldClose(win, SGFE_TRUE);
 				} break;
 
 				case SGFE_eventControllerConnected: {
@@ -110,7 +109,7 @@ int main(void) {
 			}
 		}
 
-		const SGFE_controller* controller = SGFE_window_controllerGet(win, 0);
+		const SGFE_controller* controller = SGFE_windowGetController(win, 0);
 		if (controller->connected && SGFE_isHeld(controller, BUTTON_BACK)) {
 			if (SGFE_isDown(controller, BUTTON_PRIMARY)) {
 				motion_enabled ^= SGFE_TRUE;
@@ -120,7 +119,7 @@ int main(void) {
 				);
 			}
 			else if (SGFE_isDown(controller, BUTTON_START)) {
-				SGFE_window_setShouldClose(win, SGFE_TRUE);
+				SGFE_windowSetShouldClose(win, SGFE_TRUE);
 				continue;
 			}
 		}
@@ -133,18 +132,17 @@ int main(void) {
 void controller_printInfo(SGFE_controller* controller) {
 	if (!controller->connected) { return ; }
 	printf("\n\n");
-	isize start, end;
+	isize first, last;
 
 	printf("Controller #%zi: %s\n", controller->port, SGFE_controllerGetName(controller));
 
-	SGFE_controller_getRangeAxis(controller, &start, &end);
-	for (SGFE_axisType j = start; j < end; j += 1) {
+	SGFE_controllerGetRangeAxis(controller, &first, &last);
+	for (SGFE_axisType j = first; j <= last; j += 1) {
 		printf("\tAxis #%02zi: %s\n", j, SGFE_controllerGetNameAxis(controller, j));
 	}
 
-	if (start != -1) { printf("\n"); }
-
-	for (SGFE_buttonType j = 0; j < SGFE_controller_getButtonCount(controller); j += 1) {
+	SGFE_controllerGetRangeButton(controller, &first, &last);
+	for (SGFE_buttonType j = first; j <= last; j += 1) {
 		printf("\tButton #%02zi: %s\n", j, SGFE_controllerGetNameButton(controller, j));
 	}
 
@@ -154,9 +152,9 @@ void controller_printInfo(SGFE_controller* controller) {
 	 *
 	 * You can see which motion sensors are enabled by checking
 	 * '.enabled_motions[]' and seeing if they equal to true. */
-	SGFE_controller_getRangeMotion(controller, &start, &end);
-	for (SGFE_motionType j = start; j < end; j += 1) {
-		SGFE_controller_enableMotion(controller, j, SGFE_TRUE);
+	SGFE_controllerGetRangeMotion(controller, &first, &last);
+	for (SGFE_motionType j = first; j <= last; j += 1) {
+		SGFE_controllerEnableMotion(controller, j, SGFE_TRUE);
 		printf("\tMotion device #%02zi: %s\n", j, SGFE_controllerGetNameMotion(controller, j));
 	}
 
@@ -166,9 +164,9 @@ void controller_printInfo(SGFE_controller* controller) {
 	 *
 	 * You can see which pointer functionalities are enabled by checking
 	 * '.enabled_pointers[]' and seeing if they equal to true. */
-	SGFE_controller_getRangePointer(controller, &start, &end);
-	for (SGFE_pointerType j = start; j < end; j += 1) {
-		SGFE_controller_enablePointer(controller, j, SGFE_TRUE);
-		printf("\tPointer device #%02zi: %s\n", j, SGFE_controllerGetNameMotion(controller, j));
+	SGFE_controllerGetRangePointer(controller, &first, &last);
+	for (SGFE_pointerType j = first; j <= last; j += 1) {
+		SGFE_controllerEnablePointer(controller, j, SGFE_TRUE);
+		printf("\tPointer device #%02zi: %s\n", j, SGFE_controllerGetNamePointer(controller, j));
 	}
 }

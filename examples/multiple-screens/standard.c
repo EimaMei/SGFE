@@ -9,7 +9,7 @@
 
 int main(void) {
 #ifdef SGFE_3DS
-	SGFE_window* win = SGFE_createWindow(SGFE_videoModeOptimal(), SGFE_windowBuffer | SGFE_windowDualScreen);
+	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowBuffer | SGFE_windowDualScreen);
 
 	CPU_Surface top = surface_make(
 		SGFE_windowGetContextExBuffer(win, SGFE_screenTop),
@@ -36,11 +36,11 @@ int main(void) {
 		win_res.w /= 2;
 	}
 
-	while (!SGFE_window_shouldClose(win)) {
+	while (!SGFE_windowShouldClose(win)) {
 		const SGFE_event* event;
-		while (SGFE_window_checkEvent(win, &event)) {
+		while (SGFE_windowCheckEvent(win, &event)) {
 			if (event->type == SGFE_buttonPressed && event->button == BUTTON_START) {
-				SGFE_window_setShouldClose(win, SGFE_TRUE);
+				SGFE_windowSetShouldClose(win, SGFE_TRUE);
 				break;
 			}
 		}

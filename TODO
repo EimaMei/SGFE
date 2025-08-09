@@ -24,7 +24,7 @@ back the window flags for it.
 - Implement a show flag.
 - Add an example where the "non-primary" screen is only used.
 - Add a sizeof and getters/setters for each opaque struct type.
-- Rework debug systems to be more flexible.
+- Rework debug systems to be more flexible. Remove SGFE_sendDebugInfo.
 - swapInterval example
 - Implement better header guard.
 - Add timestamp to events.
@@ -45,13 +45,21 @@ back the window flags for it.
 - Get cable function.
 - Add a window flag to use native mode instead.
 - Make "setNative" alloc non-native buffers if false is specified and buffers are null.
-- (3DS) SGFE_windowMakeCurrentBuffer should call "present" function
 - (Wii) Fix bug where nunchuk controllers are eligible for gyroscope support.
 - (Wii) Add video refresh event.
 - (3DS) Add video refresh event.
 - Remove swapBuffers in the callbacks example and replace it with a video fresh event.
 - Add rumble functionality.
 - Create a screenshot of SGFE working on Wii and 3DS emulators/real hardware.
+- Add "exit key" back via buttons. Add it back into examples
+- In the "free window" function call a "hide window" function that turns the screen
+black. Remove that kind of code from the 3DS code.
+- SGFE_windowInitTerminalOutput should probably request a buffer context instead.
+- Make platform-specific SGFE_buttonFromAPI/ToAPI functions available as platform functions.
+- Update github "About"
+- (3DS) replace "hidScanInput" with raw events.
+- Make asserts useful by replacing it with a platform-specific function that opens up the terminal automatically before resetting once a button is clicked. Mayba have an option to save the assert, too.
+- queue event function from RGFW.
 
 Maybe:
 - (3DS) Find a way to not use gfxInitDefault for GLASS.
@@ -62,6 +70,9 @@ Maybe:
 - Replace wpad code with wiiuse.
 - (Wii) Add a "fade out" effect when exiting.
 - Make an SDL-style library that'd combine SGFE and RGFW.
+- (Wii) White/black/red/blue Wiis as "system models"? Or maybe base it on this: https://en-americas-support.nintendo.com/app/answers/detail/a_id/2650/~/what-is-the-difference-between-the-models-of-wii-consoles%3F
+- Make private API functions visible in the platform section.
+- Implement a SDL_StartTextInput?/SDL_TextInputEvent.
 
 Distant TODO:
 - Create a portable stdout/stderr library that'd write the text on screen.

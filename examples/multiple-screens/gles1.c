@@ -61,7 +61,7 @@ void scene_setup(u32* vbo) {
 	 * (1.0, -1.0). You can either handle this issue on your own by having a matrix
 	 * that's always rotated by 90 degrees clockwise or let SGFE do that for you
 	 * by inputting a mat4 uniform variable and calling the "fixScreen" function. */
-	SGFE_platform_OpenGL_rotateScreen(shader_program, "SGFE_PROJECTION");
+	SGFE_platformRotateScreenOpenGL(shader_program, "SGFE_PROJECTION");
 	#endif
 	glDeleteProgram(shader_program);
 
@@ -82,7 +82,7 @@ int main(void) {
 	SGFE_setHint_OpenGL(SGFE_glProfile, SGFE_glProfile_ES);
 
 #ifdef SGFE_3DS
-	SGFE_window* win = SGFE_createWindow(SGFE_videoModeOptimal(), SGFE_windowOpenGL | SGFE_windowDualScreen);
+	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowOpenGL | SGFE_windowDualScreen);
 	SGFE_contextOpenGL *top = SGFE_windowGetContextExOpenGL(win, SGFE_screenTop),
 						*bottom = SGFE_windowGetContextExOpenGL(win, SGFE_screenBottom);
 
@@ -96,9 +96,9 @@ int main(void) {
 	#error "This platform does not support multiple screens."
 #endif
 
-	while (SGFE_window_checkEvents(win, 0)) {
+	while (SGFE_windowCheckEvents(win, 0)) {
 		if (SGFE_isPressed(SGFE_controllerGet(win, 0), BUTTON_START)) {
-			SGFE_window_setShouldClose(win, SGFE_TRUE);
+			SGFE_windowSetShouldClose(win, SGFE_TRUE);
 			continue;
 		}
 

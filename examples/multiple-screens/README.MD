@@ -68,19 +68,19 @@ current graphical context.
 
 ```c
 // Applies the 'SGFE_windowTopScreen' flag automatically. SGFE_getCurrent() == SGFE_screenTop.
-SGFE_window* win = SGFE_createWindow(SGFE_videoModeOptimal(), 0);
+SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), 0);
 // Applies the 'SGFE_windowTopScreen' flag automatically. SGFE_getCurrent() == SGFE_screenTop.
-SGFE_window* win = SGFE_createWindow(SGFE_videoModeOptimal(), SGFE_windowInitNoAPI);
+SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowInitNoAPI);
 // You can manually apply the 'SGFE_windowTopScreen' flag if you wish. SGFE_getCurrent() == SGFE_screenTop.
-SGFE_window* win = SGFE_createWindow(SGFE_videoModeOptimal(), SGFE_windowTopScreen);
+SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowTopScreen);
 
 // Now only the `SGFE_windowBottomScreen` flag is applied. SGFE_getCurrent() == SGFE_screenBottom.
-SGFE_window* win = SGFE_createWindow(SGFE_videoModeOptimal(), SGFE_windowBottomScreen);a
+SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowBottomScreen);a
 
 // All screens have been specified so that the window could render both at the same time. SGFE_getCurrent() == SGFE_screenTop.
-SGFE_window* win = SGFE_createWindow(SGFE_videoModeOptimal(), SGFE_windowTopScreen | SGFE_windowBottomScreen);
+SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowTopScreen | SGFE_windowBottomScreen);
 // Same thing as the previous declaration. SGFE_getCurrent() == SGFE_screenTop.
-SGFE_window* win = SGFE_createWindow(SGFE_videoModeOptimal(), SGFE_windowDualScreen);
+SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowDualScreen);
 ```
 
 ### Swapping buffers

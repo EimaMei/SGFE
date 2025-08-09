@@ -8,7 +8,7 @@
 
 
 int main(void) {
-	SGFE_window* win = SGFE_createWindow(SGFE_videoModeOptimal(), SGFE_windowBuffer);
+	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowBuffer);
 	if (win == NULL) { return 1; }
 
 	CPU_Surface s = surface_make(SGFE_windowGetContextBuffer(win), CPU_colorMake(255, 255, 255, 255));
@@ -17,11 +17,11 @@ int main(void) {
 	SGFE_area win_res = SGFE_bufferGetResolution(s.ctx);
 	SGFE_rect r = SGFE_RECT(100, 100, img_lonic_width, img_lonic_height);
 
-	while (!SGFE_window_shouldClose(win)) {
+	while (!SGFE_windowShouldClose(win)) {
 		const SGFE_event* event;
-		while (SGFE_window_checkEvent(win, &event)) {
+		while (SGFE_windowCheckEvent(win, &event)) {
 			if (event->type == SGFE_buttonPressed && event->button == BUTTON_START) {
-				SGFE_window_setShouldClose(win, SGFE_TRUE);
+				SGFE_windowSetShouldClose(win, SGFE_TRUE);
 				break;
 			}
 		}

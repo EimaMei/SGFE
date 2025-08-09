@@ -75,7 +75,7 @@ void callback_button(SGFE_window* win, SGFE_controller* controller, SGFE_button 
 	}
 	printf("\n");
 
-	SGFE_window_setShouldClose(win, SGFE_BOOL(buttons & BUTTON_START));
+	SGFE_windowSetShouldClose(win, SGFE_BOOL(buttons & BUTTON_START));
 }
 
 static
@@ -119,7 +119,7 @@ void callback_motion(SGFE_window* win, SGFE_controller* controller, SGFE_motionT
 
 
 int main(void) {
-	SGFE_window* win = SGFE_createWindowContextless(SGFE_windowFlagsNone);
+	SGFE_window* win = SGFE_windowMakeContextless(SGFE_windowFlagsNone);
 	SGFE_windowInitTerminalOutput(win);
 
 	SGFE_setDebugCallback(callback_error);
@@ -132,8 +132,8 @@ int main(void) {
 	SGFE_setPointerCallback(win, callback_pointer);
 	SGFE_setMotionCallback(win, callback_motion);
 
-	while (!SGFE_window_shouldClose(win)) {
-		SGFE_window_pollEvents(win);
+	while (!SGFE_windowShouldClose(win)) {
+		SGFE_windowPollEvents(win);
 		SGFE_windowSwapBuffers(win);
 	}
 	SGFE_windowClose(win);

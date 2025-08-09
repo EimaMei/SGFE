@@ -12,5 +12,4 @@ very easily and seamlessly.
 |     Platform     |              Description              |
 |:----------------:|:-------------------------------------:|
 |  Nintendo 3DS    | Homebrew port utilizing devkitPro.    |
-|:----------------:|:-------------------------------------:|
 |  Nintendo Wii    | Homebrew port utilizing devkitPro.    |

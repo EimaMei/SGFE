@@ -35,7 +35,7 @@ void uniform_color_fs(float* fs_input, Shader_Builtins* builtins, void* uniforms
 }
 
 int main() {
-	SGFE_window* win = SGFE_createWindowContextless(SGFE_windowFlagsNone);
+	SGFE_window* win = SGFE_windowMakeContextless(SGFE_windowFlagsNone);
 	SGFE_bool is_initialized = SGFE_windowCreateContextBuffer(
 		win, SGFE_videoModeOptimal(), SGFE_pixelFormatRGBA8, SGFE_TRUE
 	);
@@ -69,11 +69,11 @@ int main() {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glClearColor(1, 1, 1, 1);
 
-	while (!SGFE_window_shouldClose(win)) {
+	while (!SGFE_windowShouldClose(win)) {
 		const SGFE_event* event;
-		while (SGFE_window_checkEvent(win, &event)) {
+		while (SGFE_windowCheckEvent(win, &event)) {
 			if (event->type == SGFE_buttonPressed && event->button == BUTTON_START) {
-				SGFE_window_setShouldClose(win, SGFE_TRUE);
+				SGFE_windowSetShouldClose(win, SGFE_TRUE);
 				break;
 			}
 		}

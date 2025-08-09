@@ -30,7 +30,7 @@ void portableGL_ctx_init(SGFE_window* win, glContext* gl_out) {
 }
 
 int main() {
-	SGFE_window* win = SGFE_createWindow(SGFE_videoModeOptimal(), SGFE_windowBuffer);
+	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowBuffer);
 	if (win == NULL) { return 1; }
 
 	SGFE_contextBuffer* ctx = SGFE_windowGetContextBuffer(win);
@@ -61,11 +61,11 @@ int main() {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glClearColor(1, 1, 1, 1);
 
-	while (!SGFE_window_shouldClose(win)) {
+	while (!SGFE_windowShouldClose(win)) {
 		const SGFE_event* event;
-		while (SGFE_window_checkEvent(win, &event)) {
+		while (SGFE_windowCheckEvent(win, &event)) {
 			if (event->type == SGFE_buttonPressed && event->button == BUTTON_START) {
-				SGFE_window_setShouldClose(win, SGFE_TRUE);
+				SGFE_windowSetShouldClose(win, SGFE_TRUE);
 				break;
 			}
 		}

@@ -28,7 +28,7 @@ int main(void) {
 	SGFE_videoMode mode = SGFE_videoMode3D;
 	#endif
 
-	SGFE_window* win = SGFE_createWindowContextless(SGFE_windowFlagsNone);
+	SGFE_window* win = SGFE_windowMakeContextless(SGFE_windowFlagsNone);
 	SGFE_bool res = SGFE_windowCreateContextBuffer(
 		win, mode, SGFE_pixelFormatOptimal(), SGFE_TRUE
 	);
@@ -54,11 +54,11 @@ int main(void) {
 	}
 	SGFE_rect r = SGFE_RECT(100, 100, img_lonic_width, img_lonic_height);
 
-	while (!SGFE_window_shouldClose(win)) {
+	while (!SGFE_windowShouldClose(win)) {
 		const SGFE_event* event;
-		while (SGFE_window_checkEvent(win, &event)) {
+		while (SGFE_windowCheckEvent(win, &event)) {
 			if (event->type == SGFE_buttonPressed && event->button == BUTTON_START) {
-				SGFE_window_setShouldClose(win, SGFE_TRUE);
+				SGFE_windowSetShouldClose(win, SGFE_TRUE);
 				break;
 			}
 		}
