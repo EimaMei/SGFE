@@ -26,55 +26,47 @@ int main(void) {
     #error "This platform does not support multiple screens."
 #endif
 
-	SGFE_rect r = SGFE_RECT(100, 100, img_lonic_width, img_lonic_height);
+	CPU_Rect r = CPU_rectMake(100, 100, img_lonic_width, img_lonic_height);
 
-	SGFE_area win_res = SGFE_bufferGetResolution(win->buffer);
-	/* NOTE(EimaMei): For stereoscopic images we have to divide the width in half
-	 * since we don't want Lonic (from the left eye image) moving to the right one
-	 * since that'll create a distorted view. */
-	if (SGFE_bufferIsStereoscopic(win->buffer)) {
-		win_res.w /= 2;
-	}
+	isize width, height;
+	SGFE_bufferGetResolution(top.ctx, &width, &height);
 
 	while (!SGFE_windowShouldClose(win)) {
-		const SGFE_event* event;
-		while (SGFE_windowCheckEvent(win, &event)) {
-			if (event->type == SGFE_buttonPressed && event->button == BUTTON_START) {
-				SGFE_windowSetShouldClose(win, SGFE_TRUE);
-				break;
-			}
+		SGFE_windowPollEvents(win);
+
+		SGFE_controller* p1 = SGFE_windowGetController(win, 0);
+		if (SGFE_isDown(p1, BUTTON_START)) {
+			SGFE_windowSetShouldClose(win, SGFE_TRUE);
+			continue;
 		}
 
-		SGFE_controller* p1 = SGFE_controllerGet(win, 0);
-
-		if (SGFE_isPressed(p1, BUTTON_LEFT) && r.x > 0) {
+		if (SGFE_isHeld(p1, BUTTON_LEFT) && r.x > 0) {
 			r.x -= 1;
 		}
-		else if (SGFE_isPressed(p1, BUTTON_RIGHT) && r.x + r.w < win_res.w) {
+		else if (SGFE_isHeld(p1, BUTTON_RIGHT) && r.x + r.w < width) {
 			r.x += 1;
 		}
 
-		if (SGFE_isPressed(p1, BUTTON_UP) && r.y > 0) {
+		if (SGFE_isHeld(p1, BUTTON_UP) && r.y > 0) {
 			r.y -= 1;
 		}
-		else if (SGFE_isPressed(p1, BUTTON_DOWN) && r.y + r.h < win_res.h) {
+		else if (SGFE_isHeld(p1, BUTTON_DOWN) && r.y + r.h < height) {
 			r.y += 1;
 		}
 
 		#ifdef SGFE_3DS
-		SGFE_windowMakeCurrentBuffer(win, top.ctx); {
-			surface_clear_dirty_rects(&top);
-			surface_rect(&top, SGFE_RECT(15, 15, 64, 64), CPU_colorMake(0, 255, 0, 255));
-			surface_bitmap(&top, r, img_lonic_data);
-		}
+		surface_rect(&top, CPU_rectMake(15, 15, 64, 64), CPU_colorMake(0, 255, 0, 255));
+		surface_bitmap(&top, r, img_lonic_data);
 
-		SGFE_windowMakeCurrentBuffer(win, bottom.ctx); {
-			surface_clear_dirty_rects(&bottom);
-			surface_rect(&bottom, SGFE_RECT(15, 15, 64, 64), CPU_colorMake(15, 129, 216, 255));
-		}
+		surface_rect(&bottom, CPU_rectMake(15, 15, 64, 64), CPU_colorMake(15, 129, 216, 255));
 		#endif
 
 		SGFE_windowSwapBuffers(win);
+
+		#ifdef SGFE_3DS
+		surface_clear_dirty_rects(&top);
+		surface_clear_dirty_rects(&bottom);
+		#endif
 	}
 
 	SGFE_windowClose(win);

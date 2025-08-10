@@ -128,29 +128,11 @@ typedef SGFE_ENUM(isize, SGFE_motionType) {
 
 #endif /* SGFE_CUSTOM_BACKEND */
 
-
-#include <SGFE.h>
-
 /* === STRUCTURE TYPES === */
 
 #ifdef SGFE_CUSTOM_BACKEND
 
-struct SGFE_contextBuffer {
-	SGFE_screen screen;
-	SGFE_videoMode mode;
-	SGFE_pixelFormat format;
-
-	isize current;
-	u8* buffers[2];
-
-	SGFE_bool is_buffer_allocated;
-	SGFE_bool is_double_buffered;
-	SGFE_bool is_native;
-
-	#ifndef SGFE_BUFFER_NO_CONVERSION
-	u8* buffers_native[2];
-	#endif
-
+struct SGFE_contextBufferSource {
 	/* ... */
 };
 
@@ -165,41 +147,14 @@ struct SGFE_contextOpenGL {
 };
 #endif
 
-struct SGFE_context {
-	SGFE_contextType type;
-	union {
-		SGFE_contextBuffer buffer;
-		#ifdef SGFE_OPENGL
-		SGFE_contextOpenGL gl;
-		#endif
-	} data;
-};
-
 struct SGFE_windowSource {
 	/* ... */
-	SGFE_context ctx;
-	/* or: SGFE_context ctx[SGFE_screenCount] */
-};
-
-struct SGFE_window {
-	SGFE_windowSource src;
-	SGFE_context* current[SGFE_screenCount];
-
-	SGFE_event events[32];
-	isize event_len;
-
-	SGFE_controller controllers[SGFE_MAX_CONTROLLERS];
-
-	SGFE_bool queue_events, polled_events;
-	u32 _flags;
-
-	SGFE_callbacks callbacks;
-	void* userPtr;
 };
 
 #endif /* SGFE_CUSTOM_BACKEND */
 
 
+#include <SGFE.h>
 
 
 #ifdef SGFE_IMPLEMENTATION
@@ -264,10 +219,6 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 	/* NOTE(EimaMei): 'SGFE_windowMake' already asserts that the window cannot be
 	 * NULL.*/
 	#warning "Warning to notify that this function is not implemented."
-	/* ... */
-	SGFE_windowSource* src = &win->src;
-	SGFE_MEMSET(&src->ctx, 0, sizeof(src->ctx));
-	/* ... */
 }
 
 
@@ -287,6 +238,58 @@ void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlags flags) {
 void SGFE_windowPollEvents(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 	#warning "Warning to notify that this function is not implemented."
+
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventQuit)) {
+		if (0) {
+			SGFE_windowSetShouldClose(win, SGFE_TRUE);
+			SGFE_windowQuitCallback(win);
+
+			if (win->is_queueing_events) {
+				SGFE_event event;
+				event.type = SGFE_eventQuit;
+				SGFE_windowEventPush(win, &event);
+			}
+			return;
+		}
+	}
+ 
+	/* ... */
+
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonDown)) {
+		/* controller->buttons_held = ...; */
+		/* controller->buttons_down = ...; */
+
+		/* SGFE__processCallbackAndEventQueue_ButtonDown(win, controller); */
+	}
+
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonUp)) {
+		/* controller->buttons_up = ... ; */
+
+		/* SGFE__processCallbackAndEventQueue_ButtonUp(win, controller); */
+	}
+
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventAxis)) {
+		/* ... */
+		if (1) {
+			/* SGFE__processCallbackAndEventQueue_Axis(win, controller, axis_ptr); */
+		}
+	}
+
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventPointer)) {
+		if (0 /* controller->enabled_pointers[pointer_type] */ ) {
+			if (1) {
+				/* SGFE__processCallbackAndEventQueue_Pointer(win, controller, pointer_ptr); */
+			}
+		}
+	}
+
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventMotion)) {
+		if (0 /* controller->enabled_pointers[motion_type] */ ) {
+			if (1) {
+				/* SGFE__processCallbackAndEventQueue_Pointer(win, controller, motion_ptr); */
+			}
+		}
+	}
 }
 
 
@@ -300,17 +303,11 @@ void SGFE_windowSwapBuffers(SGFE_window* win) {
 void SGFE_windowMakeCurrent(SGFE_window* win, SGFE_context* ctx) {
 	SGFE_ASSERT(win != NULL);
 	SGFE_ASSERT(ctx != NULL);
-	win->current = ctx;
+	/* win->current[ctx_screen] = ctx; */
 
 	switch (SGFE_contextGetType(ctx)) {
 		/* ... */
 	}
-	#warning "Warning to notify that this function is not implemented."
-}
-
-
-SGFE_bool SGFE_windowInitTerminalOutput(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
 	#warning "Warning to notify that this function is not implemented."
 }
 
@@ -329,61 +326,37 @@ u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_button button) {
 
 const char* SGFE_controllerGetNameButton_platform(const SGFE_controller* controller,
 		SGFE_buttonType button) {
-	/* NOTE(EimaMei): 'SGFE_windowClose' already asserts that the controller cannot be
-	 * NULL and that the button is valid for the controller type. */
+	/* NOTE(EimaMei): 'SGFE_controllerGetNameButton' already asserts that the
+	 * controller cannot be NULL and that the button is valid for the controller 
+	 * type. */
 	#warning "Warning to notify that this function is not implemented."
 }
 
 
 SGFE_bool SGFE_controllerEnablePointer_platform(SGFE_controller* controller,
 		SGFE_pointerType pointer, SGFE_bool enable) {
-	/* NOTE(EimaMei): 'SGFE_windowClose' already asserts that the controller cannot
-	 * be NULL, that pointer is valid for the controller and that the boolean is
-	 * either a one or zero. */
+	/* NOTE(EimaMei): 'SGFE_controllerEnablePointer' already asserts that the 
+	 * controller cannot be NULL, that motion is valid for the controller and that 
+	 * the boolean is either a one or zero. */
 	#warning "Warning to notify that this function is not implemented."
 }
 
 SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
 		SGFE_motionType motion, SGFE_bool enable) {
-	/* NOTE(EimaMei): 'SGFE_windowClose' already asserts that the controller cannot
-	 * be NULL, that motion is valid for the controller and that the boolean is
-	 * either a one or zero. */
+	/* NOTE(EimaMei): 'SGFE_controllerEnableMotion' already asserts that the 
+	 * controller cannot be NULL, that motion is valid for the controller and that 
+	 * the boolean is either a one or zero. */
 	#warning "Warning to notify that this function is not implemented."
 }
 
 
 
-SGFE_bool SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
-		SGFE_videoMode mode, SGFE_pixelFormat format, SGFE_bool allocate_buffers) {
-	SGFE_ASSERT(out_buffer != NULL);
-	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
-	SGFE_ASSERT(format >= 0 && format < SGFE_pixelFormatCount);
-
-	SGFE_contextBuffer* b = out_buffer;
-	b->screen = SGFE_screenPrimary;
-	b->mode = mode;
-	b->format = format;
-
-	b->current = 0;
-
-	b->is_buffer_allocated = SGFE_FALSE;
-	b->is_double_buffered = SGFE_FALSE;
-	b->is_native = SGFE_FALSE;
-
-	SGFE_bool res;
-	if (allocate_buffers) {
-		res = SGFE_bufferAllocFramebuffers(out_buffer);
-	}
-	else {
-		res = SGFE_TRUE;
-		SGFE_MEMSET(b->buffers, 0, sizeof(b->buffers));
-		#ifndef SGFE_BUFFER_NO_CONVERSION
-		SGFE_MEMSET(b->buffers_native, 0, sizeof(b->buffers_native));
-		#endif
-	}
-
-	/* ... */
-	return res;
+SGFE_bool SGFE_bufferMakeWithDefaultSettings_platform(SGFE_contextBuffer* out_buffer) {
+	/* NOTE(EimaMei): 'SGFE_bufferMakeWithDefaultSettings' already asserts that 
+	 * the controller cannot be NULL, that motion is valid for the controller and
+	 * that the boolean is either a one or zero. */
+	#warning "Warning to notify that this function is not implemented."
+	return SGFE_TRUE;
 }
 
 
@@ -472,20 +445,44 @@ SGFE_videoMode SGFE_pixelFormatOptimal(void) {
 
 
 /* === PLATFORM FUNCTIONS === */
-/* NOTE(EimaMei): All 'SGFE_platform' functions except 'SGFE_platformGetModel' are
- * implementation-specified and can be anything.
- *
- * If there are no available system models, SGFE_platformGetModel() returns None. */
+/* NOTE(EimaMei): All 'SGFE_platform' functions except 'SGFE_platformGetModel()' and
+ * are 'SGFE_platformInitTerminalOutput()' implementation-specified and can be anything.*/
 #if 1
 
 SGFE_systemModel SGFE_platformGetModel(void) {
 	#warning "Warning to notify that this function is not implemented."
 	#if 0
-	/* Depending on the platform. Check the above comment: */
+	/* If there are no available models, return ModelNone. */
 	return SGFE_systemModelNone;
 	#endif
 }
 
+SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer** out_ctx) {
+	SGFE_ASSERT(out_ctx != NULL);
+	#warning "Warning to notify that this function is not implemented."
+
+	#if 0
+	/* If there are no ways to initialize terminal output, return SGFE_FALSE. */
+	return SGFE_FALSE;
+
+	#else 
+
+	if (*out_ctx == NULL) {
+		/*SGFE_bool res = SGFE_bufferMakeWithDefaultSettings(
+			*out_ctx, ..., ..., SGFE_TRUE
+		);
+		if (res == SGFE_FALSE) { return SGFE_FALSE; }
+
+		res = SGFE_bufferCreateContext(*out_ctx);
+		if (res == SGFE_FALSE) { return SGFE_FALSE; }*/
+	}
+
+	SGFE_contextBuffer* b = *out_ctx;
+	/* ... */
+	return SGFE_TRUE;
+
+	#endif
+}
 #endif
 
 #endif /* SGFE_IMPLEMENTATION */

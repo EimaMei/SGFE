@@ -1,18 +1,13 @@
 TODO (in no particular order):
 - README.md guide on creating a console backend.
 - Document all macros.
-- Convert SGFE_ALLOC_SYS/SGFE_FREE_SYS to proper functions.
 - (3DS) Resize event.
-- (3DS) Fix flicker when exiting apps using buffer rendering.
 - (3DS) Fix flicker when opening standard buffer.
 - Update Makefiles to be better, have a 'compile_examples' command.
 - (3DS) Add debug info for initialized and freed context.
-- Make a template for each embedded platform.
 - Document all examples.
 - Finish the callbacks example with video mode change callback.
-- Document how not specifying a graphical API will make Embedded fallback to other ones.
 - Document examples/README.md
-- Update CHANGELOG
 - Add changes from Desktop to Embedded
 - add a gyro example.
 - (3DS) Add anti-aliasing for OpenGL.
@@ -26,19 +21,12 @@ back the window flags for it.
 - Add a sizeof and getters/setters for each opaque struct type.
 - Rework debug systems to be more flexible. Remove SGFE_sendDebugInfo.
 - swapInterval example
-- Implement better header guard.
 - Add timestamp to events.
 - Controller battery event (battery update, dead, etc).
 - Document all SGFE_<PLATFORM> macros.
 - Linked list for controllers.
-- Add ways to disable certain events.
-- Add "update complete" event.
 - Add a "end poll" event and function.
 - (Wii) GameCube controller support.
-- Update basic example to not use "motion_enable" once the abbility to disable events is present.
-- "Update controller" function (see SDL).
-- Update controller axes/motions/pointers/buttons/etc functions (see above).
-- Enable "pointer" for basic example.
 - Add a controller event that'd notify the user of specific events. For wii it'd be adding/removing extensions to the wii remote.
 - (3DS) Add an error if the users selects SGFE_videoModeWide on non 3DS and New 2DS XL consoles.
 - Get region (NTSC/PAL?) function.
@@ -48,18 +36,21 @@ back the window flags for it.
 - (Wii) Fix bug where nunchuk controllers are eligible for gyroscope support.
 - (Wii) Add video refresh event.
 - (3DS) Add video refresh event.
-- Remove swapBuffers in the callbacks example and replace it with a video fresh event.
+- Remove swapBuffers in the callbacks example and replace it with a video fresh event:
+	- notes on implementing it: use a callback for when VSync must on. Set a boolean,
+	then in the pollEvenets function call 'refresh'. See if you have to wait a frame
+	after vsync or if this can be done instantaneously
 - Add rumble functionality.
 - Create a screenshot of SGFE working on Wii and 3DS emulators/real hardware.
-- Add "exit key" back via buttons. Add it back into examples
 - In the "free window" function call a "hide window" function that turns the screen
 black. Remove that kind of code from the 3DS code.
-- SGFE_windowInitTerminalOutput should probably request a buffer context instead.
 - Make platform-specific SGFE_buttonFromAPI/ToAPI functions available as platform functions.
-- Update github "About"
 - (3DS) replace "hidScanInput" with raw events.
-- Make asserts useful by replacing it with a platform-specific function that opens up the terminal automatically before resetting once a button is clicked. Mayba have an option to save the assert, too.
-- queue event function from RGFW.
+- (Wii) add keyboard support. Add TextInput support for it.
+- (Wii) add mouse support.
+- (3DS) add virtual software keyboard support.
+- Add options to disable app termination/loss of focus.
+- Implement new ways of settings/getting opengl hints.
 
 Maybe:
 - (3DS) Find a way to not use gfxInitDefault for GLASS.
@@ -73,6 +64,8 @@ Maybe:
 - (Wii) White/black/red/blue Wiis as "system models"? Or maybe base it on this: https://en-americas-support.nintendo.com/app/answers/detail/a_id/2650/~/what-is-the-difference-between-the-models-of-wii-consoles%3F
 - Make private API functions visible in the platform section.
 - Implement a SDL_StartTextInput?/SDL_TextInputEvent.
+- UIApplicationMain & example.
+- Make a CHANGELOG
 
 Distant TODO:
 - Create a portable stdout/stderr library that'd write the text on screen.
@@ -83,3 +76,4 @@ Planned backends:
 Console library TODO:
 - Create a console structure that creates its own context and renders on top of the user output.
 - Make it creatable/independent of SGFE_window and of createWindow init function.
+- use the system font if possible.

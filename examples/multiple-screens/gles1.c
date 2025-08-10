@@ -97,7 +97,7 @@ int main(void) {
 #endif
 
 	while (SGFE_windowCheckEvents(win, 0)) {
-		if (SGFE_isPressed(SGFE_controllerGet(win, 0), BUTTON_START)) {
+		if (SGFE_isHeld(SGFE_controllerGet(win, 0), BUTTON_START)) {
 			SGFE_windowSetShouldClose(win, SGFE_TRUE);
 			continue;
 		}

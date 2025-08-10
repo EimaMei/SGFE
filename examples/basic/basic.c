@@ -20,55 +20,47 @@ int main(void) {
 	 * Any function that writes to stdout/stderr (e.g., printf) will have its output
 	 * directly blitted into the screen. */
 	SGFE_windowInitTerminalOutput(win);
+
 	/* On consoles it's best to only poll the events and not loop through all of
 	 * them (since "event" ordering does not matter on consoles). However, since
 	 * this style of event checking is popular on desktop, you can still enable
 	 * this functionality by setting the "queue events" flag to true.
-	 * 
+	 *
 	 * For porting RGFW apps it's also important to look through SGFE's events and
-	 * see which events differs and which ones are similiar to RGFW. */
+	 * see which events differs and which ones are similiar to RGFW.
+	 *
+	 * For this example we also disable certain events right off the bat so that
+	 * the screen wouldn't get flooded with events that we may not want to see
+	 * right now. */
 	SGFE_windowSetQueueEvents(win, SGFE_TRUE);
-	/* TODO(EimaMei): remove this. */
-	SGFE_bool motion_enabled = SGFE_FALSE;
+	SGFE_windowSetEventEnabled(win, SGFE_eventPointer, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventMotion, SGFE_FALSE);
 
 	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
 		controller_printInfo(SGFE_windowGetController(win, i));
 	}
+
 	while (!SGFE_windowShouldClose(win)) {
 		const SGFE_event* event = NULL;
 		while (SGFE_windowCheckEvent(win, &event)) {
 			switch (event->type) {
-				case SGFE_eventQuit: {
-					SGFE_windowSetShouldClose(win, SGFE_TRUE);
-				} break;
-
 				case SGFE_eventControllerConnected: {
 					controller_printInfo(event->controller.controller);
 				} break;
 
 				case SGFE_eventButtonDown: {
-					SGFE_buttonType button;
-					SGFE_button total_mask = event->button.buttons;
-
-					while (SGFE_iterateButtonMask(&total_mask, &button)) {
-						printf(
-							"pressed %s (repeat: %i)\n",
-							SGFE_controllerGetNameButton(event->button.controller, button),
-							(event->button.buttons_down & SGFE_BIT(button)) == 0
-						);
-					}
+					printf(
+						"pressed %s (repeat: %i)\n",
+						SGFE_controllerGetNameButton(event->button.controller, event->button.button),
+						event->button.repeat
+					);
 				} break;
 
 				case SGFE_eventButtonUp: {
-					SGFE_buttonType button;
-					SGFE_button total_mask = event->button.buttons;
-
-					while (SGFE_iterateButtonMask(&total_mask, &button)) {
-						printf(
-							"released %s\n",
-							SGFE_controllerGetNameButton(event->button.controller, button)
-						);
-					}
+					printf(
+						"released %s\n",
+						SGFE_controllerGetNameButton(event->button.controller, event->button.button)
+					);
 				} break;
 
 				case SGFE_eventAxis: {
@@ -94,10 +86,7 @@ int main(void) {
 				} break;
 
 				case SGFE_eventMotion: {
-					/* NOTE(EimaMei): We don't want the screen to be flooded
-					 * with a bunch of events about motion sensors, so a check
-					 * is added to print them only when needed. */
-					if (!motion_enabled) { break; }
+					if (!SGFE_windowGetEventEnabled(win, SGFE_eventMotion)) { break; }
 					SGFE_event_motion motion = event->motion;
 
 					printf(
@@ -112,10 +101,19 @@ int main(void) {
 		const SGFE_controller* controller = SGFE_windowGetController(win, 0);
 		if (controller->connected && SGFE_isHeld(controller, BUTTON_BACK)) {
 			if (SGFE_isDown(controller, BUTTON_PRIMARY)) {
-				motion_enabled ^= SGFE_TRUE;
+				SGFE_bool state = !SGFE_windowGetEventEnabled(win, SGFE_eventPointer);
+				SGFE_windowSetEventEnabled(win, SGFE_eventPointer, state);
+				printf(
+					"Pointer %s!\n",
+					state ? "enabled" : "disabled"
+				);
+			}
+			else if (SGFE_isDown(controller, BUTTON_SECONDARY)) {
+				SGFE_bool state = !SGFE_windowGetEventEnabled(win, SGFE_eventMotion);
+				SGFE_windowSetEventEnabled(win, SGFE_eventMotion, state);
 				printf(
 					"Motion %s!\n",
-					motion_enabled ? "enabled" : "disabled"
+					state ? "enabled" : "disabled"
 				);
 			}
 			else if (SGFE_isDown(controller, BUTTON_START)) {

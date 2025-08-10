@@ -65,55 +65,42 @@ void callback_controller(SGFE_window* win, SGFE_controller* controller, SGFE_boo
 }
 
 static
-void callback_button(SGFE_window* win, SGFE_controller* controller, SGFE_button buttons, SGFE_bool pressed) {
-	printf("key %s:", pressed ? "pressed" : "released");
+void callback_button(SGFE_window* win, SGFE_controller* controller, SGFE_buttonType button, SGFE_bool pressed) {
+	printf("key %s: %s\n", pressed ? "pressed" : "released", SGFE_controllerGetNameButton(controller, button));
 
-	SGFE_buttonType button;
-	SGFE_button copy = buttons;
-	while (SGFE_iterateButtonMask(&copy, &button)) {
-		printf(" %s", SGFE_controllerGetNameButton(controller, button));
+	if (SGFE_isHeld(controller, BUTTON_START)) {
+		SGFE_windowSetShouldClose(win, SGFE_TRUE);
 	}
-	printf("\n");
-
-	SGFE_windowSetShouldClose(win, SGFE_BOOL(buttons & BUTTON_START));
 }
 
 static
-void callback_axis(SGFE_window* win, SGFE_controller* controller, SGFE_axisType which) {
-	SGFE_axis* axis = &controller->axes[which];
+void callback_axis(SGFE_window* win, SGFE_controller* controller, const SGFE_axis* axis) {
 	if (fabsf(axis->value) < axis->deadzone) {
 		return;
 	}
 
 	printf(
 		"%s: value (%f); deadzone (%f)\n",
-		SGFE_controllerGetNameAxis(controller, which),
+		SGFE_controllerGetNameAxis(controller, axis->type),
 		axis->value, axis->deadzone
 	);
 }
 
 static
-void callback_pointer(SGFE_window* win, SGFE_controller* controller, SGFE_pointerType which) {
-	isize x = controller->pointers[which][0],
-			y = controller->pointers[which][1];
-
+void callback_pointer(SGFE_window* win, SGFE_controller* controller, const SGFE_pointer* pointer) {
 	printf(
-		"%s: %ix%i\n",
-		SGFE_controllerGetNamePointer(controller, which),
-		x, y
+		"%s: %zix%zi\n",
+		SGFE_controllerGetNamePointer(controller, pointer->type),
+		pointer->x, pointer->y
 	);
 }
 
 static
-void callback_motion(SGFE_window* win, SGFE_controller* controller, SGFE_motionType which) {
-	float x = controller->motions[which][0],
-		  y = controller->motions[which][1],
-		  z = controller->motions[which][2];
-
+void callback_motion(SGFE_window* win, SGFE_controller* controller, const SGFE_motion* motion) {
 	printf(
 		"%s: %fx%fx%f\n",
-		SGFE_controllerGetNameMotion(controller, which),
-		x, y, z
+		SGFE_controllerGetNameMotion(controller, motion->type),
+		motion->x, motion->y, motion->z
 	);
 }
 

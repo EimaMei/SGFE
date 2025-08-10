@@ -34,7 +34,7 @@ CREDITS
 	is used as the base foundation for this library as a lot of the general API
 	design choices and functionality are taken from it. Riley has also helped out
 	when discussing certain features that would eventually get merged into both
-	RGFW proper and SGFE. 
+	RGFW proper and SGFE.
 
 LICENSE
 	- This software is licensed under the zlib license (see the LICENSE at the
@@ -195,6 +195,15 @@ extern "C" {
 	#define SGFE_HAS_OPENGL 1
 	#endif
 
+	#ifdef SGFE_IMPLEMENTATION
+	#include <3ds/types.h>
+	typedef s8   i8;
+	typedef s16 i16;
+	typedef s32 i32;
+	typedef s64 i64;
+	#define SGFE_DEFINE_TYPE_STDINT
+	#endif
+
 #elif defined(GEKKO) || defined(SGFE_WII)
 	#ifndef SGFE_WII
 	#define SGFE_WII 1
@@ -223,7 +232,7 @@ extern "C" {
 #endif /* SGFE_CUSTOM_BACKEND */
 
 #ifndef SGFE_HAS_OPENGL
-	#undef RGFW_OPENGL
+	#undef SGFE_OPENGL
 #endif
 
 #ifndef SGFE_DEFINE_TYPE_STDINT
@@ -537,15 +546,21 @@ typedef SGFE_ENUM(isize, SGFE_motionType) {
 #endif /* SGFE_CUSTOM_BACKEND */
 
 typedef struct SGFE_axis {
+	SGFE_axisType type;
 	float value;
 	float deadzone;
 } SGFE_axis;
 
-typedef SGFE_ENUM(u8, SGFE_buttonState) {
-	SGFE_buttonStateSupported = SGFE_BIT(0),
-	SGFE_buttonStateCurrent   = SGFE_BIT(1),
-	SGFE_buttonStatePrevious  = SGFE_BIT(2),
-} SGFE_keyState;
+typedef struct SGFE_pointer {
+	SGFE_pointerType type;
+	isize x, y;
+} SGFE_pointer;
+
+typedef struct SGFE_motion {
+	SGFE_motionType type;
+	float x, y, z;
+} SGFE_motion;
+
 
 /* TODO(EimaMei): new structure. */
 typedef struct SGFE_controller {
@@ -562,9 +577,9 @@ typedef struct SGFE_controller {
 	/* Current axes states. */
 	SGFE_axis axes[SGFE_axisTypeCount];
 	/* Current pointer states. */
-	isize pointers[SGFE_pointerTypeCount][2];
+	SGFE_pointer pointers[SGFE_pointerTypeCount];
 	/* Current motion states. */
-	float motions[SGFE_motionTypeCount][3];
+	SGFE_motion motions[SGFE_motionTypeCount];
 
 	/* Boolean states of enabled pointers. */
 	SGFE_bool enabled_pointers[SGFE_pointerTypeCount];
@@ -614,10 +629,12 @@ SGFE_DEF SGFE_contextOpenGL* SGFE_contextGetOpenGL(SGFE_context* ctx);
 #endif
 
 typedef SGFE_ENUM(isize, SGFE_eventType) {
-	/*! event codes */
-	SGFE_eventNone = 0, /*!< no event has been sent */
+	/* No event. */
+	SGFE_eventNone = 0,
 
-	SGFE_eventQuit, /*!< the user clicked the quit button */
+
+	/* Application is being shut down. */
+	SGFE_eventQuit,
 	SGFE_eventDeviceSleep, /* The device has entered sleep mode. */
 	SGFE_eventDeviceWakeup, /* The device has exited out of sleep mode. */
 
@@ -627,16 +644,62 @@ typedef SGFE_ENUM(isize, SGFE_eventType) {
 	SGFE_eventFocusIn, /* 	User has entered the window from an external environment (usually the "Home Menu"). */
 
 
-	SGFE_eventControllerConnected, /*!< a controller was connected */
-	SGFE_eventControllerDisconnected, /*!< a controller was disconnected */
+	/* TODO */
+	SGFE_eventControllerConnected,
+	/* TODO */
+	SGFE_eventControllerDisconnected,
 
-	SGFE_eventButtonDown, /*!< a controller button was pressed */
-	SGFE_eventButtonUp, /*!< a controller button was released */
+	/* TODO */
+	SGFE_eventButtonDown,
+	/* TODO */
+	SGFE_eventButtonUp,
 
-	SGFE_eventAxis, /*!< an axis of a controller was moved */
+	/* TODO */
+	SGFE_eventAxis,
+	/* TODO */
 	SGFE_eventPointer,
+	/* TODO */
 	SGFE_eventMotion, /* The motion sensors of the controller have been moved. */
+
+
+	/* TODO */
+	SGFE_eventKeyboardConnected,
+	/* TODO */
+	SGFE_eventKeyboardDisconnected,
+
+	/* TODO */
+	SGFE_eventKeyboardDown,
+	/* TODO */
+	SGFE_eventKeyboardUp,
+	/* TODO */
+	SGFE_eventTextIsEditing,
+	/* TODO */
+	SGFE_eventTextHasFinished,
+
+
+	/* TODO */
+	SGFE_eventMouseConnected,
+	/* TODO */
+	SGFE_eventMouseDisconnected,
+
+	/* TODO */
+	SGFE_eventMouseMove,
+	/* TODO */
+	SGFE_eventMouseButtonDown,
+	/* TODO */
+	SGFE_eventMouseButtonUp,
+	/* TODO */
+	SGFE_eventMouseWheel,
+
+
+	/* TODO */
+	SGFE_eventCount
 };
+
+
+#ifndef SGFE_MAX_EVENTS
+#define SGFE_MAX_EVENTS 32
+#endif
 
 typedef struct SGFE_event_controller {
 	SGFE_eventType type;
@@ -647,10 +710,9 @@ typedef struct SGFE_event_button {
 	SGFE_eventType type;
 	SGFE_controller* controller;
 
-	SGFE_button buttons;
-	SGFE_button buttons_down;
-	u32 raw_buttons;
-	u32 raw_buttons_down;
+	SGFE_buttonType button;
+	SGFE_bool repeat;
+	u32 raw_button;
 } SGFE_event_button;
 
 typedef struct SGFE_event_axis {
@@ -730,13 +792,13 @@ typedef void (*SGFE_windowFocusFunc)(SGFE_window* win, SGFE_bool is_focused);
 typedef void (*SGFE_controllerFunc)(SGFE_window* win, SGFE_controller* controller, SGFE_bool is_connected);
 
 /*! SGFE_buttonPressed, the window that got the event, the button that was pressed, the scroll value, if it was a press (else it's a release) */
-typedef void (*SGFE_buttonFunc)(SGFE_window* win, SGFE_controller* controller, SGFE_button mask, SGFE_bool down);
+typedef void (*SGFE_buttonFunc)(SGFE_window* win, SGFE_controller* controller, SGFE_buttonType button, SGFE_bool down);
 /*! SGFE_axisMove, the window that got the event, the controller in question, the axis values and the axis count */
-typedef void (*SGFE_axisFunc)(SGFE_window* win, SGFE_controller* controller, SGFE_axisType axis);
+typedef void (*SGFE_axisFunc)(SGFE_window* win, SGFE_controller* controller, const SGFE_axis* axis);
 /* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*SGFE_pointerFunc)(SGFE_window* win, SGFE_controller* controller, SGFE_pointerType pointer);
+typedef void (*SGFE_pointerFunc)(SGFE_window* win, SGFE_controller* controller, const SGFE_pointer* pointer);
 /* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*SGFE_motionFunc)(SGFE_window* win, SGFE_controller* controller, SGFE_motionType motion);
+typedef void (*SGFE_motionFunc)(SGFE_window* win, SGFE_controller* controller, const SGFE_motion* motion);
 
 
 typedef struct SGFE_callbacks {
@@ -756,7 +818,7 @@ typedef struct SGFE_callbacks {
 } SGFE_callbacks;
 
 
-#if (defined(SGFE_IMPLEMENTATION) || !defined(SGFE_NO_WINDOW_SRC)) && !defined(SGFE_CUSTOM_BACKEND)
+#if defined(SGFE_IMPLEMENTATION) || !defined(SGFE_NO_WINDOW_SRC)
 
 #ifdef SGFE_3DS
 
@@ -767,22 +829,8 @@ typedef struct SGFE_callbacks {
 #include <GLES/gl2.h>
 #endif
 
-struct SGFE_contextBuffer {
-	SGFE_screen screen;
-	SGFE_videoMode mode;
-	SGFE_pixelFormat format;
 
-	isize current;
-	u8* buffers[2];
-
-	SGFE_bool is_buffer_allocated;
-	SGFE_bool is_double_buffered;
-	SGFE_bool is_native;
-
-	#ifndef SGFE_BUFFER_NO_CONVERSION
-	u8* buffers_native[2];
-	#endif
-
+struct SGFE_contextBufferSource {
 	u32 size;
 };
 
@@ -798,20 +846,10 @@ struct SGFE_contextOpenGL {
 };
 #endif
 
-struct SGFE_context {
-	SGFE_contextType type;
-	union {
-		SGFE_contextBuffer buffer;
-		#ifdef SGFE_OPENGL
-		SGFE_contextOpenGL gl;
-		#endif
-	} data;
-};
 
 struct SGFE_windowSource {
 	SGFE_bool lcd_is_on;
 	aptHookCookie apt_hook;
-	SGFE_context ctx[SGFE_screenCount];
 };
 
 #elif SGFE_WII
@@ -835,10 +873,7 @@ struct SGFE_contextBuffer {
 	SGFE_bool is_double_buffered;
 	SGFE_bool is_native;
 
-	#ifndef SGFE_BUFFER_NO_CONVERSION
 	u8* buffers_native[2];
-	#endif
-
 	GXRModeObj* gx_video_mode;
 };
 
@@ -846,6 +881,28 @@ struct SGFE_contextBuffer {
 struct SGFE_contextOpenGL {
 };
 #endif
+
+struct SGFE_windowSource {
+	struct wiimote_t** wiimotes;
+};
+
+#endif
+
+struct SGFE_contextBuffer {
+	SGFE_screen screen;
+	SGFE_videoMode mode;
+	SGFE_pixelFormat format;
+
+	isize current;
+	u8* buffers[2];
+
+	SGFE_bool is_buffer_allocated;
+	SGFE_bool is_double_buffered;
+	SGFE_bool is_native;
+
+	u8* buffers_native[2];
+	struct SGFE_contextBufferSource src;
+};
 
 struct SGFE_context {
 	SGFE_contextType type;
@@ -857,33 +914,40 @@ struct SGFE_context {
 	} data;
 };
 
-struct SGFE_windowSource {
-	struct wiimote_t** wiimotes;
-	SGFE_context ctx;
-};
-
-#endif
-
 struct SGFE_window {
 	/* TODO */
 	SGFE_windowSource src;
 	/* TODO */
 	SGFE_context* current[SGFE_screenCount];
+	/* TODO */
+	SGFE_context ctx[SGFE_screenCount];
 
-	/* struct SGFE_info */
-	SGFE_event events[32];
+	/* TODO */
+	SGFE_bool is_queueing_events, has_polled_events;
+	/* TODO */
 	isize event_len;
+	/* TODO */
+	SGFE_event events[SGFE_MAX_EVENTS];
+	/* TODO */
+	SGFE_bool enabled_events[SGFE_eventCount];
 
+	/* TODO */
 	SGFE_controller controllers[SGFE_MAX_CONTROLLERS];
 
-	SGFE_bool queue_events, polled_events;
-	u32 _flags; /*!< windows flags (for SGFE to check) */
-
+	/* TODO */
+	SGFE_windowFlags flags;
+	/* TODO */
 	SGFE_callbacks callbacks;
-	void* userPtr;
+	/* TODO */
+	void* user_ptr;
+
+	/* TODO */
+	SGFE_bool is_allocated;
+	/* TODO */
+	SGFE_bool should_quit;
 }; /*!< window structure for managing the window */
 
-#endif /* (defined(SGFE_IMPLEMENTATION) || !defined(SGFE_NO_WINDOW_SRC)) && !defined(SGFE_CUSTOM_BACKEND) */
+#endif /* defined(SGFE_IMPLEMENTATION) || !defined(SGFE_NO_WINDOW_SRC)) */
 
 /* TODO */
 SGFE_DEF isize SGFE_sizeofWindow(void);
@@ -927,10 +991,9 @@ SGFE_DEF SGFE_contextOpenGL* SGFE_windowGetContextExOpenGL(SGFE_window* win, SGF
 SGFE_DEF void* SGFE_window_getUserPtr(SGFE_window* win);
 SGFE_DEF void SGFE_window_setUserPtr(SGFE_window* win, void* ptr);
 
-SGFE_DEF SGFE_bool SGFE_windowIsQueuingEvents(SGFE_window* win);
-SGFE_DEF void SGFE_windowSetQueueEvents(SGFE_window* win, SGFE_bool is_queuing_events);
+SGFE_DEF SGFE_windowSource* SGFE_windowGetSource(SGFE_window* win);
 
-SGFE_DEF SGFE_windowSource* SGFE_window_getSrc(SGFE_window* win);
+
 
 
 /* TODO */
@@ -953,19 +1016,37 @@ SGFE_DEF void SGFE_windowClose(SGFE_window* win); /*!< close the window and free
 SGFE_DEF void SGFE_windowFreeContext(SGFE_window* win);
 
 
-/*! set the window flags (will undo flags if they don't match the old ones) */
+/* TODO */
+SGFE_DEF SGFE_windowFlags SGFE_windowGetFlags(const SGFE_window* win);
+/* TODO */
 SGFE_DEF void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlags flags);
 
+
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_windowGetIsQueuingEvents(const SGFE_window* win);
+/* TODO */
+SGFE_DEF void SGFE_windowSetQueueEvents(SGFE_window* win, SGFE_bool is_queuing_events);
+
+/* TODO */
+SGFE_bool SGFE_windowGetEventEnabled(const SGFE_window* win, SGFE_eventType type);
+/* TODO */
+void SGFE_windowSetEventEnabled(SGFE_window* win, SGFE_eventType type, SGFE_bool is_enabled);
+/* TODO */
+void SGFE_windowSetEventEnabledDefault(SGFE_window* win);
 
 /* TODO */
 SGFE_DEF void SGFE_windowPollEvents(SGFE_window* win);
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_windowCheckEvent(SGFE_window* win, const SGFE_event** out_event);
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_windowCheckQueuedEvent(SGFE_window* win, const SGFE_event** out_event);
 
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_windowEventPush(SGFE_window* win, const SGFE_event* event);
 /* TODO */
 SGFE_DEF const SGFE_event* SGFE_windowEventPop(SGFE_window* win);
+/* TODO */
+SGFE_DEF void SGFE_windowEventQueueFlush(SGFE_window* win);
 
 
 /* TODO */
@@ -979,9 +1060,9 @@ SGFE_DEF SGFE_controller* SGFE_windowGetController(SGFE_window* win, isize port)
 
 
 /* TODO */
-SGFE_DEF void SGFE_windowSetShouldClose(SGFE_window* win, SGFE_bool shouldClose);
-/* TODO */
 SGFE_DEF SGFE_bool SGFE_windowShouldClose(SGFE_window* win);
+/* TODO */
+SGFE_DEF void SGFE_windowSetShouldClose(SGFE_window* win, SGFE_bool should_close);
 
 
 /* TODO(EimaMei): new function. */
@@ -1009,6 +1090,17 @@ SGFE_DEF u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_button button);
 /* TODO(EimaMei): NEW FUNCTION */
 SGFE_DEF SGFE_button SGFE_buttonGetMask(SGFE_controllerType type);
 
+
+/* TODO(EimaMei): */
+SGFE_DEF const SGFE_axis* SGFE_controllerGetAxis(const SGFE_controller* controller,
+	SGFE_axisType which);
+/* TODO(EimaMei): */
+SGFE_DEF const SGFE_pointer* SGFE_controllerGetPointer(const SGFE_controller* controller,
+	SGFE_pointerType which);
+/* TODO(EimaMei): */
+SGFE_DEF const SGFE_motion* SGFE_controllerGetMotion(const SGFE_controller* controller,
+	SGFE_motionType which);
+
 /* TODO(EimaMei): */
 SGFE_DEF void SGFE_controllerGetRangeButton(const SGFE_controller* controller, SGFE_buttonType* out_first, SGFE_buttonType* out_last);
 /* TODO(EimaMei): NEW FUNCTION */
@@ -1017,7 +1109,6 @@ SGFE_DEF void SGFE_controllerGetRangeAxis(const SGFE_controller* controller, SGF
 SGFE_DEF void SGFE_controllerGetRangePointer(const SGFE_controller* controller, SGFE_pointerType* out_first, SGFE_pointerType* out_last);
 /* TODO(EimaMei): NEW FUNCTION */
 SGFE_DEF void SGFE_controllerGetRangeMotion(const SGFE_controller* controller, SGFE_motionType* out_first, SGFE_motionType* out_last);
-
 
 /* TODO(EimaMei): NEW FUNCTION */
 SGFE_DEF const char* SGFE_controllerGetName(const SGFE_controller* controller);
@@ -1033,7 +1124,6 @@ SGFE_DEF const char* SGFE_controllerGetNamePointer(const SGFE_controller* contro
 /* TODO(EimaMei): NEW FUNCTION */
 SGFE_DEF const char* SGFE_controllerGetNameMotion(const SGFE_controller* controller,
 	SGFE_motionType type);
-
 
 /* TODO(EimaMei): NEW FUNCTION */
 SGFE_DEF SGFE_bool SGFE_controllerEnablePointer(SGFE_controller* controller,
@@ -1111,17 +1201,43 @@ SGFE_DEF SGFE_debugFunc SGFE_setDebugCallback(SGFE_debugFunc func);
 SGFE_DEF SGFE_bool SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
 	SGFE_videoMode mode, SGFE_pixelFormat format, SGFE_bool allocate_buffers);
 
+
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* out_buffer);
 /* TODO */
 SGFE_DEF void SGFE_bufferFreeContext(SGFE_contextBuffer* buffer);
 
+
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_bufferAllocFramebuffers(SGFE_contextBuffer* out_buffer);
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_bufferFreeFramebuffers(SGFE_contextBuffer* out_buffer);
+
 /* TODO */
 SGFE_DEF u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b);
+
+
+/* TODO(EimaMei): New function. */
+SGFE_DEF u8* SGFE_bufferGetFramebuffer(SGFE_contextBuffer* b);
+
+/* TODO(EimaMei): New function. */
+SGFE_DEF SGFE_pixelFormat SGFE_bufferGetFormat(const SGFE_contextBuffer* b);
+/* TODO(EimaMei): New function. */
+SGFE_DEF SGFE_bool SGFE_bufferIsNative(const SGFE_contextBuffer* b);
+/* TODO(EimaMei): New function. */
+SGFE_DEF SGFE_bool SGFE_bufferIsDoubleBuffered(const SGFE_contextBuffer* b);
+/* TODO(EimaMei): New function. */
+SGFE_DEF isize SGFE_contextBufferGetCurrent(const SGFE_contextBuffer* b);
+/* TODO */
+SGFE_DEF SGFE_screen SGFE_bufferGetScreen(SGFE_contextBuffer* b);
+/* TODO */
+SGFE_DEF isize SGFE_bufferGetFramebufferCount(SGFE_contextBuffer* b);
+/* TODO(EimaMei): New function. */
+SGFE_DEF SGFE_videoMode SGFE_bufferGetVideoMode(const SGFE_contextBuffer* b);
+/* TODO */
+SGFE_DEF void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* out_height);
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_bufferIsStereoscopic(SGFE_contextBuffer* b);
 
 
 /* TODO(EimaMei): New function. */
@@ -1132,27 +1248,6 @@ SGFE_DEF void SGFE_bufferSetNative(SGFE_contextBuffer* b, SGFE_bool is_native);
 SGFE_DEF void SGFE_bufferSetDoubleBuffered(SGFE_contextBuffer* b, SGFE_bool enable);
 /* TODO(EimaMei): New function. */
 SGFE_DEF void SGFE_bufferFlipFramebuffers(SGFE_contextBuffer* b);
-
-/* TODO(EimaMei): New function. */
-SGFE_DEF u8* SGFE_bufferGetFramebuffer(SGFE_contextBuffer* b);
-
-/* TODO(EimaMei): New function. */
-SGFE_DEF SGFE_pixelFormat SGFE_contextGetFormat(const SGFE_contextBuffer* b);
-/* TODO(EimaMei): New function. */
-SGFE_DEF SGFE_bool SGFE_bufferIsNative(const SGFE_contextBuffer* b);
-/* TODO(EimaMei): New function. */
-SGFE_DEF SGFE_bool SGFE_bufferIsDoubleBuffered(const SGFE_contextBuffer* b);
-/* TODO(EimaMei): New function. */
-SGFE_DEF isize SGFE_contextBufferGetCurrent(const SGFE_contextBuffer* b);
-
-/* TODO */
-SGFE_DEF SGFE_screen SGFE_bufferGetScreen(SGFE_contextBuffer* b);
-/* TODO */
-SGFE_DEF isize SGFE_bufferGetFramebufferCount(SGFE_contextBuffer* b);
-/* TODO */
-SGFE_DEF void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* out_height);
-/* TODO */
-SGFE_DEF SGFE_bool SGFE_bufferIsStereoscopic(SGFE_contextBuffer* b);
 
 
 /* TODO */
@@ -1371,6 +1466,9 @@ SGFE_DEF const char* SGFE_pixelFormatStr(SGFE_pixelFormat format);
 /* TODO(EimaMei): new function. */
 SGFE_DEF SGFE_systemModel SGFE_platformGetModel(void);
 
+/* TODO(EimaMei): new function. */
+SGFE_DEF SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer** out_ctx);
+
 #ifdef SGFE_3DS
 
 /* TODO */
@@ -1427,8 +1525,17 @@ SGFE_DEF SGFE_bool SGFE_controllerEnablePointer_platform(SGFE_controller* contro
 		SGFE_bool enable);
 SGFE_DEF SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller, SGFE_pointerType pointer,
 		SGFE_bool enable);
+SGFE_DEF SGFE_bool SGFE_bufferMakeWithDefaultSettings_platform(SGFE_contextBuffer* out_buffer);
+
 
 SGFE_DEF u8* SGFE__fetchSwapBuffer(SGFE_contextBuffer* b);
+
+
+SGFE_DEF void SGFE__processCallbackAndEventQueue_ButtonDown(SGFE_window* win, SGFE_controller* controller);
+SGFE_DEF void SGFE__processCallbackAndEventQueue_ButtonUp(SGFE_window* win, SGFE_controller* controller);
+SGFE_DEF void SGFE__processCallbackAndEventQueue_Axis(SGFE_window* win, SGFE_controller* controller, const SGFE_axis* axis);
+SGFE_DEF void SGFE__processCallbackAndEventQueue_Pointer(SGFE_window* win, SGFE_controller* controller, const SGFE_pointer* p);
+void SGFE__processCallbackAndEventQueue_Motion(SGFE_window* win, SGFE_controller* controller, const SGFE_motion* m);
 
 
 /* var - VARIABLE | mask - UINT | set - SGFE_bool
@@ -1577,6 +1684,104 @@ void SGFE_sendDebugInfo(SGFE_debugType type, SGFE_error err, SGFE_debugContext c
 }
 
 
+void SGFE__processCallbackAndEventQueue_ButtonDown(SGFE_window* win, SGFE_controller* controller) {
+	if (controller->buttons_held == 0 || (!win->is_queueing_events && !win->callbacks.button)) {
+		return;
+	}
+
+	SGFE_button mask = controller->buttons_held;
+	SGFE_buttonType button;
+
+	while (SGFE_iterateButtonMask(&mask, &button)) {
+		SGFE_windowButtonCallback(win, controller, button, SGFE_TRUE);
+
+		if (win->is_queueing_events) {
+			SGFE_event event;
+			event.type = SGFE_eventButtonDown;
+			event.button.controller = controller;
+			event.button.button = button;
+			event.button.repeat = (controller->buttons_down & SGFE_BIT(button)) == 0;
+			event.button.raw_button = SGFE_buttonToAPI(controller->type, SGFE_BIT(button));
+			SGFE_windowEventPush(win, &event);
+		}
+	}
+}
+
+void SGFE__processCallbackAndEventQueue_ButtonUp(SGFE_window* win, SGFE_controller* controller) {
+	if (controller->buttons_up == 0 || (!win->is_queueing_events && !win->callbacks.button)) {
+		return;
+	}
+
+	SGFE_button mask = controller->buttons_up;
+	SGFE_buttonType button;
+
+	while (SGFE_iterateButtonMask(&mask, &button)) {
+		SGFE_windowButtonCallback(win, controller, button, SGFE_TRUE);
+
+		if (win->is_queueing_events) {
+			SGFE_event event;
+			event.type = SGFE_eventButtonUp;
+			event.button.controller = controller;
+			event.button.button = button;
+			event.button.repeat = SGFE_FALSE;
+			event.button.raw_button = SGFE_buttonToAPI(controller->type, SGFE_BIT(button));
+			SGFE_windowEventPush(win, &event);
+		}
+	}
+}
+
+void SGFE__processCallbackAndEventQueue_Axis(SGFE_window* win, SGFE_controller* controller, const SGFE_axis* axis) {
+	if (!win->is_queueing_events && !win->callbacks.axis) {
+		return;
+	}
+
+	SGFE_windowAxisCallback(win, controller, axis);
+	if (win->is_queueing_events) {
+		SGFE_event event;
+		event.type = SGFE_eventAxis;
+		event.axis.controller = controller;
+		event.axis.which = axis->type;
+		event.axis.value = axis->value;
+		event.axis.deadzone = axis->deadzone;
+		SGFE_windowEventPush(win, &event);
+	}
+}
+
+void SGFE__processCallbackAndEventQueue_Pointer(SGFE_window* win, SGFE_controller* controller, const SGFE_pointer* pointer) {
+	if (!win->is_queueing_events && !win->callbacks.pointer) {
+		return;
+	}
+
+	SGFE_windowPointerCallback(win, controller, pointer);
+	if (win->is_queueing_events) {
+		SGFE_event event;
+		event.type = SGFE_eventPointer;
+		event.pointer.controller = controller;
+		event.pointer.which = pointer->type;
+		event.pointer.x = pointer->x;
+		event.pointer.y = pointer->y;
+		SGFE_windowEventPush(win, &event);
+	}
+}
+
+void SGFE__processCallbackAndEventQueue_Motion(SGFE_window* win, SGFE_controller* controller, const SGFE_motion* motion) {
+	if (!win->is_queueing_events && !win->callbacks.motion) {
+		return;
+	}
+
+	SGFE_windowMotionCallback(win, controller, motion);
+	if (win->is_queueing_events) {
+		SGFE_event event;
+		event.type = SGFE_eventMotion;
+		event.motion.controller = controller;
+		event.motion.which = motion->type;
+		event.motion.x = motion->x;
+		event.motion.y = motion->y;
+		event.motion.z = motion->z;
+		SGFE_windowEventPush(win, &event);
+	}
+}
+
 isize SGFE_sizeofWindow(void) { return sizeof(SGFE_window); }
 isize SGFE_sizeofWindowSrc(void) { return sizeof(SGFE_windowSource); }
 
@@ -1585,12 +1790,13 @@ SGFE_context* SGFE_windowGetCurrent(SGFE_window* win) {
 	#ifndef SGFE_3DS
 	return  win->current[SGFE_screenPrimary];
 	#else
-	return win->current[!(win->_flags & SGFE_windowTopScreen)];
+	return win->current[!(win->flags & SGFE_windowTopScreen)];
 	#endif
 }
 
 SGFE_context* SGFE_windowGetCurrentEx(SGFE_window* win, SGFE_screen screen) {
 	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT(screen >= 0 && screen < SGFE_screenCount);
 	return win->current[screen];
 }
 
@@ -1598,9 +1804,9 @@ SGFE_context* SGFE_windowGetContext(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 
 	#ifndef SGFE_3DS
-	return &win->src.ctx;
+	return &win->src.ctx[SGFE_screenPrimary];
 	#else
-	return SGFE_windowGetContextEx(win, !(win->_flags & SGFE_windowTopScreen));
+	return SGFE_windowGetContextEx(win, !(win->flags & SGFE_windowTopScreen));
 	#endif
 }
 
@@ -1608,11 +1814,7 @@ SGFE_context* SGFE_windowGetContextEx(SGFE_window* win, SGFE_screen screen) {
 	SGFE_ASSERT(win != NULL);
 	SGFE_ASSERT(screen >= 0 && screen < SGFE_screenCount);
 
-	#ifndef SGFE_3DS
-	return &win->src.ctx;
-	#else
-	return &win->src.ctx[screen];
-	#endif
+	return &win->ctx[screen];
 }
 
 
@@ -1653,18 +1855,11 @@ SGFE_contextOpenGL* SGFE_windowGetContextExOpenGL(SGFE_window* win, SGFE_screen 
 #endif
 
 
-void* SGFE_window_getUserPtr(SGFE_window* win) { SGFE_ASSERT(win != NULL); return win->userPtr; }
-void SGFE_window_setUserPtr(SGFE_window* win, void* ptr) { SGFE_ASSERT(win != NULL); win->userPtr = ptr; }
+void* SGFE_window_getUserPtr(SGFE_window* win) { SGFE_ASSERT(win != NULL); return win->user_ptr; }
+void SGFE_window_setUserPtr(SGFE_window* win, void* ptr) { SGFE_ASSERT(win != NULL); win->user_ptr = ptr; }
 
-SGFE_bool SGFE_windowIsQueuingEvents(SGFE_window* win) { SGFE_ASSERT(win != NULL); return win->queue_events; }
-void SGFE_windowSetQueueEvents(SGFE_window* win, SGFE_bool is_queuing_events) { SGFE_ASSERT(win != NULL); win->queue_events = is_queuing_events; }
+SGFE_windowSource* SGFE_windowGetSource(SGFE_window* win) { SGFE_ASSERT(win != NULL); return &win->src; }
 
-SGFE_windowSource* SGFE_window_getSrc(SGFE_window* win) { SGFE_ASSERT(win != NULL); return &win->src; }
-
-/* TODO(EimaMei): remove these. */
-#define SGFE_EVENT_QUIT 		SGFE_BIT(25) /* the window close button was pressed */
-#define SGFE_WINDOW_ALLOC 		SGFE_BIT(28) /* if window was allocated by SGFE */
-#define SGFE_INTERNAL_FLAGS (SGFE_EVENT_QUIT | SGFE_WINDOW_ALLOC)
 
 SGFE_window* SGFE_windowMake(SGFE_videoMode mode, SGFE_windowFlags flags) {
 	SGFE_window* win = (SGFE_window*)SGFE_ALLOC(sizeof(SGFE_window));
@@ -1673,30 +1868,46 @@ SGFE_window* SGFE_windowMake(SGFE_videoMode mode, SGFE_windowFlags flags) {
 		return NULL;
 	}
 
-	return SGFE_windowMakePtr(mode, flags | SGFE_WINDOW_ALLOC, win);
+	SGFE_windowMakePtr(mode, flags, win);
+	win->is_allocated = SGFE_TRUE;
+
+	return win;
 }
 
 SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlags flags,
 		SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 
+	win->is_queueing_events = SGFE_FALSE;
+	win->has_polled_events = SGFE_FALSE;
 	win->event_len = 0;
-	win->_flags = flags;
-	win->queue_events = SGFE_FALSE;
-	win->polled_events = SGFE_FALSE;
+	win->flags = flags;
+	win->user_ptr = NULL;
+	win->is_allocated = SGFE_FALSE;
+	win->should_quit = SGFE_FALSE;
+
 	SGFE_MEMSET(win->current, 0, sizeof(win->current));
+	SGFE_MEMSET(win->ctx, 0, sizeof(win->ctx));
 	SGFE_MEMSET(win->controllers, 0, sizeof(win->controllers));
 	SGFE_MEMSET(&win->callbacks, 0, sizeof(win->callbacks));
+	SGFE_windowSetEventEnabledDefault(win);
 
 	SGFE_bool res = SGFE_windowMake_platform(win);
 	if (res == SGFE_FALSE) { return NULL; }
 	SGFE__ROOT_WIN = win;
-	SGFE_windowSetFlags(win, win->_flags);
+	SGFE_windowSetFlags(win, win->flags);
 
-	switch (win->_flags & (SGFE_windowBuffer | SGFE_windowOpenGL)) {
+	switch (win->flags & (SGFE_windowBuffer | SGFE_windowOpenGL)) {
 		case 0: break;
 		case SGFE_windowBuffer: {
-			res = SGFE_windowCreateContextBuffer(win, mode, SGFE_pixelFormatRGBA8, SGFE_FALSE);
+			#ifndef SGFE_BUFFER_NO_CONVERSION
+			SGFE_pixelFormat format = SGFE_pixelFormatRGBA8;
+			SGFE_bool is_native = SGFE_FALSE;
+			#else
+			SGFE_pixelFormat format = SGFE_pixelFormatOptimal();
+			SGFE_bool is_native = SGFE_TRUE;
+			#endif
+			res = SGFE_windowCreateContextBuffer(win, mode, format, is_native);
 		} break;
 
 		#ifdef SGFE_OPENGL
@@ -1732,7 +1943,7 @@ void SGFE_windowClose(SGFE_window* win) {
 	SGFE_windowClose_platform(win);
 
 	#ifndef SGFE__BACKEND_FREE_WINDOW_IN_CLOSE
-	if ((win->_flags & SGFE_WINDOW_ALLOC)) {
+	if (win->is_allocated) {
 		SGFE_FREE(win);
 	}
 	#endif
@@ -1750,7 +1961,7 @@ void SGFE_windowFreeContext(SGFE_window* win) {
 				SGFE_bufferFreeContext(SGFE_contextGetBuffer(ctx));
 			} break;
 
-			#ifdef RGFW_OPENGL
+			#ifdef SGFE_OPENGL
 			case SGFE_contextTypeOpenGL: {
 				SGFE_bufferFreeContext(SGFE_contextGetOpenGL(ctx));
 			} break;
@@ -1760,17 +1971,90 @@ void SGFE_windowFreeContext(SGFE_window* win) {
 }
 
 
+SGFE_windowFlags SGFE_windowGetFlags(const SGFE_window* win) {
+	SGFE_ASSERT(win != NULL);
+	return win->flags;
+}
+
+
+SGFE_bool SGFE_windowGetIsQueuingEvents(const SGFE_window* win) {
+	SGFE_ASSERT(win != NULL);
+	return win->is_queueing_events;
+
+}
+
+void SGFE_windowSetQueueEvents(SGFE_window* win, SGFE_bool is_queuing_events) {
+	SGFE_ASSERT(win != NULL);
+	win->is_queueing_events = SGFE_BOOL(is_queuing_events);
+}
+
+SGFE_bool SGFE_windowGetEventEnabled(const SGFE_window* win, SGFE_eventType type) {
+	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT(type > 0 && type < SGFE_eventCount);
+
+	return win->enabled_events[type];
+}
+
+void SGFE_windowSetEventEnabled(SGFE_window* win, SGFE_eventType type, SGFE_bool is_enabled) {
+	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT(type > 0 && type < SGFE_eventCount);
+
+	win->enabled_events[type] = SGFE_BOOL(is_enabled);
+}
+
+void SGFE_windowSetEventEnabledDefault(SGFE_window* win) {
+	SGFE_windowSetEventEnabled(win, SGFE_eventQuit, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventDeviceSleep, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventDeviceWakeup, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_windowRefresh, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventVideoModeChanged, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventFocusOut, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventFocusIn, SGFE_TRUE);
+
+	SGFE_windowSetEventEnabled(win, SGFE_eventControllerConnected, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventControllerDisconnected, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventButtonDown, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventButtonUp, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventAxis, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventPointer, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventMotion, SGFE_TRUE);
+
+	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardConnected, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardDisconnected, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardDown, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardUp, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventTextIsEditing, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventTextHasFinished, SGFE_FALSE);
+
+	SGFE_windowSetEventEnabled(win, SGFE_eventMouseConnected, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventMouseDisconnected, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventMouseMove, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventMouseButtonDown, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventMouseButtonUp, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventMouseWheel, SGFE_FALSE);
+}
+
 SGFE_bool SGFE_windowCheckEvent(SGFE_window* win, const SGFE_event** out_event) {
 	SGFE_ASSERT(win != NULL);
 	SGFE_ASSERT(out_event != NULL);
 
-	if (win->event_len == 0 && win->polled_events == SGFE_FALSE) {
+	if (win->has_polled_events == SGFE_FALSE) {
 		SGFE_windowPollEvents(win);
 	}
 
 	const SGFE_event* event = SGFE_windowEventPop(win);
 	*out_event = event;
-	win->polled_events = (event != NULL);
+	win->has_polled_events = (event != NULL);
+
+	return (event != NULL);
+}
+
+SGFE_bool SGFE_windowCheckQueuedEvent(SGFE_window* win, const SGFE_event** out_event) {
+	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT(out_event != NULL);
+
+	const SGFE_event* event = SGFE_windowEventPop(win);
+	*out_event = event;
 
 	return (event != NULL);
 }
@@ -1781,6 +2065,7 @@ SGFE_bool SGFE_windowEventPush(SGFE_window* win, const SGFE_event* event) {
 
 	if (win->event_len >= SGFE_COUNTOF(win->events)) {
 		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorEventQueue, SGFE_DEBUG_CTX(NULL, 0), "Event queue limit 'SGFE_MAX_EVENTS' has been reached.");
+		SGFE_windowEventQueueFlush(win);
 		return SGFE_FALSE;
 	}
 
@@ -1796,7 +2081,7 @@ const SGFE_event* SGFE_windowEventPop(SGFE_window* win) {
 	if (win->event_len <= 0) {
 		return NULL;
 	}
-	SGFE_ASSERT(win->queue_events == SGFE_TRUE);
+	SGFE_ASSERT(win->is_queueing_events == SGFE_TRUE);
 
 	SGFE_event* ev = &win->events[SGFE_COUNTOF(win->events) - win->event_len];
 	win->event_len -= 1;
@@ -1804,24 +2089,41 @@ const SGFE_event* SGFE_windowEventPop(SGFE_window* win) {
 	return ev;
 }
 
+void SGFE_windowEventQueueFlush(SGFE_window* win) {
+	SGFE_ASSERT(win != NULL);
+	win->event_len = 0;
+}
+
 
 SGFE_bool SGFE_windowShouldClose(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
-	return SGFE_BOOL(win->_flags & SGFE_EVENT_QUIT);
+	return win->should_quit;
 }
 
-void SGFE_windowSetShouldClose(SGFE_window* win, SGFE_bool shouldClose) {
+void SGFE_windowSetShouldClose(SGFE_window* win, SGFE_bool should_close) {
 	SGFE_ASSERT(win != NULL);
 
-	if (shouldClose)  {
-		win->_flags |= SGFE_EVENT_QUIT;
+	win->should_quit = SGFE_BOOL(should_close);
+	if (should_close)  {
 		SGFE_windowQuitCallback(win);
-	}
-	else {
-		win->_flags &= ~(u32)SGFE_EVENT_QUIT;
 	}
 }
 
+
+SGFE_bool SGFE_windowInitTerminalOutput(SGFE_window* win) {
+	SGFE_ASSERT(win != NULL);
+
+	SGFE_context* out = SGFE_windowGetCurrent(win);
+	SGFE_contextBuffer* buffer = &out->data.buffer;
+	SGFE_bool res = SGFE_platformInitTerminalOutput(&buffer);
+	if (res == SGFE_FALSE) { return res; }
+
+	out->type = SGFE_contextTypeBuffer;
+	out->data.buffer = *buffer; 
+	SGFE__ROOT_WIN = win;
+
+	return SGFE_TRUE;
+}
 
 void SGFE_windowAssert(SGFE_window* win, SGFE_bool is_asserted,
 		const char* condition_str, const char* file, isize line) {
@@ -1891,11 +2193,40 @@ SGFE_bool SGFE_windowCreateContextBuffer(SGFE_window* win, SGFE_videoMode mode,
 	}
 	#endif
 
-	win->_flags |= SGFE_windowBuffer;
+	win->flags |= SGFE_windowBuffer;
 	return SGFE_TRUE;
 }
 
 
+SGFE_bool SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
+		SGFE_videoMode mode, SGFE_pixelFormat format, SGFE_bool allocate_buffers) {
+	SGFE_ASSERT(out_buffer != NULL);
+	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
+	SGFE_ASSERT(format >= 0 && format < SGFE_pixelFormatCount);
+
+	SGFE_contextBuffer* b = out_buffer;
+	b->screen = SGFE_screenPrimary;
+	b->mode = mode;
+	b->format = format;
+
+	b->current = 0;
+
+	b->is_buffer_allocated = SGFE_FALSE;
+	b->is_double_buffered = SGFE_TRUE;
+	b->is_native = SGFE_FALSE;
+
+	SGFE_bool res;
+	if (allocate_buffers) {
+		res = SGFE_bufferAllocFramebuffers(out_buffer);
+	}
+	else {
+		res = SGFE_TRUE;
+		SGFE_MEMSET(b->buffers, 0, sizeof(b->buffers));
+		SGFE_MEMSET(b->buffers_native, 0, sizeof(b->buffers_native));
+	}
+
+	return (res) ? SGFE_bufferMakeWithDefaultSettings_platform(b) : SGFE_FALSE;
+}
 SGFE_bool SGFE_bufferSetFormat(SGFE_contextBuffer* b, SGFE_pixelFormat format) {
 	if (b == NULL) { return SGFE_FALSE; }
 
@@ -1934,7 +2265,7 @@ u8* SGFE_bufferGetFramebuffer(SGFE_contextBuffer* b) {
 }
 
 
-SGFE_pixelFormat SGFE_contextGetFormat(const SGFE_contextBuffer* b) {
+SGFE_pixelFormat SGFE_bufferGetFormat(const SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
 	return b->format;
 }
@@ -1967,6 +2298,11 @@ SGFE_screen SGFE_bufferGetScreen(SGFE_contextBuffer* b) {
 isize SGFE_bufferGetFramebufferCount(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
 	return b->is_double_buffered ? 2 : 1;
+}
+
+SGFE_videoMode SGFE_bufferGetVideoMode(const SGFE_contextBuffer* b) {
+	SGFE_ASSERT(b != NULL);
+	return b->mode;
 }
 
 SGFE_bool SGFE_bufferIsStereoscopic(SGFE_contextBuffer* b) {
@@ -2022,7 +2358,7 @@ SGFE_bool SGFE_iterateButtonMask(SGFE_button* buttons_mask, SGFE_buttonType* out
 	if (*buttons_mask == 0) { return SGFE_FALSE; }
 
 	SGFE_buttonType type = SGFE_buttonGetType(*buttons_mask);
-	*buttons_mask &= ~SGFE_BIT(type);
+	*buttons_mask &= (SGFE_button)~SGFE_BIT(type);
 	*out_button = type;
 
 	return SGFE_TRUE;
@@ -2034,6 +2370,45 @@ SGFE_button SGFE_buttonGetMask(SGFE_controllerType type) {
 	return SGFE_BUTTON_MASK_BITS_LUT[type];
 }
 
+
+const SGFE_axis* SGFE_controllerGetAxis(const SGFE_controller* controller,
+		SGFE_axisType which) {
+	SGFE_ASSERT(controller != NULL);
+	#ifdef SGFE_DEBUG
+	SGFE_axisType start, end;
+	SGFE_controllerGetRangeAxis(controller, &start, &end);
+	SGFE_ASSERT(start != -1 && end != -1);
+	SGFE_ASSERT(which >= start && which <= end);
+	#endif
+
+	return &controller->axes[which];
+}
+
+const SGFE_pointer* SGFE_controllerGetPointer(const SGFE_controller* controller,
+		SGFE_pointerType which) {
+	SGFE_ASSERT(controller != NULL);
+	#ifdef SGFE_DEBUG
+	SGFE_pointerType start, end;
+	SGFE_controllerGetRangePointer(controller, &start, &end);
+	SGFE_ASSERT(start != -1 && end != -1);
+	SGFE_ASSERT(which >= start && which <= end);
+	#endif
+
+	return &controller->pointers[which];
+}
+
+const SGFE_motion* SGFE_controllerGetMotion(const SGFE_controller* controller,
+		SGFE_motionType which) {
+	SGFE_ASSERT(controller != NULL);
+	#ifdef SGFE_DEBUG
+	SGFE_motionType start, end;
+	SGFE_controllerGetRangeMotion(controller, &start, &end);
+	SGFE_ASSERT(start != -1 && end != -1);
+	SGFE_ASSERT(which >= start && which <= end);
+	#endif
+
+	return &controller->motions[which];
+}
 
 void SGFE_controllerGetRangeButton(const SGFE_controller* controller,
 		SGFE_buttonType* out_first,SGFE_buttonType* out_last) {
@@ -2299,9 +2674,6 @@ const isize SGFE_FORMAT_BYTES_PER_PIXEL_LUT[SGFE_pixelFormatCount] = {
 void SGFE__aptHookCallback(APT_HookType hook, void* param);
 void _SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer);
 
-void SGFE__3dsControllerCstick(SGFE_window* win, SGFE_controller* controller, 
-		SGFE_axisType which, i16 value);
-
 /* NOTE(EimaMei): sys/iosupport.h stuff alongside some initialization stuff
  * from consoleInit. The reason why we define everything is so that we
  * wouldn't have to include them.  */
@@ -2367,7 +2739,7 @@ void _SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer) {
 
 		case SGFE_videoMode3D: {
 			pixel_format |= BIT(5);
-			if (SGFE_platformGet3DSlider() > 0.0f) fb_b += b->size / 2;
+			if (SGFE_platformGet3DSlider() > 0.0f) fb_b += b->src.size / 2;
 		} break;
 		}
 	}
@@ -2375,29 +2747,12 @@ void _SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer) {
 	gspPresentBuffer((u32)b->screen, (u32)b->current, buffer, fb_b, stride, pixel_format);
 }
 
-void SGFE__3dsControllerCstick(SGFE_window* win, SGFE_controller* controller, 
-		SGFE_axisType which, i16 value) {
-	SGFE_axis* axis = &controller->axes[which];
-	axis->value = (float)value / 156.0f; 
-
-	SGFE_windowAxisCallback(win, controller, which);
-	if (win->queue_events) {
-		SGFE_event event;
-		event.type = SGFE_eventAxis;
-		event.axis.controller = controller;
-		event.axis.which = which;
-		event.axis.value = axis->value;
-		event.axis.deadzone = axis->deadzone;
-		SGFE_windowEventPush(win, &event);
-	}
-}
-
 
 
 
 SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
-	if ((win->_flags & SGFE_windowDualScreen) == 0) {
-		win->_flags |= SGFE_windowTopScreen;
+	if ((win->flags & SGFE_windowDualScreen) == 0) {
+		win->flags |= SGFE_windowTopScreen;
 	}
 
 	SGFE_controller* controller = &win->controllers[0];
@@ -2405,15 +2760,23 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 	controller->type = SGFE_controllerTypeStandard;
 	controller->connected = SGFE_TRUE;
 	controller->enabled_pointers[SGFE_pointerTouchscreen] = SGFE_TRUE;
-	
+
 	for (SGFE_axisType which = 0; which < SGFE_axisTypeCount; which += 1) {
+		controller->axes[which].type = which;
 		/* NOTE(EimaMei): I picked '40' as the deadzone based on how the CPAD bits
 		 * are set if the value is larger than 40. (http://3dbrew.org/wiki/HID_Shared_Memory). */
 		controller->axes[which].deadzone = (40.0f / 156.0f);
 	}
 
+	for (SGFE_pointerType which = 0; which < SGFE_pointerTypeCount; which += 1) {
+		controller->pointers[which].type = which;
+	}
+
+	for (SGFE_motionType which = 0; which < SGFE_motionTypeCount; which += 1) {
+		controller->motions[which].type = which;
+	}
+
 	SGFE_windowSource* src = &win->src;
-	SGFE_MEMSET(src->ctx, 0, sizeof(src->ctx));
 	src->lcd_is_on = SGFE_FALSE;
 
 	aptHook(&src->apt_hook, SGFE__aptHookCallback, win);
@@ -2454,142 +2817,103 @@ void SGFE_windowClose_platform(SGFE_window* win) {
 
 void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlags flags) {
 	SGFE_ASSERT(win != NULL);
-	win->_flags = flags | (win->_flags & SGFE_INTERNAL_FLAGS);
+
+	win->flags = flags;
 }
 
 
 void SGFE_windowPollEvents(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 
-	/* TODO(EimaMei): devkitPro actually gives you access to 'hidSharedMem' and
-	 * 'hidMemHandle', allowing you to manage input yourself. Might have to take
-	 * a better look at it. */
-	if (!aptMainLoop()) {
-		SGFE_windowSetShouldClose(win, SGFE_TRUE);
-		SGFE_windowQuitCallback(win);
+	SGFE_bool continue_running = aptMainLoop();
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventQuit)) {
+		if (!continue_running) {
+			SGFE_windowSetShouldClose(win, SGFE_TRUE);
+			SGFE_windowQuitCallback(win);
 
-		if (win->queue_events) {
-			SGFE_event event;
-			event.type = SGFE_eventQuit;
-			SGFE_windowEventPush(win, &event);
+			if (win->is_queueing_events) {
+				SGFE_event event;
+				event.type = SGFE_eventQuit;
+				SGFE_windowEventPush(win, &event);
+			}
+			return;
 		}
-		return;
 	}
 
 	hidScanInput();
-	u32 held = hidKeysHeld(),
-		down = hidKeysDown(),
-		up = hidKeysUp();
+	u32 held = hidKeysHeld();
 
 	SGFE_controller* controller = SGFE_windowGetController(win, 0);
-	controller->buttons_held = SGFE_platformButtonFromAPI(held);
-	controller->buttons_down = SGFE_platformButtonFromAPI(down);
-	controller->buttons_up   = SGFE_platformButtonFromAPI(up);
 
-	if (controller->buttons_held != 0) {
-		SGFE_windowButtonCallback(win, controller, controller->buttons_held, SGFE_TRUE);
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonDown)) {
+		controller->buttons_held = SGFE_platformButtonFromAPI(held);
+		controller->buttons_down = SGFE_platformButtonFromAPI(hidKeysDown());
 
-		if (win->queue_events) {
-			SGFE_event event;
-			event.type = SGFE_eventButtonDown;
-			event.button.controller = controller;
-			event.button.buttons = controller->buttons_held;
-			event.button.buttons_down = controller->buttons_down;
-			event.button.raw_buttons = held;
-			event.button.raw_buttons_down = down;
-			SGFE_windowEventPush(win, &event);
+		SGFE__processCallbackAndEventQueue_ButtonDown(win, controller);
+	}
+
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonUp)) {
+		controller->buttons_up = SGFE_platformButtonFromAPI(hidKeysUp());
+
+		SGFE__processCallbackAndEventQueue_ButtonUp(win, controller);
+	}
+
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventAxis)) {
+		circlePosition cpad;
+		hidCircleRead(&cpad);
+
+		if (held & (KEY_CPAD_LEFT | KEY_CPAD_RIGHT)) {
+			SGFE_axis* a = &controller->axes[SGFE_axisLeftX];
+			a->value = (float)cpad.dx / 156.0f;
+			SGFE__processCallbackAndEventQueue_Axis(win, controller, a);
+		}
+
+		if (held & (KEY_CPAD_UP | KEY_CPAD_DOWN)) {
+			SGFE_axis* a = &controller->axes[SGFE_axisLeftY];
+			a->value = (float)cpad.dy / 156.0f;
+			SGFE__processCallbackAndEventQueue_Axis(win, controller, a);
 		}
 	}
 
-	if (controller->buttons_up != 0) {
-		SGFE_windowButtonCallback(win, controller, controller->buttons_up, SGFE_FALSE);
-		if (win->queue_events) {
-			SGFE_event event;
-			event.type = SGFE_eventButtonUp;
-			event.button.controller = controller;
-			event.button.buttons = controller->buttons_up;
-			event.button.buttons_down = 0;
-			event.button.raw_buttons = up;
-			event.button.raw_buttons_down = 0;
-			SGFE_windowEventPush(win, &event);
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventPointer)) {
+		if (controller->enabled_pointers[SGFE_pointerTouchscreen] && (held & KEY_TOUCH)) {
+			touchPosition touch;
+			hidTouchRead(&touch);
+
+			SGFE_pointer* p = &controller->pointers[SGFE_pointerTouchscreen];
+			p->x = touch.px;
+			p->y = touch.py;
+
+			SGFE__processCallbackAndEventQueue_Pointer(win, controller, p);
 		}
 	}
 
-	circlePosition cpad;
-	hidCircleRead(&cpad);
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventMotion)) {
+		if (controller->enabled_motions[SGFE_motionAccelerometer]) {
+			accelVector accel;
+			hidAccelRead(&accel);
 
-	if (held & (KEY_CPAD_LEFT | KEY_CPAD_RIGHT)) {
-		SGFE__3dsControllerCstick(win, controller, SGFE_axisLeftX, cpad.dx);
-	}
+			SGFE_motion* m = &controller->motions[SGFE_motionAccelerometer];
+			m->x = (float)accel.x / 512.0f * SGFE_STANDARD_GRAVITY;
+			m->y = (float)accel.y / 512.0f * SGFE_STANDARD_GRAVITY;
+			m->z = (float)accel.z / 512.0f * SGFE_STANDARD_GRAVITY;
 
-	if (held & (KEY_CPAD_UP | KEY_CPAD_DOWN)) {
-		SGFE__3dsControllerCstick(win, controller, SGFE_axisLeftY, cpad.dy);
-	}
-
-	if (controller->enabled_motions[SGFE_motionAccelerometer]) {
-		accelVector accel;
-		hidAccelRead(&accel);
-
-		float* xyz = (float*)&controller->motions[SGFE_motionAccelerometer];
-		xyz[0] = (float)accel.x / 512.0f * SGFE_STANDARD_GRAVITY;
-		xyz[1] = (float)accel.y / 512.0f * SGFE_STANDARD_GRAVITY;
-		xyz[2] = (float)accel.z / 512.0f * SGFE_STANDARD_GRAVITY;
-			
-		SGFE_windowPointerCallback(win, controller, SGFE_motionAccelerometer);
-		if (win->queue_events) {
-			SGFE_event event;
-			event.type = SGFE_eventMotion;
-			event.motion.controller = controller;
-			event.motion.which = SGFE_motionAccelerometer;
-			event.motion.x = xyz[0];
-			event.motion.y = xyz[1];
-			event.motion.z = xyz[2];
-			SGFE_windowEventPush(win, &event);
+			SGFE__processCallbackAndEventQueue_Motion(win, controller, m);
 		}
-	}
 
-	if (controller->enabled_motions[SGFE_motionGyroscope]) {
-		angularRate gyro;
-		hidGyroRead(&gyro);
+		if (controller->enabled_motions[SGFE_motionGyroscope]) {
+			angularRate gyro;
+			hidGyroRead(&gyro);
 
-		float coeff = 1.0f;
-		HIDUSER_GetGyroscopeRawToDpsCoefficient(&coeff);
+			float coeff = 1.0f;
+			HIDUSER_GetGyroscopeRawToDpsCoefficient(&coeff);
 
-		float* xyz = (float*)&controller->motions[SGFE_motionGyroscope];
-		xyz[0] = (float)gyro.x * coeff * SGFE_PI / 180.0f;
-		xyz[1] = (float)gyro.y * coeff * SGFE_PI / 180.0f;
-		xyz[2] = (float)gyro.z * coeff * SGFE_PI / 180.0f;
-			
-		SGFE_windowPointerCallback(win, controller, SGFE_motionGyroscope);
-		if (win->queue_events) {
-			SGFE_event event;
-			event.type = SGFE_eventMotion;
-			event.motion.controller = controller;
-			event.motion.which = SGFE_motionGyroscope;
-			event.motion.x = xyz[0];
-			event.motion.y = xyz[1];
-			event.motion.z = xyz[2];
-			SGFE_windowEventPush(win, &event);
-		}
-	}
+			SGFE_motion* m = &controller->motions[SGFE_motionGyroscope];
+			m->x = (float)gyro.x * coeff * SGFE_PI / 180.0f;
+			m->y = (float)gyro.y * coeff * SGFE_PI / 180.0f;
+			m->z = (float)gyro.z * coeff * SGFE_PI / 180.0f;
 
-	if (controller->enabled_pointers[SGFE_pointerTouchscreen] && (held & KEY_TOUCH)) {
-		touchPosition touch;
-		hidTouchRead(&touch);
-
-		isize* xy = controller->pointers[SGFE_pointerTouchscreen];
-		xy[0] = touch.px;
-		xy[1] = touch.py;
-
-		SGFE_windowPointerCallback(win, controller, SGFE_pointerTouchscreen);
-		if (win->queue_events) {
-			SGFE_event event;
-			event.type = SGFE_eventPointer;
-			event.pointer.controller = controller;
-			event.pointer.which = SGFE_pointerTouchscreen;
-			event.pointer.x = xy[0];
-			event.pointer.y = xy[1];
-			SGFE_windowEventPush(win, &event);
+			SGFE__processCallbackAndEventQueue_Motion(win, controller, m);
 		}
 	}
 }
@@ -2608,7 +2932,7 @@ void SGFE_windowSwapBuffers(SGFE_window* win) {
 				ctx = SGFE_windowGetCurrentEx(win, screen);
 				SGFE_contextBuffer* b = SGFE_windowGetContextExBuffer(win, screen);
 				u8* buffer = SGFE__fetchSwapBuffer(b);
-				GSPGPU_FlushDataCache(buffer, b->size);
+				GSPGPU_FlushDataCache(buffer, b->src.size);
 
 				_SGFE__gspPresentFramebuffer(b, buffer);
 				b->current ^= b->is_double_buffered;
@@ -2630,23 +2954,24 @@ void SGFE_windowMakeCurrent(SGFE_window* win, SGFE_context* ctx) {
 }
 
 
-SGFE_bool SGFE_windowInitTerminalOutput(SGFE_window* win) {
+SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer** out_ctx) {
 	/* TODO(EimaMei): Remove this entire function and replace it with a helper library
 	 * and function. */
 	/* NOTE(EimaMei): Taken from libctru console.c */
 	static SGFE_bool console_initialized = SGFE_FALSE;
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT(out_ctx != NULL);
 
-	SGFE_context* ctx = SGFE_windowGetContext(win);
-	if (ctx->type == SGFE_contextTypeNone) {
-		SGFE_bool res = SGFE_windowCreateContextBuffer(win, SGFE_videoModeOptimal(), SGFE_pixelFormatRGB565, SGFE_TRUE);
+	if (*out_ctx == NULL) {
+		SGFE_bool res = SGFE_bufferMakeWithDefaultSettings(
+			*out_ctx, SGFE_pixelFormatRGB565, SGFE_TRUE, SGFE_TRUE
+		);
+		if (res == SGFE_FALSE) { return SGFE_FALSE; }
 
-		if (res == SGFE_FALSE) {
-			return SGFE_FALSE;
-		}
+		res = SGFE_bufferCreateContext(*out_ctx);
+		if (res == SGFE_FALSE) { return SGFE_FALSE; }
 	}
 
-	SGFE_contextBuffer* b = &ctx->data.buffer;
+	SGFE_contextBuffer* b = *out_ctx;
 	SGFE_bufferSetNative(b, SGFE_TRUE);
 	SGFE_bufferSetFormat(b, SGFE_pixelFormatRGB565);
 	SGFE_bufferSetDoubleBuffered(b, SGFE_FALSE);
@@ -2677,12 +3002,11 @@ SGFE_bool SGFE_windowInitTerminalOutput(SGFE_window* win) {
 	}
 
 	/* TODO(EimaMei): Should be kept in the library. */
-	/*if ((win->_flags & SGFE_windowDualScreen) == SGFE_windowDualScreen) {
+	/*if ((win->flags & SGFE_windowDualScreen) == SGFE_windowDualScreen) {
 		win->current ^= 1;
 	}*/
 
 	consoleClear();
-	SGFE_windowSwapBuffers(win);
 	return SGFE_TRUE;
 }
 
@@ -2728,42 +3052,14 @@ SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
 	}
 
 	return (res == 0);
-	SGFE_UNUSED(controller); 
+	SGFE_UNUSED(controller);
 }
 
 
 
-SGFE_bool SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
-		SGFE_videoMode mode, SGFE_pixelFormat format, SGFE_bool allocate_buffers) {
-	SGFE_ASSERT(out_buffer != NULL);
-	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
-	SGFE_ASSERT(format >= 0 && format < SGFE_pixelFormatCount);
-
-	SGFE_contextBuffer* b = out_buffer;
-	b->screen = SGFE_screenPrimary;
-	b->mode = mode;
-	b->format = format;
-
-	b->current = 0;
-
-	b->is_buffer_allocated = SGFE_FALSE;
-	b->is_double_buffered = SGFE_FALSE;
-	b->is_native = SGFE_FALSE;
-
-	SGFE_bool res;
-	if (allocate_buffers) {
-		res = SGFE_bufferAllocFramebuffers(out_buffer);
-	}
-	else {
-		res = SGFE_TRUE;
-		SGFE_MEMSET(b->buffers, 0, sizeof(b->buffers));
-		#ifndef SGFE_BUFFER_NO_CONVERSION
-		SGFE_MEMSET(b->buffers_native, 0, sizeof(b->buffers_native));
-		#endif
-	}
-
-	b->size = 0;
-	return res;
+SGFE_bool SGFE_bufferMakeWithDefaultSettings_platform(SGFE_contextBuffer* out_buffer) {
+	out_buffer->src.size = 0;
+	return SGFE_TRUE;
 }
 
 
@@ -2772,14 +3068,10 @@ SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
 
 	isize width, height;
 	SGFE_bufferGetResolution(b, &width, &height);
-	b->size = (u32)(width * height * SGFE_pixelFormatBytesPerPixel(b->format));
+	b->src.size = (u32)(width * height * SGFE_pixelFormatBytesPerPixel(b->format));
 	b->current = 0;
 
-	#ifndef SGFE_BUFFER_NO_CONVERSION
 	_SGFE__gspPresentFramebuffer(b, (b->is_native) ? b->buffers[0] : b->buffers_native[0]);
-	#else
-	_SGFE__gspPresentFramebuffer(b, b->buffers[0]);
-	#endif
 
 	SGFE_sendDebugInfo(SGFE_debugTypeInfo, SGFE_infoBuffer, SGFE_DEBUG_CTX(0, 0), "Creating framebuffers");
 	return SGFE_TRUE;
@@ -2811,18 +3103,14 @@ SGFE_bool SGFE_bufferAllocFramebuffers(SGFE_contextBuffer* b) {
 		u8* buffers = SGFE_ALLOC((size_t)(2 * size));
 		if (buffers == NULL) { return SGFE_FALSE; }
 
-		#ifndef SGFE_BUFFER_NO_CONVERSION
 		u8* native_buffers = linearAlloc((size_t)(2 * size));
 		if (native_buffers == NULL) { return SGFE_FALSE; }
-		#endif
 
 		b->buffers[0] = &buffers[0 * size];
 		b->buffers[1] = &buffers[1 * size];
 
-		#ifndef SGFE_BUFFER_NO_CONVERSION
 		b->buffers_native[0] = &native_buffers[0 * size];
 		b->buffers_native[1] = &native_buffers[1 * size];
-		#endif
 	}
 
 	b->is_buffer_allocated = SGFE_TRUE;
@@ -2843,11 +3131,9 @@ SGFE_bool SGFE_bufferFreeFramebuffers(SGFE_contextBuffer* b) {
 		b->buffers[0] = NULL;
 		b->buffers[1] = NULL;
 
-		#ifndef SGFE_BUFFER_NO_CONVERSION
 		linearFree(b->buffers_native[0]);
 		b->buffers_native[0] = NULL;
 		b->buffers_native[1] = NULL;
-		#endif
 	}
 
 	b->is_buffer_allocated = SGFE_FALSE;
@@ -3114,7 +3400,7 @@ SGFE_bool SGFE_window_createContext_OpenGL(SGFE_window* win, SGFE_videoMode mode
 	SGFE_ASSERT(win != NULL);
 
 	SGFE_bool res;
-	switch (win->_flags & SGFE_windowDualScreen) {
+	switch (win->flags & SGFE_windowDualScreen) {
 		case SGFE_windowTopScreen:    res = SGFE_createContext_OpenGL(SGFE_screenTop, mode, &win->src.gl[SGFE_screenTop]); break;
 		case SGFE_windowBottomScreen: res = SGFE_createContext_OpenGL(SGFE_screenBottom, mode, &win->src.gl[SGFE_screenBottom]); break;
 		case SGFE_windowDualScreen: {
@@ -3131,16 +3417,16 @@ SGFE_bool SGFE_window_createContext_OpenGL(SGFE_window* win, SGFE_videoMode mode
 	if (!res) {
 		return SGFE_FALSE;
 	}
-	SGFE_window_makeCurrent_OpenGL(win, &win->src.gl[!(win->_flags & SGFE_windowTopScreen)]);
+	SGFE_window_makeCurrent_OpenGL(win, &win->src.gl[!(win->flags & SGFE_windowTopScreen)]);
 
-	win->_flags |= SGFE_windowOpenGL;
+	win->flags |= SGFE_windowOpenGL;
 	return res;
 }
 
 void SGFE_window_freeContext_OpenGL(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 
-	if ((win->_flags & SGFE_windowOpenGL) == 0) {
+	if ((win->flags & SGFE_windowOpenGL) == 0) {
 		return;
 	}
 
@@ -3148,7 +3434,7 @@ void SGFE_window_freeContext_OpenGL(SGFE_window* win) {
 		SGFE_window_makeCurrent_OpenGL(win, NULL);
 	}
 
-	switch (win->_flags & SGFE_windowDualScreen) {
+	switch (win->flags & SGFE_windowDualScreen) {
 		case SGFE_windowTopScreen: SGFE_context_free_OpenGL(&win->src.gl[SGFE_screenTop]); break;
 		case SGFE_windowBottomScreen: SGFE_context_free_OpenGL(&win->src.gl[SGFE_screenBottom]); break;
 		case SGFE_windowDualScreen: {
@@ -3157,7 +3443,7 @@ void SGFE_window_freeContext_OpenGL(SGFE_window* win) {
 		} break;
 	}
 
-	win->_flags &= ~(SGFE_windowFlags)SGFE_windowOpenGL;
+	win->flags &= ~(SGFE_windowFlags)SGFE_windowOpenGL;
 	SGFE_sendDebugInfo(SGFE_debugTypeInfo, SGFE_infoOpenGL, SGFE_DEBUG_CTX(win, 0), "OpenGL context freed.");
 }
 
@@ -3197,24 +3483,24 @@ SGFE_systemModel SGFE_platformGetModel(void) {
 
 
 SGFE_button SGFE_platformButtonFromAPI(u32 mask) {
-	#define SGFE__BUTTONS_BITS (u32)(0x7FF)
+	#define SGFE__BUTTONS_BITS (u32)(0xFFF)
 	#define SGFE__CSTICK_BITS (u32)(KEY_CSTICK_RIGHT | KEY_CSTICK_LEFT | KEY_CSTICK_UP | KEY_CSTICK_DOWN)
 	#define SGFE__ZL_ZR_BITS (u32)(KEY_ZL | KEY_ZR)
 
-	return 
+	return
 		((mask & SGFE__CSTICK_BITS) >> 11) |
-		((mask & SGFE__ZL_ZR_BITS) >> 2) | 
+		((mask & SGFE__ZL_ZR_BITS) >> 2) |
 		((mask & SGFE__BUTTONS_BITS));
 
-	#define SGFE__BUTTONS_BITS (u32)(0x7FF)
-	#define SGFE__CSTICK_BITS (u32)(KEY_CSTICK_RIGHT | KEY_CSTICK_LEFT | KEY_CSTICK_UP | KEY_CSTICK_DOWN)
-	#define SGFE__ZL_ZR_BITS (u32)(KEY_ZL | KEY_ZR)
+	#undef SGFE__BUTTONS_BITS
+	#undef SGFE__CSTICK_BITS
+	#undef SGFE__ZL_ZR_BITS
 }
 
 u32 SGFE_platformButtonToAPI(SGFE_button button) {
-	return 
+	return
 		((button & SGFE_buttonMask_Cstick) << 11) |
-		((button & SGFE_buttonMask_ZL_ZR) << 2) | 
+		((button & SGFE_buttonMask_ZL_ZR) << 2) |
 		(button & (SGFE_buttonMask_Dpad | SGFE_buttonMask_Face | SGFE_buttonMask_Shoulder));
 }
 
@@ -3586,7 +3872,7 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 void SGFE_windowClose_platform(SGFE_window* win) {
 	WPAD_Shutdown();
 
-	if ((win->_flags & SGFE_WINDOW_ALLOC)) {
+	if ((win->flags & SGFE_WINDOW_ALLOC)) {
 		SGFE_FREE(win);
 	}
 
@@ -3738,7 +4024,7 @@ void SGFE_windowMakeCurrent(SGFE_window* win, SGFE_context* ctx) {
 }
 
 
-SGFE_bool SGFE_windowInitTerminalOutput(SGFE_window* win) {
+SGFE_bool SGFE_platformInitTerminalOutput(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 
 	if (win->current == NULL) {
@@ -3862,9 +4148,7 @@ void SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
 	b->is_double_buffered = SGFE_FALSE;
 	b->is_native = SGFE_FALSE;
 
-	#ifndef SGFE_BUFFER_NO_CONVERSION
 	SGFE_MEMSET(b->buffers_native, 0, sizeof(b->buffers_native));
-	#endif
 
 	b->gx_video_mode = NULL;
 }
@@ -3946,7 +4230,7 @@ void SGFE_windowFreeContext(SGFE_window* win) {
 			SGFE_bufferFreeContext(SGFE_contextGetBuffer(ctx));
 		} break;
 
-		#ifdef RGFW_OPENGL
+		#ifdef SGFE_OPENGL
 		case SGFE_contextTypeOpenGL: {
 			SGFE_bufferFreeContext(SGFE_contextGetOpenGL(ctx));
 		} break;
@@ -4047,11 +4331,11 @@ arising from the use of this software.
 Permission is granted to anyone to use this software for any purpose,
 including commercial applications, and to alter it and redistribute it
 freely, subject to the following restrictions:
-  
+
 1. The origin of this software must not be misrepresented; you must not
    claim that you wrote the original software. If you use this software
    in a product, an acknowledgment in the product documentation would be
-   appreciated but is not required. 
+   appreciated but is not required.
 2. Altered source versions must be plainly marked as such, and must not be
    misrepresented as being the original software.
 3. This notice may not be removed or altered from any source distribution.

@@ -22,12 +22,6 @@ void uniform_color_fs(float* fs_input, Shader_Builtins* builtins, void* uniforms
 	builtins->gl_FragColor = ((My_Uniforms*)uniforms)->v_color;
 }
 
-static 
-void portableGL_ctx_init(SGFE_window* win, glContext* gl_out) {
-	u8* buffer = SGFE_bufferGetFramebuffer(win->buffer);
-	SGFE_area res = SGFE_bufferGetResolution(win->buffer);
-	init_glContext(gl_out, (u32**)&buffer, res.w, res.h, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
-}
 
 int main() {
 	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowBuffer);
@@ -35,10 +29,12 @@ int main() {
 
 	SGFE_contextBuffer* ctx = SGFE_windowGetContextBuffer(win);
 	u8* buffer = SGFE_bufferGetFramebuffer(ctx);
-	SGFE_area res = SGFE_bufferGetResolution(ctx);
+
+	isize width, height;
+	SGFE_bufferGetResolution(ctx, &width, &height);
 
 	glContext context;
-	init_glContext(&context, (u32**)&buffer, res.w, res.h, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+	init_glContext(&context, (u32**)&buffer, width, height, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
 
 	float points[] = { 
 		-0.5f, -0.5f, 0.0f,
@@ -62,12 +58,12 @@ int main() {
 	glClearColor(1, 1, 1, 1);
 
 	while (!SGFE_windowShouldClose(win)) {
-		const SGFE_event* event;
-		while (SGFE_windowCheckEvent(win, &event)) {
-			if (event->type == SGFE_buttonPressed && event->button == BUTTON_START) {
-				SGFE_windowSetShouldClose(win, SGFE_TRUE);
-				break;
-			}
+		SGFE_windowPollEvents(win);
+
+		SGFE_controller* p1 = SGFE_windowGetController(win, 0);
+		if (SGFE_isDown(p1, BUTTON_START)) {
+			SGFE_windowSetShouldClose(win, SGFE_TRUE);
+			continue;
 		}
 
 		glClear(GL_COLOR_BUFFER_BIT);
