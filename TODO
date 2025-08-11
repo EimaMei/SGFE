@@ -1,29 +1,14 @@
-TODO (in no particular order):
-- README.md guide on creating a console backend.
-- Document all macros.
-- (3DS) Resize event.
-- (3DS) Fix flicker when opening standard buffer.
-- (3DS) Fix flicker when closing basic buffer.
-- Update Makefiles to be better, have a 'compile_examples' command.
-- Document all examples.
-- Finish the callbacks example with video mode change callback.
-- Document examples/README.md
+Features:
 - Add changes from Desktop to Embedded
-- add a gyro example.
+- (3DS) Resize event.
 - (3DS) Add anti-aliasing for OpenGL.
 - (3DS) Update GLASS, libctru and other 3ds dependencies.
-- (3DS) Add documentation for OpenGL support and how it requires GLASS and a forked
-version of libctru.
 - (3DS) Implement 'GSPGPU_SetLcdForceBlack' using the "showWindow" functions. Add
 back the window flags for it.
 - Implement a show flag.
-- Add an example where the "non-primary" screen is only used.
 - Add a sizeof and getters/setters for each opaque struct type.
-- Rework debug systems to be more flexible. Remove SGFE_sendDebugInfo.
-- swapInterval example
 - Add timestamp to events.
 - Controller battery event (battery update, dead, etc).
-- Document all SGFE_<PLATFORM> macros.
 - Linked list for controllers.
 - Add a "end poll" event and function.
 - (Wii) GameCube controller support.
@@ -33,31 +18,59 @@ back the window flags for it.
 - Get cable function.
 - Add a window flag to use native mode instead.
 - Make "setNative" alloc non-native buffers if false is specified and buffers are null.
-- (Wii) Fix bug where nunchuk controllers are eligible for gyroscope support.
 - (Wii) Add video refresh event.
 - (3DS) Add video refresh event.
-- Remove swapBuffers in the callbacks example and replace it with a video fresh event:
 	- notes on implementing it: use a callback for when VSync must on. Set a boolean,
 	then in the pollEvenets function call 'refresh'. See if you have to wait a frame
 	after vsync or if this can be done instantaneously
-- Add rumble functionality.
-- Create a screenshot of SGFE working on Wii and 3DS emulators/real hardware.
-- In the "free window" function call a "hide window" function that turns the screen
-black. Remove that kind of code from the 3DS code.
-- Make platform-specific SGFE_buttonFromAPI/ToAPI functions available as platform functions.
-- (3DS) replace "hidScanInput" with raw events.
 - (Wii) add keyboard support. Add TextInput support for it.
 - (Wii) add mouse support.
 - (3DS) add virtual software keyboard support.
 - Add options to disable app termination/loss of focus.
-- (3ds) figure out why 3DS console isn't properly aligned AGAIN.
-- rename window flags to use a prefix. same with some leftover RGFW functions.
 - Replace  SGFE_ASSERT(0) with PANIC.
 - (3DS) implement opengl hints
-- split basic.c into multiple examples.
-- finish custom-backend
+- Add rumble functionality.
+- In the "free window" function call a "hide window" function that turns the screen
+black. Remove that kind of code from the 3DS code.
+- Make platform-specific SGFE_buttonFromAPI/ToAPI functions available as platform functions.
 
-Maybe:
+
+API-breaking changes:
+- Rework debug systems to be more flexible. Remove SGFE_sendDebugInfo.
+- rename window flags to use a prefix. same with some leftover RGFW functions.
+
+
+Documentation:
+- README.md guide on creating a console backend.
+- Document all macros.
+- Document all examples.
+- Finish the callbacks example with video mode change callback.
+- Document examples/README.md
+- add a gyro example.
+- (3DS) Add documentation for OpenGL support and how it requires GLASS and a forked
+version of libctru.
+- Add an example where the "non-primary" screen is only used.
+- Remove swapBuffers in the callbacks example and replace it with a video fresh event:
+- split basic.c into multiple examples.
+- finish custom-backend example
+- Document all SGFE_<PLATFORM> macros.
+- Create a screenshot of SGFE working on Wii and 3DS emulators/real hardware.
+- (3ds) figure out why 3DS console isn't properly aligned AGAIN.
+- swapInterval example
+
+
+Bug fixes:
+- (3DS) Fix flicker when opening standard buffer.
+- (3DS) Fix flicker when closing basic buffer.
+- (Wii) Fix bug where nunchuk controllers are eligible for gyroscope support.
+
+
+Build system:
+- Update Makefiles to be better, have a 'compile_examples' command.
+
+
+
+Maybe TODOs:
 - (3DS) Find a way to not use gfxInitDefault for GLASS.
 - OpenGL hint to request specific values instead of relying on minimums.
 - SGFE_window_swapInterval for buffer rendering.
@@ -74,12 +87,18 @@ Maybe:
 - GitHub actions test for all platforms.
 - make it so that when compiling gles1 or multipl-scre/gles1 the shader gets recompiled.
 - Implement buffer setters/getters for opengl.
+- (3DS) replace "hidScanInput" with raw events.
+
 
 Distant TODO:
 - Create a portable stdout/stderr library that'd write the text on screen.
 
+
 Planned backends:
-- Dreamcast (later on, maybe)
+- DS (maybe)
+- GameCube (maybe)
+- Dreamcast (would like to but cannot due to lack of hardware)
+
 
 Console library TODO:
 - Create a console structure that creates its own context and renders on top of the user output.
