@@ -1,5 +1,13 @@
 #define SGFE_CUSTOM_BACKEND
+
+/* === MANDATORY FIELDS TO FILL OUT === */
+#ifndef SGFE_MAX_CONTROLLERS
 #define SGFE_MAX_CONTROLLERS 1
+#endif
+
+#define SGFE_HAS_OPENGL           1
+#define SGFE_HAS_MULTIPLE_SCREENS 1
+
 
 #ifndef SGFE_ENUM
 	#define SGFE_ENUM(type, name) type name; enum
@@ -134,15 +142,11 @@ typedef SGFE_ENUM(isize, SGFE_motionType) {
 
 struct SGFE_contextBufferSource {
 	/* ... */
+	u8 blank;
 };
 
 #ifdef SGFE_OPENGL
-struct SGFE_contextOpenGL {
-	SGFE_screen screen;
-	SGFE_videoMode mode;
-	SGFE_pixelFormat format;
-	/* ctx_type*/ ctx;
-
+struct SGFE_contextGL {
 	/* ... */
 };
 #endif
@@ -215,29 +219,46 @@ const char* SGFE_PIXEL_FORMAT_NAME_LUT[SGFE_pixelFormatCount] = {
 
 
 
+/* NOTE(EimaMei): If 'SGFE_HAS_MULTIPLE_SCREENS' is zero for the backend, you do
+ * not have to define these functions. */
+#if SGFE_HAS_MULTIPLE_SCREENS != 0
+SGFE_screen SGFE_windowGetCurrentScreen_platform(SGFE_window* win) {
+	/* NOTE(EimaMei): 'SGFE_windowGetCurrentScreen' already asserts that the window
+	 * cannot be NULL.*/
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+
+SGFE_bool SGFE_windowIsScreenEnabled_platform(SGFE_window* win, SGFE_screen screen) {
+	/* NOTE(EimaMei): 'SGFE_windowIsScreenEnabled' already asserts that the window
+	 * cannot be NULL.*/
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+#endif
+
+
 SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 	/* NOTE(EimaMei): 'SGFE_windowMake' already asserts that the window cannot be
 	 * NULL.*/
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 
 void SGFE_windowClose_platform(SGFE_window* win) {
 	/* NOTE(EimaMei): 'SGFE_windowClose' already asserts that the window cannot be
 	 * NULL.*/
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 
 void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlags flags) {
 	SGFE_ASSERT(win != NULL);
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 
 void SGFE_windowPollEvents(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 
 	if (SGFE_windowGetEventEnabled(win, SGFE_eventQuit)) {
 		if (0) {
@@ -293,34 +314,15 @@ void SGFE_windowPollEvents(SGFE_window* win) {
 }
 
 
-void SGFE_windowSwapBuffers(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
-	/* NOTE(EimaMei): On systems that have multiple screens, both current contexts
-	 * must share the same type. */
-	#warning "Warning to notify that this function is not implemented."
-}
-
-void SGFE_windowMakeCurrent(SGFE_window* win, SGFE_context* ctx) {
-	SGFE_ASSERT(win != NULL);
-	SGFE_ASSERT(ctx != NULL);
-	/* win->current[ctx_screen] = ctx; */
-
-	switch (SGFE_contextGetType(ctx)) {
-		/* ... */
-	}
-	#warning "Warning to notify that this function is not implemented."
-}
-
-
 
 SGFE_button SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
 	SGFE_ASSERT(type > 0 && type <= SGFE_controllerTypeCount);
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_button button) {
 	SGFE_ASSERT((button & ~SGFE_buttonGetMask(type)) == 0);
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 
@@ -329,7 +331,7 @@ const char* SGFE_controllerGetNameButton_platform(const SGFE_controller* control
 	/* NOTE(EimaMei): 'SGFE_controllerGetNameButton' already asserts that the
 	 * controller cannot be NULL and that the button is valid for the controller 
 	 * type. */
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 
@@ -338,7 +340,7 @@ SGFE_bool SGFE_controllerEnablePointer_platform(SGFE_controller* controller,
 	/* NOTE(EimaMei): 'SGFE_controllerEnablePointer' already asserts that the 
 	 * controller cannot be NULL, that motion is valid for the controller and that 
 	 * the boolean is either a one or zero. */
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
@@ -346,7 +348,7 @@ SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
 	/* NOTE(EimaMei): 'SGFE_controllerEnableMotion' already asserts that the 
 	 * controller cannot be NULL, that motion is valid for the controller and that 
 	 * the boolean is either a one or zero. */
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 
@@ -355,19 +357,19 @@ SGFE_bool SGFE_bufferMakeWithDefaultSettings_platform(SGFE_contextBuffer* out_bu
 	/* NOTE(EimaMei): 'SGFE_bufferMakeWithDefaultSettings' already asserts that 
 	 * the controller cannot be NULL, that motion is valid for the controller and
 	 * that the boolean is either a one or zero. */
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 	return SGFE_TRUE;
 }
 
 
 SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 void SGFE_bufferFreeContext(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 
@@ -376,7 +378,7 @@ SGFE_bool SGFE_bufferAllocFramebuffers(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
 	SGFE_bufferFreeFramebuffers(b);
 
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 
 	if (b->is_native) {
 		/* ... */
@@ -393,7 +395,7 @@ SGFE_bool SGFE_bufferFreeFramebuffers(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
 	if (b->buffers[0] == NULL || !b->is_buffer_allocated) { return SGFE_FALSE; }
 
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 
 	b->is_buffer_allocated = SGFE_FALSE;
 	return SGFE_TRUE;
@@ -412,7 +414,7 @@ u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b) {
 	SGFE_bufferGetResolution(b, &width, &height);
 
 	/* ... */
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 	
 	return dst;
 }
@@ -420,7 +422,7 @@ u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b) {
 
 void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* out_height) {
 	SGFE_ASSERT(b != NULL);
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 
 	#if 0
 	/* Depending on the platform: */
@@ -434,12 +436,64 @@ void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* ou
 
 
 
+#ifdef SGFE_OPENGL
+
+void* SGFE_glGetBoundContext(void) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+
+
+SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_contextHintsGL* hints) {
+	SGFE_ASSERT(gl != NULL);
+	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
+	SGFE_glHintsAssert(hints);
+
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	return SGFE_TRUE;
+}
+
+void SGFE_glFreeContext(SGFE_contextGL* gl) {
+	SGFE_ASSERT(gl != NULL);
+	/* if (gl->ctx == NULL) { return; } */
+
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* gl->ctx = NULL; */
+}
+
+
+void SGFE_glSwapInterval(SGFE_contextGL* gl, isize swap_interval) {
+	SGFE_ASSERT(gl != NULL);
+	SGFE_ASSERT_NOT_NEG(swap_interval);
+	/* if (gl->ctx == NULL) { return; } */
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+
+
+void SGFE_windowSwapBuffersGL(SGFE_window* win) {
+	SGFE_ASSERT(win != NULL);
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+
+
+void SGFE_windowSetContextExGL(SGFE_window* win, SGFE_contextGL* gl, SGFE_screen screen) {
+	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT(screen >= 0 && screen < SGFE_screenCount);
+
+	win->current[screen] = gl;
+	win->current_type[screen] = gl ? SGFE_contextTypeGL : SGFE_contextTypeNone;
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+
+#endif
+
+
+
 SGFE_videoMode SGFE_videoModeOptimal(void) {
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 SGFE_videoMode SGFE_pixelFormatOptimal(void) {
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 
@@ -450,37 +504,23 @@ SGFE_videoMode SGFE_pixelFormatOptimal(void) {
 #if 1
 
 SGFE_systemModel SGFE_platformGetModel(void) {
-	#warning "Warning to notify that this function is not implemented."
+	#warning "Warning to notify that this function hasn't been implemented yet."
 	#if 0
 	/* If there are no available models, return ModelNone. */
 	return SGFE_systemModelNone;
 	#endif
 }
 
-SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer** out_ctx) {
-	SGFE_ASSERT(out_ctx != NULL);
-	#warning "Warning to notify that this function is not implemented."
+SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
+	SGFE_ASSERT(b != NULL);
+	#warning "Warning to notify that this function hasn't been implemented yet."
 
 	#if 0
-	/* If there are no ways to initialize terminal output, return SGFE_FALSE. */
+	/* If there are no ways to initialize a terminal output, return SGFE_FALSE. */
 	return SGFE_FALSE;
-
 	#else 
-
-	if (*out_ctx == NULL) {
-		/*SGFE_bool res = SGFE_bufferMakeWithDefaultSettings(
-			*out_ctx, ..., ..., SGFE_TRUE
-		);
-		if (res == SGFE_FALSE) { return SGFE_FALSE; }
-
-		res = SGFE_bufferCreateContext(*out_ctx);
-		if (res == SGFE_FALSE) { return SGFE_FALSE; }*/
-	}
-
-	SGFE_contextBuffer* b = *out_ctx;
 	/* ... */
 	return SGFE_TRUE;
-
 	#endif
 }
 #endif

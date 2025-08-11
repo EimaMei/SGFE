@@ -117,9 +117,40 @@ extern "C" {
 	#define SGFE_FREE(ptr) free(ptr)
 #endif
 
-#ifndef SGFE_ASSERT
-	#define SGFE_ASSERT(condition) SGFE_windowAssert(SGFE__ROOT_WIN, condition, #condition, __FILE__, __LINE__)
+
+#ifndef SGFE_ASSERT_MSG
+	#ifndef NDEBUG
+	#define SGFE_ASSERT_MSG(condition, msg) SGFE_windowAssert(SGFE__ROOT_WIN, condition, #condition, __FILE__, __LINE__, msg)
+	#else
+	#define SGFE_ASSERT_MSG(condition, msg)
+	#endif
 #endif
+
+#ifndef SGFE_ASSERT
+	#define SGFE_ASSERT(condition) SGFE_ASSERT_MSG(condition, "")
+#endif
+
+#ifndef SGFE_ASSERT_FMT
+	#define SGFE_NO_CUSTOM_ASSERT_FMT
+	#ifndef NDEBUG
+	#define SGFE_ASSERT_FMT(condition, fmt, ...) SGFE_windowAssertFmt(SGFE__ROOT_WIN, condition, #condition, __FILE__, __LINE__, fmt, __VA_ARGS__)
+	#else
+	#define SGFE_ASSERT_FMT(condition, fmt ...)
+	#endif
+#endif
+
+#ifndef SGFE_ASSERT_NOT_NULL
+	#define SGFE_ASSERT_NOT_NULL(ptr) SGFE_ASSERT_FMT(ptr != NULL, "Pointer cannot be NULL. " #ptr " = %p;", ptr)
+#endif
+
+#ifndef SGFE_ASSERT_NOT_NEG
+	#define SGFE_ASSERT_NOT_NEG(x) SGFE_ASSERT_FMT(x >= 0, "Integer cannot be negative. " #x " = %zi;", x)
+#endif
+
+#ifndef SGFE_ASSERT_BOOL
+	#define SGFE_ASSERT_BOOL(x) SGFE_ASSERT_FMT(x == SGFE_FALSE || x == SGFE_TRUE, "Boolean must equal to SGFE_FALSE or SGFE_TRUE. " #x " = %zi;", x)
+#endif
+
 
 #if !defined(SGFE_MEMCPY) || !defined(SGFE_STRNCMP) || !defined(SGFE_MEMSET)
 	#include <string.h>
@@ -141,7 +172,7 @@ extern "C" {
 	#define SGFE_BIT(x) (1 << (x))
 #endif
 
-#if !defined(SGFE_PRINTF) && ( defined(SGFE_DEBUG) || defined(SGFE_WAYLAND) )
+#if !defined(SGFE_PRINTF)
 	/* required when using SGFE_DEBUG */
 	#include <stdio.h>
 	#define SGFE_PRINTF(fmt, ...) printf(fmt, __VA_ARGS__)
@@ -191,9 +222,8 @@ extern "C" {
 	#define SGFE_MAX_CONTROLLERS 1
 	#endif
 
-	#ifndef SGFE_HAS_OPENGL
-	#define SGFE_HAS_OPENGL 1
-	#endif
+	#define SGFE_HAS_OPENGL           1
+	#define SGFE_HAS_MULTIPLE_SCREENS 1
 
 	#ifdef SGFE_IMPLEMENTATION
 	#include <3ds/types.h>
@@ -213,7 +243,8 @@ extern "C" {
 	#define SGFE_MAX_CONTROLLERS 4
 	#endif
 
-	#define SGFE__BACKEND_FREE_WINDOW_IN_CLOSE
+	#define SGFE_HAS_OPENGL           0
+	#define SGFE_HAS_MULTIPLE_SCREENS 0
 
 	#ifdef SGFE_IMPLEMENTATION
 	#include <gctypes.h>
@@ -222,6 +253,7 @@ extern "C" {
 	typedef s32 i32;
 	typedef s64 i64;
 	#define SGFE_DEFINE_TYPE_STDINT
+	#define SGFE__BACKEND_FREE_WINDOW_IN_CLOSE
 	#endif
 
 #else
@@ -593,40 +625,10 @@ typedef struct SGFE_controller {
 typedef SGFE_ENUM(isize, SGFE_contextType) {
 	SGFE_contextTypeNone,
 	SGFE_contextTypeBuffer,
-	SGFE_contextTypeOpenGL,
-	SGFE_contextTypeNative
+	SGFE_contextTypeGL,
+
+	SGFE_contextTypeCount,
 };
-
-
-/* TODO */
-typedef struct SGFE_context SGFE_context;
-
-/* TODO */
-SGFE_DEF SGFE_contextType SGFE_contextGetType(const SGFE_context* ctx);
-/* TODO */
-SGFE_DEF void* SGFE_contextGetData(SGFE_context* ctx);
-
-
-/* TODO */
-typedef struct SGFE_contextBuffer SGFE_contextBuffer;
-
-/* TODO */
-SGFE_DEF SGFE_contextBuffer* SGFE_contextGetBuffer(SGFE_context* ctx);
-
-
-#ifdef SGFE_OPENGL
-/**
- * OpenGL Context type
- *
- * The structure is used as an opaque data type to an OpenGL context.
- *
- * \sa SGFE_createContext_OpenGL
- */
-typedef struct SGFE_contextOpenGL SGFE_contextOpenGL;
-
-/* TODO */
-SGFE_DEF SGFE_contextOpenGL* SGFE_contextGetOpenGL(SGFE_context* ctx);
-#endif
 
 typedef SGFE_ENUM(isize, SGFE_eventType) {
 	/* No event. */
@@ -835,12 +837,8 @@ struct SGFE_contextBufferSource {
 };
 
 #ifdef SGFE_OPENGL
-struct SGFE_contextOpenGL {
-	SGFE_screen screen;
-	SGFE_videoMode mode;
-	SGFE_pixelFormat format;
+struct SGFE_contextGL {
 	GLASSCtx ctx;
-
 	GLuint framebuffer;
 	GLuint renderbuffer;
 };
@@ -877,11 +875,6 @@ struct SGFE_contextBuffer {
 	GXRModeObj* gx_video_mode;
 };
 
-#ifdef SGFE_OPENGL
-struct SGFE_contextOpenGL {
-};
-#endif
-
 struct SGFE_windowSource {
 	struct wiimote_t** wiimotes;
 };
@@ -904,23 +897,23 @@ struct SGFE_contextBuffer {
 	struct SGFE_contextBufferSource src;
 };
 
-struct SGFE_context {
-	SGFE_contextType type;
-	union {
-		SGFE_contextBuffer buffer;
-		#ifdef SGFE_OPENGL
-		SGFE_contextOpenGL gl;
-		#endif
-	} data;
-};
-
 struct SGFE_window {
 	/* TODO */
 	SGFE_windowSource src;
+
 	/* TODO */
-	SGFE_context* current[SGFE_screenCount];
+	SGFE_contextType current_type[SGFE_screenCount];
 	/* TODO */
-	SGFE_context ctx[SGFE_screenCount];
+	void* current[SGFE_screenCount];
+
+	union {
+		/* TODO */
+		struct SGFE_contextBuffer buffer;
+		#ifdef SGFE_OPENGL
+		/* TODO */
+		struct SGFE_contextGL gl;
+		#endif
+	} ctx[SGFE_screenCount];
 
 	/* TODO */
 	SGFE_bool is_queueing_events, has_polled_events;
@@ -954,44 +947,14 @@ SGFE_DEF isize SGFE_sizeofWindow(void);
 /* TODO */
 SGFE_DEF isize SGFE_sizeofWindowSrc(void);
 
-
+SGFE_DEF void* SGFE_windowGetUserPtr(SGFE_window* win);
+SGFE_DEF void SGFE_windowSetUserPtr(SGFE_window* win, void* ptr);
 /* TODO */
-SGFE_DEF SGFE_context* SGFE_windowGetCurrent(SGFE_window* win);
-/* TODO */
-SGFE_DEF SGFE_context* SGFE_windowGetCurrentEx(SGFE_window* win, SGFE_screen screen);
-
-/* TODO */
-SGFE_DEF SGFE_context* SGFE_windowGetContext(SGFE_window* win);
-/* TODO */
-SGFE_DEF SGFE_context* SGFE_windowGetContextEx(SGFE_window* win, SGFE_screen screen);
-
-/* TODO */
-SGFE_DEF SGFE_contextBuffer* SGFE_windowGetCurrentBuffer(SGFE_window* win);
-/* TODO */
-SGFE_DEF SGFE_contextBuffer* SGFE_windowGetCurrentExBuffer(SGFE_window* win, SGFE_screen screen);
-
-/* TODO */
-SGFE_DEF SGFE_contextBuffer* SGFE_windowGetContextBuffer(SGFE_window* win);
-/* TODO */
-SGFE_DEF SGFE_contextBuffer* SGFE_windowGetContextExBuffer(SGFE_window* win, SGFE_screen screen);
-
-#ifdef SGFE_OPENGL
-/* TODO */
-SGFE_DEF SGFE_contextOpenGL* SGFE_windowGetCurrentOpenGL(SGFE_window* win);
-/* TODO */
-SGFE_DEF SGFE_contextOpenGL* SGFE_windowGetCurrentExOpenGL(SGFE_window* win, SGFE_screen screen);
-
-/* TODO */
-SGFE_DEF SGFE_contextOpenGL* SGFE_windowGetContextOpenGL(SGFE_window* win);
-/* TODO */
-SGFE_DEF SGFE_contextOpenGL* SGFE_windowGetContextExOpenGL(SGFE_window* win, SGFE_screen screen);
-#endif
-
-
-SGFE_DEF void* SGFE_window_getUserPtr(SGFE_window* win);
-SGFE_DEF void SGFE_window_setUserPtr(SGFE_window* win, void* ptr);
-
 SGFE_DEF SGFE_windowSource* SGFE_windowGetSource(SGFE_window* win);
+/* TODO */
+SGFE_DEF SGFE_screen SGFE_windowGetCurrentScreen(SGFE_window* win);
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_windowIsScreenEnabled(SGFE_window* win, SGFE_screen screen);
 
 
 
@@ -1051,8 +1014,20 @@ SGFE_DEF void SGFE_windowEventQueueFlush(SGFE_window* win);
 
 /* TODO */
 SGFE_DEF void SGFE_windowSwapBuffers(SGFE_window* win);
-/* TODO(EimaMei): New function. */
-SGFE_DEF void SGFE_windowMakeCurrent(SGFE_window* win, SGFE_context* ctx);
+
+/* TODO */
+SGFE_DEF SGFE_contextType SGFE_windowGetContextType(SGFE_window* win);
+/* TODO */
+SGFE_DEF SGFE_contextType SGFE_windowGetContextTypeEx(SGFE_window* win, SGFE_screen screen);
+
+/* TODO */
+SGFE_DEF void* SGFE_windowGetContext(SGFE_window* win);
+/* TODO */
+SGFE_DEF void* SGFE_windowGetContextEx(SGFE_window* win, SGFE_screen screen);
+/* TODO */
+SGFE_DEF void SGFE_windowSetContext(SGFE_window* win, SGFE_contextType type, void* ctx);
+/* TODO */
+SGFE_DEF void SGFE_windowSetContextEx(SGFE_window* win, SGFE_contextType type, void* ctx, SGFE_screen screen);
 
 
 /* Returns the controller strucutr associated with the port. */
@@ -1068,8 +1043,13 @@ SGFE_DEF void SGFE_windowSetShouldClose(SGFE_window* win, SGFE_bool should_close
 /* TODO(EimaMei): new function. */
 SGFE_DEF SGFE_bool SGFE_windowInitTerminalOutput(SGFE_window* win);
 /* TODO */
-SGFE_DEF void SGFE_windowAssert(SGFE_window* win, SGFE_bool is_asserted, const char* condition_str,
-	const char* file, isize line);
+SGFE_DEF void SGFE_windowAssert(SGFE_window* win, SGFE_bool is_asserted,
+	const char* condition_str, const char* file, isize line, const char* message);
+#ifdef SGFE_NO_CUSTOM_ASSERT_FMT
+/* TODO */
+SGFE_DEF void SGFE_windowAssertFmt(SGFE_window* win, SGFE_bool is_asserted,
+	const char* condition_str, const char* file, isize line, const char* fmt, ...);
+#endif
 
 
 
@@ -1197,6 +1177,10 @@ SGFE_DEF SGFE_debugFunc SGFE_setDebugCallback(SGFE_debugFunc func);
 
 
 
+/* TODO */
+typedef struct SGFE_contextBuffer SGFE_contextBuffer;
+
+
 /* */
 SGFE_DEF SGFE_bool SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
 	SGFE_videoMode mode, SGFE_pixelFormat format, SGFE_bool allocate_buffers);
@@ -1254,6 +1238,18 @@ SGFE_DEF void SGFE_bufferFlipFramebuffers(SGFE_contextBuffer* b);
 SGFE_DEF SGFE_bool SGFE_windowCreateContextBuffer(SGFE_window* win, SGFE_videoMode mode,
 	SGFE_pixelFormat format, SGFE_bool is_native);
 
+/* TODO */
+SGFE_DEF void SGFE_windowSwapBuffersBuffer(SGFE_window* win);
+
+/* TODO */
+SGFE_contextBuffer* SGFE_windowGetContextBuffer(SGFE_window* win);
+/* TODO */
+SGFE_contextBuffer* SGFE_windowGetContextExBuffer(SGFE_window* win, SGFE_screen screen);
+/* TODO */
+SGFE_DEF void SGFE_windowSetContextBuffer(SGFE_window* win, SGFE_contextBuffer* ctx);
+/* TODO */
+SGFE_DEF void SGFE_windowSetContextExBuffer(SGFE_window* win, SGFE_contextBuffer* ctx, SGFE_screen screen);
+
 
 
 #if defined(SGFE_OPENGL)
@@ -1277,7 +1273,28 @@ SGFE_DEF SGFE_bool SGFE_windowCreateContextBuffer(SGFE_window* win, SGFE_videoMo
 */
 
 /**
- * OpenGL context initializiation integer values
+ * OpenGL Context type
+ *
+ * The structure is used as an opaque data type to an OpenGL context.
+ *
+ * \sa SGFE_glCreateContext
+ */
+typedef struct SGFE_contextGL SGFE_contextGL;
+
+/* TODO */
+typedef SGFE_ENUM(isize, SGFE_glProfile) {
+ 	/* OpenGL Core (OpenGL 3.2-4.6). */
+	SGFE_glProfileCore = 0,
+	/* OpenGL Compatibility (OpenGL 1.0-3.1). */
+	SGFE_glProfileCompatibility,
+	/* OpenGL ES. */
+	SGFE_glProfileES,
+
+	SGFE_glProfileCount
+};
+
+/**
+ * OpenGL context initializiation values
  *
  * OpenGL hints are used to set desired parameters for when creating a new OpenGL
  * context. These are treated as 'hints' since the OpenGL driver is only obligated
@@ -1285,7 +1302,7 @@ SGFE_DEF SGFE_bool SGFE_windowCreateContextBuffer(SGFE_window* win, SGFE_videoMo
  * 16-bit color buffer could yield a 24 or even 32 bit one). Other parameters may
  * require specific values to function (e.g., SGFE_glProfile).
  *
- * Settings hints must be done before calling SGFE_createContext_OpenGL() or
+ * Settings hints must be done before calling SGFE_glCreateContext() or
  * SGFE_windowMake().
  *
  * Most warnings and errors are implementation-defined, however some basic ones
@@ -1296,147 +1313,116 @@ SGFE_DEF SGFE_bool SGFE_windowCreateContextBuffer(SGFE_window* win, SGFE_videoMo
  *
  * When a specific hint value is not supported but its minimum value is, the hint
  * value is changed to its minimum after the context has been created.
- *
- * \sa SGFE_setHint_OpenGL
- * \sa SGFE_getHint_OpenGL
  */
-typedef SGFE_ENUM(i32, SGFE_glHint)  {
+typedef struct SGFE_contextHintsGL  {
 	/* Type of OpenGL API context (SGFE_glProfile_Core by default). */
-	SGFE_glProfile,
+	SGFE_glProfile profile;
 	/* OpenGL context major version (1 by default). */
-	SGFE_glMajor,
+	isize major;
 	/* OpenGL context minor version (0 by default). */
-	SGFE_glMinor,
+	isize minor;
 
 	/* Minimum number of bits for the red channel of the color buffer (8 by default). */
-	SGFE_glRed,
+	isize red;
 	/* Minimum number of bits for the green channel of the color buffer (8 by default). */
-	SGFE_glGreen,
+	isize green;
 	/* Minimum number of bits for the blue channel of the color buffer (8 by default). */
-	SGFE_glBlue,
+	isize blue;
 	/* Minimum number of bits for the alpha channel of the color buffer (8 by default). */
-	SGFE_glAlpha,
+	isize alpha;
 
-	/* Boolean if double buffering is used (true by defult). */
-	SGFE_glDoubleBuffer,
 	/* Minimum number of bits for the depth buffer (24 by default). */
-	SGFE_glDepth,
+	isize depth;
 	/* Minimum number of bits in the stencil buffer (0 by default). */
-	SGFE_glStencil,
-
+	isize stencil;
 
 	/* Minimum number of bits for the red channel of the accumulation buffer (0 by default). */
-	SGFE_glAccumRed,
+	isize accum_red;
 	/* Minimum number of bits for the green channel of the accumulation buffer (0 by default). */
-	SGFE_glAccumGreen,
+	isize accum_green;
 	/* Minimum number of bits for the blue channel of the accumulation buffer (0 by default). */
-	SGFE_glAccumBlue,
+	isize accum_blue;
 	/* Minimum number of bits for the alpha channel of the accumulation buffer (0 by default). */
-	SGFE_glAccumAlpha,
+	isize accum_alpha;
 
 	/* Number of samples used for multiplesample anti-alisaing (0 by default). */
-	SGFE_glSamples,
+	isize samples;
 	/* Number of auxiliary buffers. (0 by default). Deprecated OpenGL feature, do not use for new code. */
-	SGFE_glAuxBuffers,
+	isize aux_buffers;
 
-	/* Boolean if the renderering is done on the CPU (false by defult). */
-	SGFE_glSoftwareRenderer,
+	/* Boolean if double buffering is used (true by defult). */
+	SGFE_bool is_double_buffered;
+	/* Boolean if VSync is enabled (true by default). */
+	SGFE_bool is_vsync;
+	/* Boolean if the renderering is done on the CPU (false by default). */
+	SGFE_bool is_software_renderer;
 	/* Boolean if the context is stereosopic 3D (false by default). */
-	SGFE_glStereo,
+	SGFE_bool is_stereo;
 	/* Boolean if sRGB framebuffer is used (false by default). */
-	SGFE_glSRGB,
+	SGFE_bool is_SRGB;
 	/* Boolean if the context is robust (memory-safe) (false by default). For more information: https://registry.khronos.org/OpenGL/extensions/EXT/EXT_robustness.txt. */
-	SGFE_glRobustness,
+	SGFE_bool is_robust;
 	/* Boolean if the context has additional debugging features (false by default). */
-	SGFE_glDebug,
+	SGFE_bool is_debug;
 	/* Boolean if OpenGL errors have undefined behavior (false by default). Fore more information: https://registry.khronos.org/OpenGL/extensions/KHR/KHR_no_error.txt. */
-	SGFE_glNoError,
+	SGFE_bool has_no_errors;
 	/* Boolean if the OpenGL driver should flush the graphics when changing contexts (false by default). */
-	SGFE_glFlushOnContextChange,
-	/* Boolean if OpenGL context sharing is enabled (false by default). */
-	SGFE_glShareWithCurrentContext,
+	SGFE_bool flush_on_ctx_change;
 
-	/* Number of OpenGL hints that SGFE supports. */
-	SGFE_glHintCount,
-};
+	/* Context that is shared with the newly created context (NULL by default). */
+	SGFE_contextGL* shared_context;
 
-/**
- * OpenGL context hint values
- *
- * Certain SGFE_glHint require a specific value instead of a regular number or
- * boolean. Any specific value follows the naming scheme of `SGFE_<glHint>_<value>`.
- *
- * \sa SGFE_glHint
- */
-typedef SGFE_ENUM(i32, SGFE_glValue)  {
-	/* Nothing is done when a context is changed. */
-	SGFE_glReleaseBehavior_None = 0,
-	/* OpenGL flushes the previous context when changing contexts. */
-	SGFE_glReleaseBehavior_Flush,
+	/* Screen that the context is being used for (SGFE_screenPrimary by default). */
+	SGFE_screen screen;
+} SGFE_contextHintsGL;
 
-	/* OpenGL Core (OpenGL 3.2-4.6). */
-	SGFE_glProfile_Core = 0,
-	/* OpenGL Compatibility (OpenGL 1.0-3.1). */
-	SGFE_glProfile_Compatibility,
-	/* OpenGL ES. */
-	SGFE_glProfile_ES
-};
+
 
 /**
- * Sets an OpenGL hint before creating the context.
+ * Returns the currently bound OpenGL context.
  *
- * \param hint An OpenGL hint. If the hint is negative or surpasses SGFE_glHintCount,
- * the function panics.
- * \param value The desired value for the hint. No checking is done for the parameter.
+ * Note that this function returns the OpenGL context that's bound to the thread,
+ * not to the window.
  *
- * \sa SGFE_getHint_OpenGL
+ * \returns The currently bound OpenGL context.
  */
-SGFE_DEF void SGFE_setHint_OpenGL(SGFE_glHint hint, i32 value);
+SGFE_DEF void* SGFE_glGetBoundContext(void);
 
-/**
- * Returns the value of an OpenGL hint from the current context.
- *
- * \param hint An OpenGL hint. If the hint is negative or surpasses SGFE_glHintCount,
- * the function panics.
- *
- * \returns The value associated with the OpenGL hint.
- *
- * \sa SGFE_setHint_OpenGL
- */
-SGFE_DEF i32 SGFE_getHint_OpenGL(SGFE_glHint hint);
-
-/**
- * Returns the currently binded OpenGL context.
- *
- * This function differs from SGFE_getCurrent_OpenGL()
- *
- * \returns The currently binded OpenGL context.
- */
-SGFE_DEF void* SGFE_getCurrentContext_OpenGL(void);
-
-/* === SGFE_contextOpenGL === */
 
 /* TODO */
-SGFE_DEF SGFE_bool SGFE_createContext_OpenGL(SGFE_screen screen, SGFE_videoMode mode, SGFE_contextOpenGL* out_gl);
+SGFE_DEF void SGFE_glHintsMakeWithDefaultSettings(SGFE_contextHintsGL* hints);
 /* TODO */
-SGFE_DEF void SGFE_context_free_OpenGL(SGFE_contextOpenGL* gl);
+SGFE_DEF void SGFE_glHintsAssert(const SGFE_contextHintsGL* gl);
 
 /* TODO */
-SGFE_DEF void SGFE_context_swapInterval_OpenGL(SGFE_contextOpenGL* gl, i32 swap_interval);
-
-/* === */
-
-/*!< create an OpenGL context for the SGFE window, run by createWindow by default (unless the SGFE_windowNoInitAPI is included) */
-SGFE_DEF SGFE_bool SGFE_window_createContext_OpenGL(SGFE_window* win, SGFE_videoMode mode);
+SGFE_DEF SGFE_contextHintsGL* SGFE_glHintsGetGlobal(void);
 /* TODO */
-SGFE_DEF void SGFE_window_freeContext_OpenGL(SGFE_window* win);
+SGFE_DEF void SGFE_glHintsSetGlobal(const SGFE_contextHintsGL* hints);
+
 
 /* TODO */
-SGFE_DEF void SGFE_window_swapInterval_OpenGL(SGFE_window* win, i32 swap_interval);
+SGFE_DEF SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_contextHintsGL* hints);
 /* TODO */
-SGFE_DEF void SGFE_window_swapBuffers_OpenGL(SGFE_window* win); /*!< swap the rendering buffer */
-/* TODO(EimaMei): New function. */
-SGFE_DEF void SGFE_window_makeCurrent_OpenGL(SGFE_window* win, SGFE_contextOpenGL* out_gl);
+SGFE_DEF void SGFE_glFreeContext(SGFE_contextGL* gl);
+
+/* TODO */
+SGFE_DEF void SGFE_glSwapInterval(SGFE_contextGL* gl, isize swap_interval);
+
+
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_windowCreateContextGL(SGFE_window* win, SGFE_videoMode mode);
+
+/* TODO */
+SGFE_DEF void SGFE_windowSwapBuffersGL(SGFE_window* win);
+
+/* TODO */
+SGFE_DEF SGFE_contextGL* SGFE_windowGetContextGL(SGFE_window* win);
+/* TODO */
+SGFE_DEF SGFE_contextGL* SGFE_windowGetContextExGL(SGFE_window* win, SGFE_screen screen);
+/* TODO */
+SGFE_DEF void SGFE_windowSetContextGL(SGFE_window* win, SGFE_contextGL* ctx);
+/* TODO */
+SGFE_DEF void SGFE_windowSetContextExGL(SGFE_window* win, SGFE_contextGL* ctx, SGFE_screen screen);
 
 #endif
 
@@ -1467,7 +1453,7 @@ SGFE_DEF const char* SGFE_pixelFormatStr(SGFE_pixelFormat format);
 SGFE_DEF SGFE_systemModel SGFE_platformGetModel(void);
 
 /* TODO(EimaMei): new function. */
-SGFE_DEF SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer** out_ctx);
+SGFE_DEF SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b);
 
 #ifdef SGFE_3DS
 
@@ -1483,7 +1469,7 @@ SGFE_DEF float SGFE_platformGet3DSlider(void);
 
 #ifdef SGFE_OPENGL
 /* TODO(EimaMei): new function */
-SGFE_DEF SGFE_bool SGFE_platformRotateScreenOpenGL(GLuint shader_program, const char* mat4_uniform_name);
+SGFE_DEF SGFE_bool SGFE_platformRotateScreenGL(GLuint shader_program, const char* mat4_uniform_name);
 #endif
 
 #endif
@@ -1517,6 +1503,10 @@ SGFE_window* SGFE__ROOT_WIN;
 
 SGFE_DEF SGFE_bool SGFE_windowMake_platform(SGFE_window* win);
 SGFE_DEF void SGFE_windowClose_platform(SGFE_window* win);
+#if SGFE_HAS_MULTIPLE_SCREENS != 0
+SGFE_DEF SGFE_screen SGFE_windowGetCurrentScreen_platform(SGFE_window* win);
+SGFE_DEF SGFE_bool SGFE_windowIsScreenEnabled_platform(SGFE_window* win, SGFE_screen screen);
+#endif
 
 SGFE_DEF const char* SGFE_controllerGetNameButton_platform(const SGFE_controller* controller,
 	SGFE_buttonType button);
@@ -1552,33 +1542,6 @@ u8* SGFE__fetchSwapBuffer(SGFE_contextBuffer* b) {
 	return SGFE_bufferGetFramebuffer(b);
 	#endif
 }
-
-
-SGFE_contextType SGFE_contextGetType(const SGFE_context* ctx) {
-	SGFE_ASSERT(ctx != NULL);
-	return ctx->type;
-}
-
-void* SGFE_contextGetData(SGFE_context* ctx) {
-	SGFE_ASSERT(ctx != NULL);
-	return &ctx->data;
-}
-
-
-SGFE_contextBuffer* SGFE_contextGetBuffer(SGFE_context* ctx) {
-	SGFE_ASSERT(ctx != NULL);
-	SGFE_ASSERT(ctx->type == SGFE_contextTypeBuffer);
-	return &ctx->data.buffer;
-}
-
-#ifdef SGFE_OPENGL
-SGFE_contextOpenGL* SGFE_contextGetOpenGL(SGFE_context* ctx) {
-	SGFE_ASSERT(ctx != NULL);
-	SGFE_ASSERT(ctx->type == SGFE_contextTypeBuffer);
-	return &ctx->data.gl;
-}
-#endif
-
 
 
 #define SGFE_CALLBACK_DEFINE(return_type, name, member_name) \
@@ -1664,10 +1627,6 @@ SGFE_debugFunc SGFE_setDebugCallback(SGFE_debugFunc func) {
 	} do {} while(0)
 
 void SGFE_sendDebugInfo(SGFE_debugType type, SGFE_error err, SGFE_debugContext ctx, const char* msg) {
-	#if defined(SGFE_3DS) && defined(SGFE_OPENGL)
-	if (SGFE_getHint_OpenGL(SGFE_glNoError)) { return ; }
-	#endif
-
 	if (SGFE_debugFuncSrc) {
 		SGFE_debugFuncSrc(type, err, ctx, msg);
 		return;
@@ -1785,80 +1744,30 @@ void SGFE__processCallbackAndEventQueue_Motion(SGFE_window* win, SGFE_controller
 isize SGFE_sizeofWindow(void) { return sizeof(SGFE_window); }
 isize SGFE_sizeofWindowSrc(void) { return sizeof(SGFE_windowSource); }
 
+void* SGFE_windowGetUserPtr(SGFE_window* win) { SGFE_ASSERT(win != NULL); return win->user_ptr; }
+void SGFE_windowSetUserPtr(SGFE_window* win, void* ptr) { SGFE_ASSERT(win != NULL); win->user_ptr = ptr; }
 
-SGFE_context* SGFE_windowGetCurrent(SGFE_window* win) {
-	#ifndef SGFE_3DS
-	return  win->current[SGFE_screenPrimary];
+SGFE_windowSource* SGFE_windowGetSource(SGFE_window* win) {
+	SGFE_ASSERT(win != NULL);
+	return &win->src;
+}
+
+SGFE_screen SGFE_windowGetCurrentScreen(SGFE_window* win) {
+	#if SGFE_HAS_MULTIPLE_SCREENS == 0
+	return SGFE_screenPrimary;
 	#else
-	return win->current[!(win->flags & SGFE_windowTopScreen)];
+	return SGFE_windowGetCurrentScreen_platform(win);
 	#endif
 }
 
-SGFE_context* SGFE_windowGetCurrentEx(SGFE_window* win, SGFE_screen screen) {
-	SGFE_ASSERT(win != NULL);
-	SGFE_ASSERT(screen >= 0 && screen < SGFE_screenCount);
-	return win->current[screen];
-}
-
-SGFE_context* SGFE_windowGetContext(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
-
-	#ifndef SGFE_3DS
-	return &win->src.ctx[SGFE_screenPrimary];
+SGFE_bool SGFE_windowIsScreenEnabled(SGFE_window* win, SGFE_screen screen) {
+	#if SGFE_HAS_MULTIPLE_SCREENS == 0
+	return SGFE_TRUE;
 	#else
-	return SGFE_windowGetContextEx(win, !(win->flags & SGFE_windowTopScreen));
+	return SGFE_windowIsScreenEnabled_platform(win, screen);
 	#endif
 }
 
-SGFE_context* SGFE_windowGetContextEx(SGFE_window* win, SGFE_screen screen) {
-	SGFE_ASSERT(win != NULL);
-	SGFE_ASSERT(screen >= 0 && screen < SGFE_screenCount);
-
-	return &win->ctx[screen];
-}
-
-
-SGFE_contextBuffer* SGFE_windowGetCurrentBuffer(SGFE_window* win) {
-	return SGFE_contextGetBuffer(SGFE_windowGetCurrent(win));
-}
-
-SGFE_contextBuffer* SGFE_windowGetCurrentExBuffer(SGFE_window* win, SGFE_screen screen) {
-	return SGFE_contextGetBuffer(SGFE_windowGetCurrentEx(win, screen));
-}
-
-
-SGFE_contextBuffer* SGFE_windowGetContextBuffer(SGFE_window* win) {
-	return SGFE_contextGetBuffer(SGFE_windowGetContext(win));
-}
-
-SGFE_contextBuffer* SGFE_windowGetContextExBuffer(SGFE_window* win, SGFE_screen screen) {
-	return SGFE_contextGetBuffer(SGFE_windowGetContextEx(win, screen));
-}
-
-
-#ifdef SGFE_OPENGL
-SGFE_contextOpenGL* SGFE_windowGetCurrentOpenGL(SGFE_window* win) {
-	return SGFE_contextGetOpenGL(SGFE_windowGetCurrent(win));
-}
-
-SGFE_contextOpenGL* SGFE_windowGetCurrentExOpenGL(SGFE_window* win) {
-	return SGFE_contextGetOpenGL(SGFE_windowGetCurrentEx(win));
-}
-
-SGFE_contextOpenGL* SGFE_windowGetContextBuffer(SGFE_window* win) {
-	return SGFE_contextGetOpenGL(SGFE_windowGetContext(win));
-}
-
-SGFE_contextOpenGL* SGFE_windowGetContextExOpenGL(SGFE_window* win, SGFE_screen screen) {
-	return SGFE_contextGetOpenGL(SGFE_windowGetContextEx(win, screen));
-}
-#endif
-
-
-void* SGFE_window_getUserPtr(SGFE_window* win) { SGFE_ASSERT(win != NULL); return win->user_ptr; }
-void SGFE_window_setUserPtr(SGFE_window* win, void* ptr) { SGFE_ASSERT(win != NULL); win->user_ptr = ptr; }
-
-SGFE_windowSource* SGFE_windowGetSource(SGFE_window* win) { SGFE_ASSERT(win != NULL); return &win->src; }
 
 
 SGFE_window* SGFE_windowMake(SGFE_videoMode mode, SGFE_windowFlags flags) {
@@ -1868,10 +1777,11 @@ SGFE_window* SGFE_windowMake(SGFE_videoMode mode, SGFE_windowFlags flags) {
 		return NULL;
 	}
 
-	SGFE_windowMakePtr(mode, flags, win);
-	win->is_allocated = SGFE_TRUE;
+	SGFE_window* res = SGFE_windowMakePtr(mode, flags, win);
+	if (res != NULL) { win->is_allocated = SGFE_TRUE; }
+	else { SGFE_FREE(win); }
 
-	return win;
+	return res;
 }
 
 SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlags flags,
@@ -1886,10 +1796,12 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlags flags,
 	win->is_allocated = SGFE_FALSE;
 	win->should_quit = SGFE_FALSE;
 
+	SGFE_MEMSET(win->current_type, 0, sizeof(win->current_type));
 	SGFE_MEMSET(win->current, 0, sizeof(win->current));
 	SGFE_MEMSET(win->ctx, 0, sizeof(win->ctx));
 	SGFE_MEMSET(win->controllers, 0, sizeof(win->controllers));
 	SGFE_MEMSET(&win->callbacks, 0, sizeof(win->callbacks));
+
 	SGFE_windowSetEventEnabledDefault(win);
 
 	SGFE_bool res = SGFE_windowMake_platform(win);
@@ -1907,12 +1819,13 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlags flags,
 			SGFE_pixelFormat format = SGFE_pixelFormatOptimal();
 			SGFE_bool is_native = SGFE_TRUE;
 			#endif
+
 			res = SGFE_windowCreateContextBuffer(win, mode, format, is_native);
 		} break;
 
 		#ifdef SGFE_OPENGL
 		case SGFE_windowOpenGL: {
-			res = SGFE_window_createContext_OpenGL(win, mode);
+			res = SGFE_windowCreateContextGL(win, mode);
 		} break;
 		#endif
 
@@ -1921,7 +1834,6 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlags flags,
 
 	if (!res) {
 		SGFE_windowClose(win);
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorSystem, SGFE_DEBUG_CTX(win, 0), "Failed to create a graphical context.");
 		return NULL;
 	}
 
@@ -1952,22 +1864,24 @@ void SGFE_windowClose(SGFE_window* win) {
 void SGFE_windowFreeContext(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 
-	for (SGFE_screen screen = 0; screen < SGFE_screenCount; screen += 1) {
-		SGFE_context* ctx = SGFE_windowGetContextEx(win, screen);
-		if (ctx == NULL) { continue; }
-
-		switch (ctx->type) {
-			case SGFE_contextTypeBuffer: {
-				SGFE_bufferFreeContext(SGFE_contextGetBuffer(ctx));
+	for (SGFE_screen screen = SGFE_screenPrimary; screen < SGFE_screenCount; screen += 1) {
+		switch (win->flags & (SGFE_windowBuffer | SGFE_windowOpenGL)) {
+			case 0: break;
+			case SGFE_windowBuffer: {
+				SGFE_bufferFreeContext(&win->ctx[screen].buffer);
 			} break;
 
 			#ifdef SGFE_OPENGL
-			case SGFE_contextTypeOpenGL: {
-				SGFE_bufferFreeContext(SGFE_contextGetOpenGL(ctx));
+			case SGFE_windowOpenGL: {
+				SGFE_glFreeContext(&win->ctx[screen].gl);
 			} break;
 			#endif
+
+			default: SGFE_ASSERT(0);
 		}
 	}
+
+	win->flags &= ~(SGFE_windowFlags)(SGFE_windowBuffer | SGFE_windowOpenGL);
 }
 
 
@@ -2095,6 +2009,65 @@ void SGFE_windowEventQueueFlush(SGFE_window* win) {
 }
 
 
+void SGFE_windowSwapBuffers(SGFE_window* win) {
+	switch (SGFE_windowGetContextType(win)) {
+		case SGFE_contextTypeBuffer: {
+			SGFE_windowSwapBuffersBuffer(win);
+		} break;
+
+		#ifdef SGFE_OPENGL
+		case SGFE_contextTypeGL: {
+			SGFE_windowSwapBuffersGL(win);
+		} break;
+		#endif
+	}
+}
+
+SGFE_contextType SGFE_windowGetContextType(SGFE_window* win) {
+	return SGFE_windowGetContextTypeEx(win, SGFE_windowGetCurrentScreen(win));
+}
+
+SGFE_contextType SGFE_windowGetContextTypeEx(SGFE_window* win, SGFE_screen screen) {
+	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT(screen >= 0 && screen < SGFE_screenCount);
+	return win->current_type[screen];
+}
+
+void* SGFE_windowGetContext(SGFE_window* win) {
+	return SGFE_windowGetContextEx(win, SGFE_windowGetCurrentScreen(win));
+}
+
+void* SGFE_windowGetContextEx(SGFE_window* win, SGFE_screen screen) {
+	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT(screen >= 0 && screen < SGFE_screenCount);
+
+	return win->current[screen];
+}
+
+
+void SGFE_windowSetContext(SGFE_window* win, SGFE_contextType type, void* ctx) {
+	SGFE_windowSetContextEx(win, type, ctx, SGFE_windowGetCurrentScreen(win));
+}
+
+void SGFE_windowSetContextEx(SGFE_window* win, SGFE_contextType type, void* ctx,
+		SGFE_screen screen) {
+	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT(type > 0 && type < SGFE_contextTypeCount);
+
+	switch (type) {
+		case SGFE_contextTypeBuffer: {
+			SGFE_windowSetContextExBuffer(win, (SGFE_contextBuffer*)ctx, screen);
+		} break;
+
+		#ifdef SGFE_OPENGL
+		case SGFE_contextTypeGL: {
+			SGFE_windowSetContextExGL(win, (SGFE_contextGL*)ctx, screen);
+		} break;
+		#endif
+	}
+}
+
+
 SGFE_bool SGFE_windowShouldClose(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 	return win->should_quit;
@@ -2113,20 +2086,24 @@ void SGFE_windowSetShouldClose(SGFE_window* win, SGFE_bool should_close) {
 SGFE_bool SGFE_windowInitTerminalOutput(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 
-	SGFE_context* out = SGFE_windowGetCurrent(win);
-	SGFE_contextBuffer* buffer = &out->data.buffer;
-	SGFE_bool res = SGFE_platformInitTerminalOutput(&buffer);
+	if (SGFE_windowGetContextType(win) != SGFE_contextTypeBuffer) {
+		SGFE_bool res = SGFE_windowCreateContextBuffer(
+			win, SGFE_videoModeOptimal(), SGFE_TRUE, SGFE_TRUE
+		);
+		if (res == SGFE_FALSE) { return SGFE_FALSE; }
+	}
+
+	SGFE_contextBuffer* out = SGFE_windowGetContextBuffer(win);
+	SGFE_bool res = SGFE_platformInitTerminalOutput(out);
 	if (res == SGFE_FALSE) { return res; }
+	SGFE_windowSwapBuffers(win);
 
-	out->type = SGFE_contextTypeBuffer;
-	out->data.buffer = *buffer; 
 	SGFE__ROOT_WIN = win;
-
 	return SGFE_TRUE;
 }
 
-void SGFE_windowAssert(SGFE_window* win, SGFE_bool is_asserted,
-		const char* condition_str, const char* file, isize line) {
+void SGFE_windowAssert(SGFE_window* win, SGFE_bool is_asserted, const char* condition_str,
+		const char* file, isize line, const char* message) {
 	if (is_asserted) { return; }
 	if (win == NULL) { win = SGFE__ROOT_WIN; }
 
@@ -2134,14 +2111,18 @@ void SGFE_windowAssert(SGFE_window* win, SGFE_bool is_asserted,
 		win = SGFE_windowMakeContextless(SGFE_windowFlagsNone);
 		if (win == NULL) {
 			/* NOTE(EimaMei): In case that 'stderr' actually leads to somewhere. */
-			fprintf(stderr, "%s:%zi: %s\n", file, line, condition_str);
+			SGFE_PRINTF("%s:%zi: %s: %s\n", file, line, condition_str, message ? message : "");
 			exit(1);
 		}
 	}
 
 	SGFE_windowSetQueueEvents(win, SGFE_FALSE);
-	SGFE_windowInitTerminalOutput(win);
-	fprintf(stderr, "\033[91m%s:%zi\033[0m: %s\n\nPress any button to exit.\n", file, line, condition_str);
+	SGFE_windowSetEventEnabled(win, SGFE_eventQuit, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventButtonDown, SGFE_TRUE);
+
+	SGFE_bool res = SGFE_windowInitTerminalOutput(win);
+	SGFE_PRINTF("\033[91m%s:%zi\033[0m: %s: %s\n\nPress any button to exit.\n", file, line, condition_str, message ? message : "");
+	if (!res) { exit(1); }
 
 	while (!SGFE_windowShouldClose(win)) {
 		SGFE_windowPollEvents(win);
@@ -2161,17 +2142,30 @@ void SGFE_windowAssert(SGFE_window* win, SGFE_bool is_asserted,
 	exit(1);
 }
 
+#ifdef SGFE_NO_CUSTOM_ASSERT_FMT
+#include <stdarg.h>
+
+void SGFE_windowAssertFmt(SGFE_window* win, SGFE_bool is_asserted, const char* condition_str,
+		const char* file, isize line, const char* fmt, ...) {
+	if (is_asserted) { return; }
+
+	char buffer[1024];
+	va_list va;
+	va_start(va, fmt);
+	vsnprintf(buffer, SGFE_COUNTOF(buffer), fmt, va);
+	va_end(va);
+
+	SGFE_windowAssert(win, is_asserted, condition_str, file, line, buffer);
+}
+#endif
 
 SGFE_bool SGFE_windowCreateContextBuffer(SGFE_window* win, SGFE_videoMode mode,
 		SGFE_pixelFormat format, SGFE_bool is_native) {
 	SGFE_ASSERT(win != NULL);
 	SGFE_windowFreeContext(win);
 
-	for (SGFE_screen screen = 0; screen < SGFE_screenCount; screen += 1) {
-		SGFE_context* ctx = SGFE_windowGetContextEx(win, screen);
-		ctx->type = SGFE_contextTypeBuffer;
-
-		SGFE_contextBuffer* b = &ctx->data.buffer;
+	for (SGFE_screen screen = SGFE_screenPrimary; screen < SGFE_screenCount; screen += 1) {
+		SGFE_contextBuffer* b = &win->ctx[screen].buffer;
 		SGFE_bufferMakeWithDefaultSettings(b, mode, format, SGFE_FALSE);
 		b->screen = screen;
 		b->is_native = is_native;
@@ -2182,7 +2176,7 @@ SGFE_bool SGFE_windowCreateContextBuffer(SGFE_window* win, SGFE_videoMode mode,
 		res = SGFE_bufferCreateContext(b);
 		if (res == SGFE_FALSE) { return SGFE_FALSE; }
 
-		SGFE_windowMakeCurrent(win, ctx);
+		SGFE_windowSetContextExBuffer(win, b, screen);
 	}
 
 	#ifdef SGFE_3DS
@@ -2197,6 +2191,27 @@ SGFE_bool SGFE_windowCreateContextBuffer(SGFE_window* win, SGFE_videoMode mode,
 	return SGFE_TRUE;
 }
 
+SGFE_contextBuffer* SGFE_windowGetContextBuffer(SGFE_window* win) {
+	return SGFE_windowGetContextEx(win, SGFE_windowGetCurrentScreen(win));
+}
+
+SGFE_contextBuffer* SGFE_windowGetContextExBuffer(SGFE_window* win, SGFE_screen screen) {
+	SGFE_ASSERT(SGFE_windowGetContextTypeEx(win, screen) == SGFE_contextTypeBuffer);
+	return (SGFE_contextBuffer*)SGFE_windowGetContextEx(win, screen);
+}
+
+void SGFE_windowSetContextBuffer(SGFE_window* win, SGFE_contextBuffer* ctx) {
+	SGFE_windowSetContextExBuffer(win, ctx, SGFE_windowGetCurrentScreen(win));
+}
+
+void SGFE_windowSetContextExBuffer(SGFE_window* win, SGFE_contextBuffer* b,
+		SGFE_screen screen) {
+	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT(b == NULL || b->screen == screen);
+
+	win->current[screen] = b;
+	win->current_type[screen] = b ? SGFE_contextTypeBuffer : SGFE_contextTypeNone;
+}
 
 SGFE_bool SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
 		SGFE_videoMode mode, SGFE_pixelFormat format, SGFE_bool allocate_buffers) {
@@ -2288,11 +2303,7 @@ isize SGFE_contextBufferGetCurrent(const SGFE_contextBuffer* b) {
 
 SGFE_screen SGFE_bufferGetScreen(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
-	#ifndef SGFE_3DS
-	return SGFE_screenPrimary;
-	#else
 	return b->screen;
-	#endif
 }
 
 isize SGFE_bufferGetFramebufferCount(SGFE_contextBuffer* b) {
@@ -2374,7 +2385,7 @@ SGFE_button SGFE_buttonGetMask(SGFE_controllerType type) {
 const SGFE_axis* SGFE_controllerGetAxis(const SGFE_controller* controller,
 		SGFE_axisType which) {
 	SGFE_ASSERT(controller != NULL);
-	#ifdef SGFE_DEBUG
+	#ifndef NDEBUG
 	SGFE_axisType start, end;
 	SGFE_controllerGetRangeAxis(controller, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
@@ -2387,7 +2398,7 @@ const SGFE_axis* SGFE_controllerGetAxis(const SGFE_controller* controller,
 const SGFE_pointer* SGFE_controllerGetPointer(const SGFE_controller* controller,
 		SGFE_pointerType which) {
 	SGFE_ASSERT(controller != NULL);
-	#ifdef SGFE_DEBUG
+	#ifndef NDEBUG
 	SGFE_pointerType start, end;
 	SGFE_controllerGetRangePointer(controller, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
@@ -2400,7 +2411,7 @@ const SGFE_pointer* SGFE_controllerGetPointer(const SGFE_controller* controller,
 const SGFE_motion* SGFE_controllerGetMotion(const SGFE_controller* controller,
 		SGFE_motionType which) {
 	SGFE_ASSERT(controller != NULL);
-	#ifdef SGFE_DEBUG
+	#ifndef NDEBUG
 	SGFE_motionType start, end;
 	SGFE_controllerGetRangeMotion(controller, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
@@ -2447,7 +2458,7 @@ const char* SGFE_controllerGetName(const SGFE_controller* controller) {
 const char* SGFE_controllerGetNameButton(const SGFE_controller* controller,
 		SGFE_buttonType type) {
 	SGFE_ASSERT(controller != NULL);
-	#ifdef SGFE_DEBUG
+	#ifndef NDEBUG
 	SGFE_buttonType start, end;
 	SGFE_controllerGetRangeButton(controller, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
@@ -2460,7 +2471,7 @@ const char* SGFE_controllerGetNameButton(const SGFE_controller* controller,
 const char* SGFE_controllerGetNameAxis(const SGFE_controller* controller,
 		SGFE_axisType type) {
 	SGFE_ASSERT(controller != NULL);
-	#ifdef SGFE_DEBUG
+	#ifndef NDEBUG
 	SGFE_axisType start, end;
 	SGFE_controllerGetRangeAxis(controller, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
@@ -2473,7 +2484,7 @@ const char* SGFE_controllerGetNameAxis(const SGFE_controller* controller,
 const char* SGFE_controllerGetNamePointer(const SGFE_controller* controller,
 		SGFE_pointerType type) {
 	SGFE_ASSERT(controller != NULL);
-	#ifdef SGFE_DEBUG
+	#ifndef NDEBUG
 	SGFE_pointerType start, end;
 	SGFE_controllerGetRangeAxis(controller, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
@@ -2486,7 +2497,7 @@ const char* SGFE_controllerGetNamePointer(const SGFE_controller* controller,
 const char* SGFE_controllerGetNameMotion(const SGFE_controller* controller,
 		SGFE_motionType type) {
 	SGFE_ASSERT(controller != NULL);
-	#ifdef SGFE_DEBUG
+	#ifndef NDEBUG
 	SGFE_motionType start, end;
 	SGFE_controllerGetRangeAxis(controller, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
@@ -2502,7 +2513,7 @@ SGFE_bool SGFE_controllerEnablePointer(SGFE_controller* controller, SGFE_motionT
 	SGFE_ASSERT(controller != NULL);
 	SGFE_ASSERT(pointer >= 0 && pointer < SGFE_pointerTypeCount);
 
-	#ifdef SGFE_DEBUG
+	#ifndef NDEBUG
 	isize start, end;
 	SGFE_controllerGetRangePointer(controller, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
@@ -2522,7 +2533,7 @@ SGFE_bool SGFE_controllerEnableMotion(SGFE_controller* controller, SGFE_motionTy
 	SGFE_ASSERT(controller != NULL);
 	SGFE_ASSERT(motion >= 0 && motion < SGFE_motionTypeCount);
 
-	#ifdef SGFE_DEBUG
+	#ifndef NDEBUG
 	isize start, end;
 	SGFE_controllerGetRangeMotion(controller, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
@@ -2536,6 +2547,142 @@ SGFE_bool SGFE_controllerEnableMotion(SGFE_controller* controller, SGFE_motionTy
 
 	return res;
 }
+
+
+
+#if defined(SGFE_OPENGL)
+
+void SGFE_glHintsMakeWithDefaultSettings(SGFE_contextHintsGL* gl) {
+	SGFE_ASSERT(gl != NULL);
+
+	gl->profile = SGFE_glProfileCore;
+	gl->major = 1;
+	gl->minor = 0;
+
+	gl->red = 8;
+	gl->green = 8;
+	gl->blue = 8;
+	gl->alpha = 8;
+
+	gl->depth = 24;
+	gl->stencil = 0;
+
+	gl->accum_red = 0;
+	gl->accum_green = 0;
+	gl->accum_blue = 0;
+	gl->accum_alpha = 0;
+
+	gl->samples = 0;
+	gl->aux_buffers = 0;
+
+	gl->is_double_buffered = SGFE_TRUE;
+	gl->is_vsync = SGFE_TRUE;
+	gl->is_software_renderer = SGFE_FALSE;
+	gl->is_stereo = SGFE_FALSE;
+	gl->is_SRGB = SGFE_FALSE;
+	gl->is_robust = SGFE_FALSE;
+	gl->is_debug = SGFE_FALSE;
+	gl->has_no_errors = SGFE_FALSE;
+	gl->flush_on_ctx_change = SGFE_FALSE;
+
+	gl->shared_context = NULL;
+
+	gl->screen = SGFE_screenPrimary;
+}
+
+void SGFE_glHintsAssert(const SGFE_contextHintsGL* gl) {
+	SGFE_ASSERT_NOT_NULL(gl);
+	SGFE_ASSERT_FMT(gl->profile >= 0 && gl->profile < SGFE_glProfileCount, "Invalid OpenGL profile. gl->profile = %i;", gl->profile);
+	SGFE_ASSERT_NOT_NEG(gl->major);
+	SGFE_ASSERT_NOT_NEG(gl->minor);
+
+	SGFE_ASSERT_NOT_NEG(gl->red);
+	SGFE_ASSERT_NOT_NEG(gl->green);
+	SGFE_ASSERT_NOT_NEG(gl->blue);
+	SGFE_ASSERT_NOT_NEG(gl->alpha);
+
+	SGFE_ASSERT_NOT_NEG(gl->depth);
+	SGFE_ASSERT_NOT_NEG(gl->stencil);
+
+	SGFE_ASSERT_NOT_NEG(gl->accum_red);
+	SGFE_ASSERT_NOT_NEG(gl->accum_green);
+	SGFE_ASSERT_NOT_NEG(gl->accum_blue);
+	SGFE_ASSERT_NOT_NEG(gl->accum_alpha);
+
+	SGFE_ASSERT_NOT_NEG(gl->samples);
+	SGFE_ASSERT_NOT_NEG(gl->aux_buffers);
+
+	SGFE_ASSERT_BOOL(gl->is_double_buffered);
+	SGFE_ASSERT_BOOL(gl->is_vsync);
+	SGFE_ASSERT_BOOL(gl->is_software_renderer);
+	SGFE_ASSERT_BOOL(gl->is_stereo);
+	SGFE_ASSERT_BOOL(gl->is_SRGB);
+	SGFE_ASSERT_BOOL(gl->is_robust);
+	SGFE_ASSERT_BOOL(gl->is_debug);
+	SGFE_ASSERT_BOOL(gl->has_no_errors);
+	SGFE_ASSERT_BOOL(gl->flush_on_ctx_change);
+
+	SGFE_ASSERT_FMT(gl->screen >= 0 && gl->screen < SGFE_screenCount, "Invalid screen. gl->screen = %i;", gl->screen);
+}
+
+SGFE_contextHintsGL SGFE__GLOBAL_HINTS;
+SGFE_bool SGFE__GLOBAL_HINTS_SET = SGFE_FALSE;
+
+SGFE_contextHintsGL* SGFE_glHintsGetGlobal(void) {
+	if (!SGFE__GLOBAL_HINTS_SET) {
+		SGFE_glHintsMakeWithDefaultSettings(&SGFE__GLOBAL_HINTS);
+		SGFE__GLOBAL_HINTS_SET = SGFE_TRUE;
+	}
+
+	return &SGFE__GLOBAL_HINTS;
+}
+void SGFE_glHintsSetGlobal(const SGFE_contextHintsGL* hints) {
+	if (!SGFE__GLOBAL_HINTS_SET) {
+		SGFE__GLOBAL_HINTS_SET = SGFE_TRUE;
+	}
+	SGFE__GLOBAL_HINTS = *hints;
+}
+
+
+SGFE_bool SGFE_windowCreateContextGL(SGFE_window* win, SGFE_videoMode mode) {
+	SGFE_ASSERT(win != NULL);
+	SGFE_windowFreeContext(win);
+
+	SGFE_contextHintsGL* hints = SGFE_glHintsGetGlobal();
+	SGFE_glHintsAssert(hints);
+
+	for (SGFE_screen screen = SGFE_screenPrimary; screen < SGFE_screenCount; screen += 1) {
+		if (!SGFE_windowIsScreenEnabled(win, screen)) { continue; }
+
+		SGFE_contextGL* gl = &win->ctx[screen].gl;
+		hints->screen = screen;
+
+		SGFE_bool res = SGFE_glCreateContext(gl, mode, hints);
+		if (res == SGFE_FALSE) { return SGFE_FALSE; }
+
+		SGFE_windowSetContextExGL(win, gl, screen);
+	}
+
+	win->flags |= SGFE_windowOpenGL;
+	return SGFE_TRUE;
+}
+
+SGFE_contextGL* SGFE_windowGetContextGL(SGFE_window* win) {
+	SGFE_ASSERT(SGFE_windowGetContextType(win) == SGFE_contextTypeGL);
+	return (SGFE_contextGL*)SGFE_windowGetContext(win);
+}
+
+SGFE_contextGL* SGFE_windowGetContextExGL(SGFE_window* win, SGFE_screen screen) {
+	SGFE_ASSERT(SGFE_windowGetContextTypeEx(win, screen) == SGFE_contextTypeGL);
+	return (SGFE_contextGL*)SGFE_windowGetContextEx(win, screen);
+}
+
+void SGFE_windowSetContextGL(SGFE_window* win, SGFE_contextGL* ctx) {
+	SGFE_ASSERT(win != NULL);
+	SGFE_windowSetContextExGL(win, ctx, SGFE_windowGetCurrentScreen(win));
+}
+
+#endif
 
 
 
@@ -2562,51 +2709,6 @@ const char* SGFE_videoModeStr(SGFE_videoMode mode) {
 }
 
 
-#if defined(SGFE_OPENGL)
-
-i32 SGFE_GL_HINTS[SGFE_glHintCount] = {
-	/* SGFE_glProfile                 */ SGFE_glProfile_Core,
-	/* SGFE_glMajor                   */ 1,
-	/* SGFE_glMinor                   */ 0,
-
-	/* SGFE_glRed                     */ 8,
-	/* SGFE_glGreen                   */ 8,
-	/* SGFE_glBlue                    */ 8,
-	/* SGFE_glAlpha                   */ 8,
-
-	/* SGFE_glDoubleBuffer            */ SGFE_TRUE,
-	/* SGFE_glDepth                   */ 24,
-	/* SGFE_glStencil                 */ 0,
-
-	/* SGFE_glAccumRed                */ 0,
-	/* SGFE_glAccumGreen              */ 0,
-	/* SGFE_glAccumBlue               */ 0,
-	/* SGFE_glAccumAlpha              */ 0,
-
-	/* SGFE_glSamples                 */ 0,
-	/* SGFE_glAuxBuffers              */ 0,
-
-	/* SGFE_glSoftwareRenderer        */ SGFE_FALSE,
-	/* SGFE_glStereo                  */ SGFE_FALSE,
-	/* SGFE_glSRGB                    */ SGFE_FALSE,
-	/* SGFE_glRobustness              */ SGFE_FALSE,
-	/* SGFE_glDebug                   */ SGFE_FALSE,
-	/* SGFE_glNoError                 */ SGFE_FALSE,
-	/* SGFE_glFlushOnContextChange    */ SGFE_FALSE,
-	/* SGFE_glShareWithCurrentContext */ SGFE_FALSE
-};
-
-void SGFE_setHint_OpenGL(SGFE_glHint hint, i32 value) {
-	SGFE_ASSERT(hint >= 0 && hint < SGFE_glHintCount);
-	SGFE_GL_HINTS[hint] = value;
-}
-
-i32 SGFE_getHint_OpenGL(SGFE_glHint hint) {
-	SGFE_ASSERT(hint >= 0 && hint < SGFE_glHintCount);
-	return SGFE_GL_HINTS[hint];
-}
-
-#endif
 
 
 #ifdef SGFE_3DS
@@ -2748,6 +2850,16 @@ void _SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer) {
 }
 
 
+
+SGFE_screen SGFE_windowGetCurrentScreen_platform(SGFE_window* win) {
+	SGFE_ASSERT(win != NULL);
+	return (win->flags & SGFE_windowTopScreen) ? SGFE_screenTop : SGFE_screenBottom;
+}
+
+SGFE_bool SGFE_windowIsScreenEnabled_platform(SGFE_window* win, SGFE_screen screen) {
+	SGFE_ASSERT(win != NULL);
+	return SGFE_BOOL(win->flags & SGFE_BIT(29 + screen));
+}
 
 
 SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
@@ -2919,59 +3031,14 @@ void SGFE_windowPollEvents(SGFE_window* win) {
 }
 
 
-void SGFE_windowSwapBuffers(SGFE_window* win) {
-	SGFE_context* ctx = SGFE_windowGetCurrent(win);
-	SGFE_ASSERT(ctx != NULL);
 
-	switch (ctx->type) {
-		case SGFE_contextTypeBuffer: {
-			SGFE_ASSERT(win->current[0] && win->current[1]);
-			SGFE_ASSERT(win->current[0]->type == win->current[1]->type);
-
-			for (SGFE_screen screen = 0; screen < SGFE_screenCount; screen += 1) {
-				ctx = SGFE_windowGetCurrentEx(win, screen);
-				SGFE_contextBuffer* b = SGFE_windowGetContextExBuffer(win, screen);
-				u8* buffer = SGFE__fetchSwapBuffer(b);
-				GSPGPU_FlushDataCache(buffer, b->src.size);
-
-				_SGFE__gspPresentFramebuffer(b, buffer);
-				b->current ^= b->is_double_buffered;
-			}
-			gspWaitForVBlank();
-		} break;
-	}
-}
-
-void SGFE_windowMakeCurrent(SGFE_window* win, SGFE_context* ctx) {
-	SGFE_ASSERT(win != NULL);
-	SGFE_ASSERT(ctx != NULL);
-
-	switch (SGFE_contextGetType(ctx)) {
-		case SGFE_contextTypeBuffer: {
-			win->current[ctx->data.buffer.screen] = ctx;
-		} break;
-	}
-}
-
-
-SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer** out_ctx) {
+SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 	/* TODO(EimaMei): Remove this entire function and replace it with a helper library
 	 * and function. */
 	/* NOTE(EimaMei): Taken from libctru console.c */
 	static SGFE_bool console_initialized = SGFE_FALSE;
-	SGFE_ASSERT(out_ctx != NULL);
+	SGFE_ASSERT(b != NULL);
 
-	if (*out_ctx == NULL) {
-		SGFE_bool res = SGFE_bufferMakeWithDefaultSettings(
-			*out_ctx, SGFE_pixelFormatRGB565, SGFE_TRUE, SGFE_TRUE
-		);
-		if (res == SGFE_FALSE) { return SGFE_FALSE; }
-
-		res = SGFE_bufferCreateContext(*out_ctx);
-		if (res == SGFE_FALSE) { return SGFE_FALSE; }
-	}
-
-	SGFE_contextBuffer* b = *out_ctx;
 	SGFE_bufferSetNative(b, SGFE_TRUE);
 	SGFE_bufferSetFormat(b, SGFE_pixelFormatRGB565);
 	SGFE_bufferSetDoubleBuffered(b, SGFE_FALSE);
@@ -3206,78 +3273,86 @@ void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* ou
 }
 
 
+void SGFE_windowSwapBuffersBuffer(SGFE_window* win) {
+	for (SGFE_screen screen = 0; screen < SGFE_screenCount; screen += 1) {
+		if (win->current_type[screen] != SGFE_contextTypeBuffer) { continue; }
 
-SGFE_videoMode SGFE_videoModeOptimal(void) {
-	return SGFE_videoMode2D;
+		SGFE_contextBuffer* b = SGFE_windowGetContextExBuffer(win, screen);
+
+		u8* buffer = SGFE__fetchSwapBuffer(b);
+		GSPGPU_FlushDataCache(buffer, b->src.size);
+		_SGFE__gspPresentFramebuffer(b, buffer);
+
+		b->current ^= b->is_double_buffered;
+	}
+	gspWaitForVBlank();
 }
-
-SGFE_videoMode SGFE_pixelFormatOptimal(void) {
-	return SGFE_pixelFormatBGR8;
-}
-
-
-
-
 
 
 
 #ifdef SGFE_OPENGL
 
-SGFE_bool SGFE_createContext_OpenGL(SGFE_screen screen, SGFE_videoMode mode, SGFE_contextOpenGL* out_gl) {
-	SGFE_ASSERT(screen >= 0 && screen <= SGFE_screenCount);
-	SGFE_ASSERT(out_gl != NULL);
+void* SGFE_glGetBoundContext(void) {
+	return glassGetBoundContext();
+}
 
-	if (SGFE_getHint_OpenGL(SGFE_glProfile) != SGFE_glProfile_ES) {
+
+SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_contextHintsGL* hints) {
+	SGFE_ASSERT(gl != NULL);
+	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
+	SGFE_glHintsAssert(hints);
+
+	if (hints->profile != SGFE_glProfileES) {
 		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "3DS only supports GLES.");
 		return SGFE_FALSE;
 	}
 
-	if (SGFE_getHint_OpenGL(SGFE_glMajor) != 1 || (SGFE_getHint_OpenGL(SGFE_glMinor) != 0 && SGFE_getHint_OpenGL(SGFE_glMinor) != 1)) {
+	if (hints->major != 1 || (hints->minor != 0 && hints->minor != 1)) {
 		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "3DS can only support up to GLES 1.1.");
 		return SGFE_FALSE;
 	}
 
-	i32 stencil = SGFE_getHint_OpenGL(SGFE_glStencil);
-	if (stencil > 8) {
+	if (hints->stencil > 8) {
 		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported stencil buffer size.");
 		return SGFE_FALSE;
 	}
-	else if (stencil != 0 && stencil != 8) {
+	else if (hints->stencil != 0 && hints->stencil != 8) {
 		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported stencil buffer size. Defaulting to 8.");
-		SGFE_setHint_OpenGL(SGFE_glStencil, 8);
+		hints->stencil = 8;
 	}
 
-	i32 depth = SGFE_getHint_OpenGL(SGFE_glStencil);
-	if (depth > 24) {
+	if (hints->depth > 24) {
 		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported depth buffer size.");
 		return SGFE_FALSE;
 	}
-	else if (stencil != 0 && stencil != 24) {
+	else if (hints->depth != 0 && hints->depth != 24) {
 		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported depth buffer size. Defaulting to 24.");
-		SGFE_setHint_OpenGL(SGFE_glStencil, 24);
+		hints->depth = 24;
 	}
 
-	i32 r = SGFE_getHint_OpenGL(SGFE_glRed),
-		g = SGFE_getHint_OpenGL(SGFE_glGreen),
-		b = SGFE_getHint_OpenGL(SGFE_glBlue),
-		a = SGFE_getHint_OpenGL(SGFE_glAlpha);
+	isize r = hints->red,
+		  g = hints->green,
+		  b = hints->blue,
+		  a = hints->alpha;
 
 	GLenum internal_format;
 	if (a == 0) {
 		if (r <= 5 && g <= 6 && b <= 5) {
 			internal_format = GL_RGB565;
-			out_gl->format = SGFE_pixelFormatRGB565;
 
 			if (r != 5 || g != 6 || b != 5) {
 				SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGB565.");
+				hints->red = 5;
+				hints->green = 6;
+				hints->blue = 5;
 			}
 		}
 		else if (r <= 8 && g <= 8 && b <= 8) {
 			internal_format = GL_RGB8_OES;
-			out_gl->format = SGFE_pixelFormatBGR8;
 
 			if (r != 8 || g != 8 || b != 8) {
 				SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGB8.");
+				hints->red = hints->green = hints->blue = 8;
 			}
 		}
 		else {
@@ -3288,16 +3363,16 @@ SGFE_bool SGFE_createContext_OpenGL(SGFE_screen screen, SGFE_videoMode mode, SGF
 	else if (a == 1) {
 		if (r <= 5 && g <= 5 && b <= 5) {
 			internal_format = GL_RGB5_A1;
-			out_gl->format = SGFE_pixelFormatRGB5_A1;
 
 			if (r != 5 || g != 5 || b != 5) {
 				SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGB5_A1.");
+				hints->red = hints->green = hints->blue = 5;
 			}
 		}
 		else if (r <= 8 && g <= 8 && b <= 8) {
 			internal_format = GL_RGBA8_OES;
-			out_gl->format = SGFE_pixelFormatRGBA8;
 			SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGBA8.");
+			hints->red = hints->green = hints->blue = hints->alpha = 8;
 		}
 		else {
 			SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format.");
@@ -3307,15 +3382,15 @@ SGFE_bool SGFE_createContext_OpenGL(SGFE_screen screen, SGFE_videoMode mode, SGF
 	else if (a <= 4) {
 		if (r <= 4 && g <= 4 && b <= 4) {
 			internal_format = GL_RGBA4;
-			out_gl->format = SGFE_pixelFormatRGBA4;
 
 			if (r != 4 || g != 4 || b != 4 || a != 4) {
 				SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGBA4.");
+				hints->red = hints->green = hints->blue = hints->alpha = 4;
 			}
 		}
 		else if (r <= 8 && g <= 8 && b <= 8) {
-			internal_format = GL_RGBA4;
-			out_gl->format = SGFE_pixelFormatRGBA4;
+			internal_format = GL_RGBA8_OES;
+			hints->red = hints->green = hints->blue = hints->alpha = 8;
 
 			SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGBA8.");
 		}
@@ -3327,9 +3402,9 @@ SGFE_bool SGFE_createContext_OpenGL(SGFE_screen screen, SGFE_videoMode mode, SGF
 	else if (a <= 8) {
 		if (r <= 8 && g <= 8 && b <= 8) {
 			internal_format = GL_RGBA8_OES;
-			out_gl->format = SGFE_pixelFormatRGBA8;
 
 			if (r != 8 || g != 8 || b != 8 || a != 8) {
+				hints->red = hints->green = hints->blue = hints->alpha = 8;
 				SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGBA8.");
 			}
 		}
@@ -3343,31 +3418,41 @@ SGFE_bool SGFE_createContext_OpenGL(SGFE_screen screen, SGFE_videoMode mode, SGF
 		return SGFE_FALSE;
 	}
 
-	out_gl->mode = (SGFE_getHint_OpenGL(SGFE_glStereo) && screen == SGFE_screenTop)
-		? SGFE_videoMode3D
-		: mode;
-
 	GLASSCtxParams param;
-	glassGetDefaultContextParams(&param, GLASS_VERSION_ES_2);
-	param.targetScreen = (GLASSScreen)screen;
+	param.version = GLASS_VERSION_ES_2;
+    param.targetScreen = (GLASSScreen)hints->screen;
+    param.targetSide = GLASS_SIDE_LEFT;
+    param.GPUCmdList.mainBuffer = NULL;
+    param.GPUCmdList.secondBuffer = NULL;
+    param.GPUCmdList.capacity = 0;
+    param.GPUCmdList.offset = 0;
+    param.vsync = hints->is_vsync;
+    param.horizontalFlip = false;
+    param.flushAllLinearMem = true;
+    param.downscale = GLASS_DOWNSCALE_NONE;
 
-	out_gl->ctx = glassCreateContext(&param);
-	if (out_gl->ctx == NULL) {
+	gl->ctx = glassCreateContext(&param);
+	if (gl->ctx == NULL) {
 		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Failed to create a GLASS context.");
 		return SGFE_FALSE;
 	}
-	glassBindContext(out_gl->ctx);
+	glassBindContext(gl->ctx);
 
-	GLint width = (screen == SGFE_screenTop)
-		? SGFE_videoModeResolution(out_gl->mode).h
-		: 320;
-	glGenRenderbuffers(1, &out_gl->renderbuffer);
-	glBindRenderbuffer(GL_RENDERBUFFER, out_gl->renderbuffer);
+	isize width;
+	if (hints->screen == SGFE_screenTop) {
+		SGFE_videoModeResolution(hints->is_stereo ? SGFE_videoMode3D : mode, &width, NULL);
+	}
+	else {
+		width = 320;
+	}
+
+	glGenRenderbuffers(1, &gl->renderbuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, gl->renderbuffer);
 	glRenderbufferStorage(GL_RENDERBUFFER, internal_format, width, 240);
 
-	glGenFramebuffers(1, &out_gl->framebuffer);
-	glBindFramebuffer(GL_FRAMEBUFFER, out_gl->framebuffer);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, out_gl->renderbuffer);
+	glGenFramebuffers(1, &gl->framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, gl->framebuffer);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, gl->renderbuffer);
 
 	glViewport(0, 0, width, 240);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -3375,101 +3460,63 @@ SGFE_bool SGFE_createContext_OpenGL(SGFE_screen screen, SGFE_videoMode mode, SGF
 	return SGFE_TRUE;
 }
 
-void SGFE_context_free_OpenGL(SGFE_contextOpenGL* out_gl) {
-	SGFE_ASSERT(out_gl != NULL);
-	if (out_gl->ctx == NULL) { return; }
-
-	glassBindContext(out_gl->ctx);
-	glDeleteRenderbuffers(1, &out_gl->renderbuffer);
-	glDeleteFramebuffers(1, &out_gl->framebuffer);
-
-	glassDestroyContext(out_gl->ctx);
-	glassBindContext(NULL);
-	out_gl->ctx = NULL;
-}
-
-void SGFE_context_swapInterval_OpenGL(SGFE_contextOpenGL* gl, i32 swap_interval) {
+void SGFE_glFreeContext(SGFE_contextGL* gl) {
 	SGFE_ASSERT(gl != NULL);
-	if (gl->ctx) {
-		glassSetVSync(gl->ctx, SGFE_BOOL(swap_interval));
-	}
+	if (gl->ctx == NULL) { return; }
+
+	glassBindContext(gl->ctx);
+	glDeleteRenderbuffers(1, &gl->renderbuffer);
+	glDeleteFramebuffers(1, &gl->framebuffer);
+
+	glassDestroyContext(gl->ctx);
+	glassBindContext(NULL);
+	gl->ctx = NULL;
 }
 
 
-SGFE_bool SGFE_window_createContext_OpenGL(SGFE_window* win, SGFE_videoMode mode) {
+void SGFE_glSwapInterval(SGFE_contextGL* gl, isize swap_interval) {
+	SGFE_ASSERT(gl != NULL);
+	SGFE_ASSERT_NOT_NEG(swap_interval);
+	if (gl->ctx == NULL) { return; }
+
+	glassSetVSync(gl->ctx, SGFE_BOOL(swap_interval));
+}
+
+
+void SGFE_windowSwapBuffersGL(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 
-	SGFE_bool res;
-	switch (win->flags & SGFE_windowDualScreen) {
-		case SGFE_windowTopScreen:    res = SGFE_createContext_OpenGL(SGFE_screenTop, mode, &win->src.gl[SGFE_screenTop]); break;
-		case SGFE_windowBottomScreen: res = SGFE_createContext_OpenGL(SGFE_screenBottom, mode, &win->src.gl[SGFE_screenBottom]); break;
-		case SGFE_windowDualScreen: {
-			res = SGFE_createContext_OpenGL(SGFE_screenBottom, mode, &win->src.gl[SGFE_screenBottom]);
-			res = SGFE_createContext_OpenGL(SGFE_screenTop, mode, &win->src.gl[SGFE_screenTop]);
-		} break;
+	GLASSCtx top = (SGFE_windowGetContextTypeEx(win, SGFE_screenTop) == SGFE_contextTypeGL)
+		? SGFE_windowGetContextExGL(win, SGFE_screenTop)->ctx
+		: NULL;
+	GLASSCtx bottom = (SGFE_windowGetContextTypeEx(win, SGFE_screenBottom) == SGFE_contextTypeGL)
+		? SGFE_windowGetContextExGL(win, SGFE_screenBottom)->ctx
+		: NULL;
 
-		default: {
-			SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(win, 0), "No screen was specified to create an OpenGL context.");
-			return SGFE_FALSE;
-		}
-	}
-
-	if (!res) {
-		return SGFE_FALSE;
-	}
-	SGFE_window_makeCurrent_OpenGL(win, &win->src.gl[!(win->flags & SGFE_windowTopScreen)]);
-
-	win->flags |= SGFE_windowOpenGL;
-	return res;
+	glassSwapContextBuffers(top, bottom);
 }
 
-void SGFE_window_freeContext_OpenGL(SGFE_window* win) {
+
+void SGFE_windowSetContextExGL(SGFE_window* win, SGFE_contextGL* gl, SGFE_screen screen) {
 	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT(screen >= 0 && screen < SGFE_screenCount);
 
-	if ((win->flags & SGFE_windowOpenGL) == 0) {
-		return;
-	}
-
-	if (win->gl == &win->src.gl[SGFE_screenTop] || win->gl == &win->src.gl[SGFE_screenBottom]) {
-		SGFE_window_makeCurrent_OpenGL(win, NULL);
-	}
-
-	switch (win->flags & SGFE_windowDualScreen) {
-		case SGFE_windowTopScreen: SGFE_context_free_OpenGL(&win->src.gl[SGFE_screenTop]); break;
-		case SGFE_windowBottomScreen: SGFE_context_free_OpenGL(&win->src.gl[SGFE_screenBottom]); break;
-		case SGFE_windowDualScreen: {
-			SGFE_context_free_OpenGL(&win->src.gl[SGFE_screenTop]);
-			SGFE_context_free_OpenGL(&win->src.gl[SGFE_screenBottom]);
-		} break;
-	}
-
-	win->flags &= ~(SGFE_windowFlags)SGFE_windowOpenGL;
-	SGFE_sendDebugInfo(SGFE_debugTypeInfo, SGFE_infoOpenGL, SGFE_DEBUG_CTX(win, 0), "OpenGL context freed.");
-}
-
-void SGFE_window_swapInterval_OpenGL(SGFE_window* win, i32 swap_interval) {
-	SGFE_ASSERT(win != NULL);
-	SGFE_context_swapInterval_OpenGL(win->gl, swap_interval);
-}
-
-void SGFE_window_swapBuffers_OpenGL(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
-	glassSwapContextBuffers(win->src.gl[SGFE_screenTop].ctx, win->src.gl[SGFE_screenBottom].ctx);
-}
-
-void SGFE_window_makeCurrent_OpenGL(SGFE_window* win, SGFE_contextOpenGL* out_gl) {
-	SGFE_ASSERT(win != NULL);
-
-	win->gl = out_gl;
-	glassBindContext(win->gl ? win->gl->ctx : NULL);
-}
-
-
-void* SGFE_getCurrentContext_OpenGL(void) {
-	return glassGetBoundContext();
+	win->current[screen] = gl;
+	win->current_type[screen] = gl ? SGFE_contextTypeGL : SGFE_contextTypeNone;
+	glassBindContext(gl ? gl->ctx : NULL);
 }
 
 #endif
+
+
+
+SGFE_videoMode SGFE_videoModeOptimal(void) {
+	return SGFE_videoMode2D;
+}
+
+SGFE_videoMode SGFE_pixelFormatOptimal(void) {
+	return SGFE_pixelFormatBGR8;
+}
 
 
 
@@ -3511,7 +3558,7 @@ float SGFE_platformGet3DSlider(void) {
 
 
 #ifdef SGFE_OPENGL
-SGFE_bool SGFE_platformRotateScreenOpenGL(GLuint shader_program, const char* mat4_uniform_name) {
+SGFE_bool SGFE_platformRotateScreenGL(GLuint shader_program, const char* mat4_uniform_name) {
 	static const float deg90_rotation_matrix[4][4] = {
 		{ 0.0f,  1.0f, 0.0f, 0.0f },
 		{-1.0f,  0.0f, 0.0f, 0.0f },

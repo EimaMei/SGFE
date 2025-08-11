@@ -3,8 +3,8 @@ TODO (in no particular order):
 - Document all macros.
 - (3DS) Resize event.
 - (3DS) Fix flicker when opening standard buffer.
+- (3DS) Fix flicker when closing basic buffer.
 - Update Makefiles to be better, have a 'compile_examples' command.
-- (3DS) Add debug info for initialized and freed context.
 - Document all examples.
 - Finish the callbacks example with video mode change callback.
 - Document examples/README.md
@@ -50,7 +50,12 @@ black. Remove that kind of code from the 3DS code.
 - (Wii) add mouse support.
 - (3DS) add virtual software keyboard support.
 - Add options to disable app termination/loss of focus.
-- Implement new ways of settings/getting opengl hints.
+- (3ds) figure out why 3DS console isn't properly aligned AGAIN.
+- rename window flags to use a prefix. same with some leftover RGFW functions.
+- Replace  SGFE_ASSERT(0) with PANIC.
+- (3DS) implement opengl hints
+- split basic.c into multiple examples.
+- finish custom-backend
 
 Maybe:
 - (3DS) Find a way to not use gfxInitDefault for GLASS.
@@ -66,6 +71,9 @@ Maybe:
 - Implement a SDL_StartTextInput?/SDL_TextInputEvent.
 - UIApplicationMain & example.
 - Make a CHANGELOG
+- GitHub actions test for all platforms.
+- make it so that when compiling gles1 or multipl-scre/gles1 the shader gets recompiled.
+- Implement buffer setters/getters for opengl.
 
 Distant TODO:
 - Create a portable stdout/stderr library that'd write the text on screen.

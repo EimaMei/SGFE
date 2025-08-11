@@ -61,7 +61,7 @@ void scene_setup(u32* vbo) {
 	 * (1.0, -1.0). You can either handle this issue on your own by having a matrix
 	 * that's always rotated by 90 degrees clockwise or let SGFE do that for you
 	 * by inputting a mat4 uniform variable and calling the "fixScreen" function. */
-	SGFE_platformRotateScreenOpenGL(shader_program, "SGFE_PROJECTION");
+	SGFE_platformRotateScreenGL(shader_program, "SGFE_PROJECTION");
 	#endif
 	glDeleteProgram(shader_program);
 
@@ -77,50 +77,54 @@ void scene_setup(u32* vbo) {
 }
 
 int main(void) {
-	SGFE_setHint_OpenGL(SGFE_glMajor, 1);
-	SGFE_setHint_OpenGL(SGFE_glMinor, 0);
-	SGFE_setHint_OpenGL(SGFE_glProfile, SGFE_glProfile_ES);
+	SGFE_contextHintsGL* hints = SGFE_glHintsGetGlobal();
+	hints->profile = SGFE_glProfileES;
+	hints->major = 1;
+	hints->minor = 0;
 
 #ifdef SGFE_3DS
 	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowOpenGL | SGFE_windowDualScreen);
-	SGFE_contextOpenGL *top = SGFE_windowGetContextExOpenGL(win, SGFE_screenTop),
-						*bottom = SGFE_windowGetContextExOpenGL(win, SGFE_screenBottom);
+	SGFE_contextGL *top = SGFE_windowGetContextExGL(win, SGFE_screenTop),
+				   *bottom = SGFE_windowGetContextExGL(win, SGFE_screenBottom);
 
 	u32 vbo[2];
-	SGFE_window_makeCurrent_OpenGL(win, top);
+	SGFE_windowSetContextExGL(win, top, SGFE_screenTop);
 	scene_setup(&vbo[0]);
 
-	SGFE_window_makeCurrent_OpenGL(win, bottom);
+	SGFE_windowSetContextExGL(win, bottom, SGFE_screenBottom);
 	scene_setup(&vbo[1]);
 #else
 	#error "This platform does not support multiple screens."
 #endif
 
-	while (SGFE_windowCheckEvents(win, 0)) {
-		if (SGFE_isHeld(SGFE_controllerGet(win, 0), BUTTON_START)) {
+	while (!SGFE_windowShouldClose(win)) {
+		SGFE_windowPollEvents(win);
+
+		SGFE_controller* p1 = SGFE_windowGetController(win, 0);
+		if (SGFE_isDown(p1, BUTTON_START)) {
 			SGFE_windowSetShouldClose(win, SGFE_TRUE);
 			continue;
 		}
 
 #ifdef SGFE_3DS
-		SGFE_window_makeCurrent_OpenGL(win, top); {
+		SGFE_windowSetContextExGL(win, top, SGFE_screenTop); {
 			glClear(GL_COLOR_BUFFER_BIT);
 			glDrawArrays(GL_TRIANGLE_STRIP, 0, SGFE_COUNTOF(vertices));
 		}
 
-		SGFE_window_makeCurrent_OpenGL(win, bottom); {
+		SGFE_windowSetContextExGL(win, bottom, SGFE_screenBottom);{
 			glClear(GL_COLOR_BUFFER_BIT);
 			glDrawArrays(GL_TRIANGLE_STRIP, 0, SGFE_COUNTOF(vertices));
 		}
 #endif
 
-		SGFE_window_swapBuffers_OpenGL(win);
+		SGFE_windowSwapBuffers(win);
 	}
 
-	SGFE_window_makeCurrent_OpenGL(win, top);
+	SGFE_windowSetContextExGL(win, top, SGFE_screenTop);
 	glDeleteBuffers(1, &vbo[0]);
 
-	SGFE_window_makeCurrent_OpenGL(win, bottom);
+	SGFE_windowSetContextExGL(win, bottom, SGFE_screenBottom);
 	glDeleteBuffers(1, &vbo[1]);
 
 	SGFE_windowClose(win);

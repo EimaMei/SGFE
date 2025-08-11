@@ -32,10 +32,13 @@ static const vertex vertices[] = {
 };
 
 int main(void) {
-	SGFE_setHint_OpenGL(SGFE_glMajor, 1);
-	SGFE_setHint_OpenGL(SGFE_glMinor, 0);
-	SGFE_setHint_OpenGL(SGFE_glProfile, SGFE_glProfile_ES);
+	SGFE_contextHintsGL* hints = SGFE_glHintsGetGlobal();
+	hints->profile = SGFE_glProfileES;
+	hints->major = 1;
+	hints->minor = 0;
+
 	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowOpenGL);
+	if (win == NULL) { return 1; }
 
 	/* === OpenGL init === */
 	glEnable(GL_BLEND);
@@ -65,7 +68,7 @@ int main(void) {
 	 * (1.0, -1.0). You can either handle this issue on your own by having a matrix
 	 * that's always rotated by 90 degrees clockwise or let SGFE do that for you
 	 * by inputting a mat4 uniform variable and calling the "fixScreen" function. */
-	SGFE_platformRotateScreenOpenGL(shader_program, "SGFE_PROJECTION");
+	SGFE_platformRotateScreenGL(shader_program, "SGFE_PROJECTION");
 	#endif
 	glDeleteProgram(shader_program);
 
@@ -80,8 +83,11 @@ int main(void) {
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 
-	while (SGFE_windowCheckEvents(win, 0)) {
-		if (SGFE_isHeld(SGFE_controllerGet(win, 0), BUTTON_START)) {
+	while (!SGFE_windowShouldClose(win)) {
+		SGFE_windowPollEvents(win);
+
+		SGFE_controller* p1 = SGFE_windowGetController(win, 0);
+		if (SGFE_isDown(p1, BUTTON_START)) {
 			SGFE_windowSetShouldClose(win, SGFE_TRUE);
 			continue;
 		}
@@ -89,7 +95,7 @@ int main(void) {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, SGFE_COUNTOF(vertices));
 
-		SGFE_window_swapBuffers_OpenGL(win);
+		SGFE_windowSwapBuffersGL(win);
 	}
 
 	glDeleteBuffers(1, &vbo);
