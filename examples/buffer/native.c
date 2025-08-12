@@ -33,9 +33,9 @@ int main(void) {
 	 * 'SGFE_pixelFormatOptimal()' format.
 	 *
 	 * If different parameters are desired, you have to use a combination of
-	 * 'SGFE_windowMakeContextless()' (or 'SGFE_windowMake()' without 'SGFE_windowBuffer')
+	 * 'SGFE_windowMakeContextless()' (or 'SGFE_windowMake()' without 'SGFE_windowFlagBuffer')
 	 *  and 'SGFE_windowCreateContextBuffer()'. */
-	SGFE_window* win = SGFE_windowMake(mode, SGFE_windowBuffer);
+	SGFE_window* win = SGFE_windowMake(mode, SGFE_windowFlagBuffer);
 	if (win == NULL) { return 1; }
 
 	CPU_Surface s = surface_make(SGFE_windowGetContextBuffer(win), CPU_colorMake(255, 255, 255, 255));

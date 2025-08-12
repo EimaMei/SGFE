@@ -250,9 +250,15 @@ void SGFE_windowClose_platform(SGFE_window* win) {
 }
 
 
-void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlags flags) {
+void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlag flags) {
 	SGFE_ASSERT(win != NULL);
+	if (flags & SGFE_windowFlagTerminal) {
+		SGFE_bool res = SGFE_windowInitTerminalOutput(win);
+		if (res) { flags &= ~(SGFE_windowFlag)SGFE_windowFlagTerminal; }
+	}
+
 	#warning "Warning to notify that this function hasn't been implemented yet."
+	win->flags = flags;
 }
 
 
@@ -524,5 +530,90 @@ SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 	#endif
 }
 #endif
+/* === DEBUG FUNCTIONS === */
+/* NOTE(EimaMei): The backend has to providee string representations of all
+ * SGFE platform API errors', warnings' and infos' names as well as their descriptions.
+ * Alongside this system error names and descriptions have to be given. */
+
+
+
+
+const char* SGFE_debugSourcePlatformAPIGetName(SGFE_debugType type, isize code) {
+	SGFE_ASSERT(
+		(type == SGFE_debugTypeError   && (code >= 0 && code < SGFE_errorPlatformCount))   ||
+		(type == SGFE_debugTypeWarning && (code >= 0 && code < SGFE_warningPlatformCount)) ||
+		(type == SGFE_debugTypeInfo    && (code >= 0 && code < SGFE_infoPlatformCount))
+	);
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* NOTE(EimaMei): If the custom backend does not contain any errors, warnings
+	 * or infos, these arrays can be removed. */
+
+	static const char* ERROR_LUT[SGFE_errorPlatformCount] = {
+		/* ... */
+	};
+
+	static const char* WARNING_LUT[SGFE_warningPlatformCount] = {
+		/* ... */
+
+	}
+
+	static const char* INFO_LUT[SGFE_infoPlatformCount] = {
+		/* ... */
+	}
+
+	static const char** ARR_LUT[] = {ERROR_LUT, WARNING_LUT, INFO_LUT};
+	return ARR_LUT[type][code];
+}
+
+const char* SGFE_debugSourcePlatformAPIGetDesc(SGFE_debugType type, isize code) {
+	SGFE_ASSERT(
+		(type == SGFE_debugTypeError   && (code >= 0 && code < SGFE_errorPlatformCount))   ||
+		(type == SGFE_debugTypeWarning && (code >= 0 && code < SGFE_warningPlatformCount)) ||
+		(type == SGFE_debugTypeInfo    && (code >= 0 && code < SGFE_infoPlatformCount))
+	);
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* NOTE(EimaMei): If the custom backend does not contain any errors, warnings
+	 * or infos, these arrays can be removed. */
+
+	static const char* ERROR_LUT[SGFE_errorPlatformCount] = {
+		/* ... */
+	};
+
+	static const char* WARNING_LUT[SGFE_warningPlatformCount] = {
+		/* ... */
+
+	}
+
+	static const char* INFO_LUT[SGFE_infoPlatformCount] = {
+		/* ... */
+	}
+
+	static const char** ARR_LUT[] = {ERROR_LUT, WARNING_LUT, INFO_LUT};
+	return ARR_LUT[type][code];
+}
+
+
+const char* SGFE_debugCodeSystemGetName(SGFE_debugType type, isize code) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* NOTE(EimaMei): Usually you can ignore the debug type for system errors. */
+	return "Unknown";
+	SGFE_UNUSED(type);
+}
+
+const char* SGFE_debugSourceSystemGetDesc(SGFE_debugType type, isize code) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* NOTE(EimaMei): Usually you can ignore the debug type for system errors. */
+	return "Unknown";
+	SGFE_UNUSED(type);
+}
+
+
+SGFE_debugType SGFE_debugSystemGenerateType_platform(void* ctx_ptr, isize code) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* NOTE(EimaMei): More often than not system APIs either provide no further
+	 * debug types than just 'errors' or have debug types that are incompatible
+	 * with SGFE's. In such cases this function has to return the closest
+	 * representation of what the code type could be in SGFE. */
+}
 
 #endif /* SGFE_IMPLEMENTATION */

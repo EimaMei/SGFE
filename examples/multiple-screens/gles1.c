@@ -83,7 +83,7 @@ int main(void) {
 	hints->minor = 0;
 
 #ifdef SGFE_3DS
-	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowOpenGL | SGFE_windowDualScreen);
+	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowFlagOpenGL | SGFE_windowFlagDualScreen);
 	SGFE_contextGL *top = SGFE_windowGetContextExGL(win, SGFE_screenTop),
 				   *bottom = SGFE_windowGetContextExGL(win, SGFE_screenBottom);
 

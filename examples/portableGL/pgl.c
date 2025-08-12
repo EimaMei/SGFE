@@ -24,7 +24,7 @@ void uniform_color_fs(float* fs_input, Shader_Builtins* builtins, void* uniforms
 
 
 int main() {
-	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowBuffer);
+	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowFlagBuffer);
 	if (win == NULL) { return 1; }
 
 	SGFE_contextBuffer* ctx = SGFE_windowGetContextBuffer(win);

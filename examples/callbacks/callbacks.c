@@ -4,39 +4,22 @@
 
 size_t counter = 0;
 
-void* myAlloc(size_t size, int line, const char* file);
-void myFree(void* ptr, int line, const char* file);
-
-void* myAlloc(size_t size, int line, const char* file) {
-	void* ptr = malloc(size);
-	printf("%s:%i allocated %u bytes at %p\n",  file, line, (unsigned int)size, ptr);
-	counter++;
-
-	return ptr;
-}
-
-void myFree(void* ptr, int line, const char* file) {
-	counter--;
-	printf("%s:%i freed address %p\n", file, line, ptr);
-	free(ptr);
-}
-
-#define SGFE_ALLOC(size) myAlloc(size, __LINE__, __FILE__)
-#define SGFE_FREE(size) myFree(size, __LINE__, __FILE__)
-
 #define SGFE_DEBUG
 #define SGFE_IMPLEMENTATION
 #include <SGFE.h>
 #include <resources/controls.h>
 
+SGFE_bool shutup = 0;
 
 static
-void callback_error(SGFE_debugType type, SGFE_error error, SGFE_debugContext ctx, const char* msg) {
-	if (type != SGFE_debugTypeError || error == SGFE_errorNone) {
-		return;
-	}
-
-	printf("SGFE ERROR: %s\n", msg);
+void callback_error(SGFE_debugContext ctx) {
+	printf(
+		"%s:%zi:%s: %s %s: %s (%s)\n", 
+		ctx.filename, ctx.line, ctx.function,
+		SGFE_debugSourceName(ctx.source), SGFE_debugTypeName(ctx.type),
+		SGFE_debugCodeGetDesc(ctx.source, ctx.type, ctx.code),
+		SGFE_debugCodeGetName(ctx.source, ctx.type, ctx.code)
+	);
 }
 
 static
@@ -106,18 +89,18 @@ void callback_motion(SGFE_window* win, SGFE_controller* controller, const SGFE_m
 
 
 int main(void) {
-	SGFE_window* win = SGFE_windowMakeContextless(SGFE_windowFlagsNone);
-	SGFE_windowInitTerminalOutput(win);
+	SGFE_setDebugCallback(callback_error, NULL);
 
-	SGFE_setDebugCallback(callback_error);
-	SGFE_setDeviceSleepCallback(win, callback_sleep);
-	SGFE_setWindowQuitCallback(win, callback_quit);
-	SGFE_setWindowFocusCallback(win, callback_focus);
-	SGFE_setControllerCallback(win, callback_controller);
-	SGFE_setButtonCallback(win, callback_button);
-	SGFE_setAxisCallback(win, callback_axis);
-	SGFE_setPointerCallback(win, callback_pointer);
-	SGFE_setMotionCallback(win, callback_motion);
+	SGFE_window* win = SGFE_windowMakeContextless(SGFE_windowFlagTerminal);
+
+	SGFE_windowSetDeviceSleepCallback(win, callback_sleep);
+	SGFE_windowSetQuitCallback(win, callback_quit);
+	SGFE_windowSetFocusCallback(win, callback_focus);
+	SGFE_windowSetControllerCallback(win, callback_controller);
+	SGFE_windowSetButtonCallback(win, callback_button);
+	SGFE_windowSetAxisCallback(win, callback_axis);
+	SGFE_windowSetPointerCallback(win, callback_pointer);
+	SGFE_windowSetMotionCallback(win, callback_motion);
 
 	while (!SGFE_windowShouldClose(win)) {
 		SGFE_windowPollEvents(win);

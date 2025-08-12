@@ -9,7 +9,7 @@
 
 int main(void) {
 #ifdef SGFE_3DS
-	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowBuffer | SGFE_windowDualScreen);
+	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowFlagBuffer | SGFE_windowFlagDualScreen);
 
 	CPU_Surface top = surface_make(
 		SGFE_windowGetContextExBuffer(win, SGFE_screenTop),

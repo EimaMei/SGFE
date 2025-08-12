@@ -152,16 +152,19 @@ extern "C" {
 #endif
 
 
-#if !defined(SGFE_MEMCPY) || !defined(SGFE_STRNCMP) || !defined(SGFE_MEMSET)
-	#include <string.h>
-#endif
-
 #ifndef SGFE_MEMSET
+	#include <string.h>
 	#define SGFE_MEMSET(ptr, value, num) memset(ptr, value, num)
 #endif
 
 #ifndef SGFE_MEMCPY
+	#include <string.h>
 	#define SGFE_MEMCPY(dist, src, len) memcpy(dist, src, len)
+#endif
+
+#ifndef SGFE_STRLEN
+	#include <string.h>
+	#define SGFE_STRLEN(str) (isize)strlen(str)
 #endif
 
 #ifndef SGFE_COUNTOF
@@ -761,63 +764,20 @@ typedef struct SGFE_window SGFE_window;
 typedef struct SGFE_windowSource SGFE_windowSource;
 
 /*! Optional arguments for making a windows */
-typedef SGFE_ENUM(u32, SGFE_windowFlags) {
-	SGFE_windowFlagsNone      = 0,
+typedef SGFE_ENUM(u32, SGFE_windowFlag) {
+	SGFE_windowFlagNone         = 0,
 
-	SGFE_windowFreeOnClose    = SGFE_BIT(15),
-	SGFE_windowBuffer         = SGFE_BIT(16),
-	SGFE_windowOpenGL         = SGFE_BIT(17),
-	SGFE_windowEGL            = SGFE_BIT(18),
+	SGFE_windowFlagTerminal     = SGFE_BIT(15),
+	SGFE_windowFlagBuffer       = SGFE_BIT(16),
+	SGFE_windowFlagOpenGL       = SGFE_BIT(17),
+	SGFE_windowFlagEGL          = SGFE_BIT(18),
 
 	#ifdef SGFE_3DS
-	SGFE_windowTopScreen      = SGFE_BIT(29), /* TODO(EimaMei): New enum. */
-	SGFE_windowBottomScreen   = SGFE_BIT(30), /* TODO(EimaMei): New enum. */
-	SGFE_windowDualScreen     = SGFE_windowTopScreen | SGFE_windowBottomScreen, /* TODO(EimaMei): New enum. */
+	SGFE_windowFlagTopScreen    = SGFE_BIT(29), /* TODO(EimaMei): New enum. */
+	SGFE_windowFlagBottomScreen = SGFE_BIT(30), /* TODO(EimaMei): New enum. */
+	SGFE_windowFlagDualScreen   = SGFE_windowFlagTopScreen | SGFE_windowFlagBottomScreen, /* TODO(EimaMei): New enum. */
 	#endif
 };
-
-/* TODO(EimaMei): Move window create functions here. */
-
-/* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*SGFE_deviceSleepFunc)(SGFE_window* win, SGFE_bool is_sleeping);
-
-/*! SGFE_eventQuit, the window that was closed */
-typedef void (*SGFE_quitFunc)(SGFE_window* win);
-/* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*SGFE_windowRefreshFunc)(SGFE_window* win);
-/* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*SGFE_windowVideoModeFunc)(SGFE_window* win, SGFE_videoMode mode);
-/* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*SGFE_windowFocusFunc)(SGFE_window* win, SGFE_bool is_focused);
-
-/*! SGFE_controllerConnected / SGFE_controllerDisconnected, the window that got the event, the controller in question, if the controller was connected (else it was disconnected) */
-typedef void (*SGFE_controllerFunc)(SGFE_window* win, SGFE_controller* controller, SGFE_bool is_connected);
-
-/*! SGFE_buttonPressed, the window that got the event, the button that was pressed, the scroll value, if it was a press (else it's a release) */
-typedef void (*SGFE_buttonFunc)(SGFE_window* win, SGFE_controller* controller, SGFE_buttonType button, SGFE_bool down);
-/*! SGFE_axisMove, the window that got the event, the controller in question, the axis values and the axis count */
-typedef void (*SGFE_axisFunc)(SGFE_window* win, SGFE_controller* controller, const SGFE_axis* axis);
-/* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*SGFE_pointerFunc)(SGFE_window* win, SGFE_controller* controller, const SGFE_pointer* pointer);
-/* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*SGFE_motionFunc)(SGFE_window* win, SGFE_controller* controller, const SGFE_motion* motion);
-
-
-typedef struct SGFE_callbacks {
-	SGFE_deviceSleepFunc sleep;
-
-	SGFE_quitFunc quit;
-	SGFE_windowRefreshFunc refresh;
-	SGFE_windowVideoModeFunc video_mode;
-	SGFE_windowFocusFunc focus;
-
-	SGFE_controllerFunc controller;
-
-	SGFE_buttonFunc button;
-	SGFE_axisFunc axis;
-	SGFE_pointerFunc pointer;
-	SGFE_motionFunc motion;
-} SGFE_callbacks;
 
 
 #if defined(SGFE_IMPLEMENTATION) || !defined(SGFE_NO_WINDOW_SRC)
@@ -928,9 +888,7 @@ struct SGFE_window {
 	SGFE_controller controllers[SGFE_MAX_CONTROLLERS];
 
 	/* TODO */
-	SGFE_windowFlags flags;
-	/* TODO */
-	SGFE_callbacks callbacks;
+	SGFE_windowFlag flags;
 	/* TODO */
 	void* user_ptr;
 
@@ -938,6 +896,23 @@ struct SGFE_window {
 	SGFE_bool is_allocated;
 	/* TODO */
 	SGFE_bool should_quit;
+
+	struct {
+		void (*sleep)(void);
+		
+		void (*quit)(void);
+		void (*refresh)(void);
+		void (*video_mode)(void);
+		void (*focus)(void);
+		
+		void (*controller)(void);
+		
+		void (*button)(void);
+		void (*axis)(void);
+		void (*pointer)(void);
+		void (*motion)(void);
+		void (*debug)(void);
+	} callbacks;
 }; /*!< window structure for managing the window */
 
 #endif /* defined(SGFE_IMPLEMENTATION) || !defined(SGFE_NO_WINDOW_SRC)) */
@@ -960,17 +935,17 @@ SGFE_DEF SGFE_bool SGFE_windowIsScreenEnabled(SGFE_window* win, SGFE_screen scre
 
 
 /* TODO */
-SGFE_DEF SGFE_window* SGFE_windowMake(SGFE_videoMode mode, SGFE_windowFlags flags);
+SGFE_DEF SGFE_window* SGFE_windowMake(SGFE_videoMode mode, SGFE_windowFlag flags);
 SGFE_DEF SGFE_window* SGFE_windowMakePtr(
 	SGFE_videoMode mode, /* TODO(EimaMei): document */
-	SGFE_windowFlags flags, /* extra arguments (NULL / (u32)0 means no flags used) */
+	SGFE_windowFlag flags, /* extra arguments (NULL / (u32)0 means no flags used) */
 	SGFE_window* win /* ptr to the window struct you want to use */
 ); /*!< function to create a window (without allocating a window struct) */
 
 /* TODO */
-SGFE_DEF SGFE_window* SGFE_windowMakeContextless(SGFE_windowFlags flags);
+SGFE_DEF SGFE_window* SGFE_windowMakeContextless(SGFE_windowFlag flags);
 /* TODO */
-SGFE_DEF SGFE_window* SGFE_windowMakePtrContextless(SGFE_windowFlags flags, SGFE_window* win);
+SGFE_DEF SGFE_window* SGFE_windowMakePtrContextless(SGFE_windowFlag flags, SGFE_window* win);
 
 
 /*! window managment functions */
@@ -980,9 +955,9 @@ SGFE_DEF void SGFE_windowFreeContext(SGFE_window* win);
 
 
 /* TODO */
-SGFE_DEF SGFE_windowFlags SGFE_windowGetFlags(const SGFE_window* win);
+SGFE_DEF SGFE_windowFlag SGFE_windowGetFlags(const SGFE_window* win);
 /* TODO */
-SGFE_DEF void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlags flags);
+SGFE_DEF void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlag flags);
 
 
 /* TODO */
@@ -1111,69 +1086,6 @@ SGFE_DEF SGFE_bool SGFE_controllerEnablePointer(SGFE_controller* controller,
 /* TODO(EimaMei): NEW FUNCTION */
 SGFE_DEF SGFE_bool SGFE_controllerEnableMotion(SGFE_controller* controller,
 	SGFE_motionType motion, SGFE_bool enable);
-
-
-
-/** * @defgroup error handling
-* @{ */
-typedef SGFE_ENUM(u8, SGFE_debugType) {
-	SGFE_debugTypeError,
-	SGFE_debugTypeWarning,
-	SGFE_debugTypeInfo
-};
-
-typedef SGFE_ENUM(u8, SGFE_error) {
-	SGFE_errorNone = 0,
-	SGFE_errorOutOfMemory,
-	SGFE_errorSystem,
-	SGFE_errorOpenGLContext,
-	SGFE_errorEventQueue,
-	SGFE_infoWindow, /* TODO(EimaMei): move these. */
-	SGFE_infoBuffer,
-	SGFE_infoGlobal,
-	SGFE_infoOpenGL,
-	GFW_warningOpenGL,
-};
-
-typedef struct SGFE_debugContext { SGFE_window* win; u32 srcError; } SGFE_debugContext;
-
-#if defined(__cplusplus) && !defined(__APPLE__)
-#define SGFE_DEBUG_CTX(win, err) {win, err}
-#else
-#define SGFE_DEBUG_CTX(win, err) (SGFE_debugContext){win, err}
-#endif
-
-typedef void (* SGFE_debugFunc)(SGFE_debugType type, SGFE_error err, SGFE_debugContext ctx, const char* msg);
-SGFE_DEF void SGFE_sendDebugInfo(SGFE_debugType type, SGFE_error err, SGFE_debugContext ctx, const char* msg);
-/** @} */
-
-
-/*! TODO(EimaMei): new function. */
-SGFE_DEF SGFE_deviceSleepFunc SGFE_setDeviceSleepCallback(SGFE_window* win, SGFE_deviceSleepFunc func);
-
-/*! set callback for a window quit event. Returns previous callback function (if it was set)  */
-SGFE_DEF SGFE_quitFunc SGFE_setWindowQuitCallback(SGFE_window* win, SGFE_quitFunc func);
-/*! TODO(EimaMei): new function. */
-SGFE_DEF SGFE_windowRefreshFunc SGFE_setWindowRefreshCallback(SGFE_window* win, SGFE_windowRefreshFunc func);
-/*! TODO(EimaMei): new function. */
-SGFE_DEF SGFE_windowVideoModeFunc SGFE_setWindowVideoModeCallback(SGFE_window* win, SGFE_windowVideoModeFunc func);
-/*! TODO(EimaMei): new function. */
-SGFE_DEF SGFE_windowFocusFunc SGFE_setWindowFocusCallback(SGFE_window* win, SGFE_windowFocusFunc func);
-
-/*! set callback for when a controller is connected or disconnected. Returns the previous callback function (if it was set) */
-SGFE_DEF SGFE_controllerFunc SGFE_setControllerCallback(SGFE_window* win, SGFE_controllerFunc func);
-
-/*! set callback for a controller button (press / release) event. Returns previous callback function (if it was set)  */
-SGFE_DEF SGFE_buttonFunc SGFE_setButtonCallback(SGFE_window* win, SGFE_buttonFunc func);
-/*! set callback for a controller axis move event. Returns previous callback function (if it was set)  */
-SGFE_DEF SGFE_axisFunc SGFE_setAxisCallback(SGFE_window* win, SGFE_axisFunc func);
-/* TODO(EimaMei): NEW FUNCTION. */
-SGFE_DEF SGFE_pointerFunc SGFE_setPointerCallback(SGFE_window* win, SGFE_pointerFunc func);
-/* TODO(EimaMei): NEW FUNCTION. */
-SGFE_DEF SGFE_motionFunc SGFE_setMotionCallback(SGFE_window* win, SGFE_motionFunc func);
-
-/* TODO(EimaMei): new function. */
-SGFE_DEF SGFE_debugFunc SGFE_setDebugCallback(SGFE_debugFunc func);
 
 
 
@@ -1313,6 +1225,10 @@ typedef SGFE_ENUM(isize, SGFE_glProfile) {
  *
  * When a specific hint value is not supported but its minimum value is, the hint
  * value is changed to its minimum after the context has been created.
+ *
+ * To specify anti-aliasing you can pick either SSAA (by modifying the 'downscale'
+ * hints) or MSAA (by modifying the 'samples' hint). It's important to note that
+ * you musn't attempt using both methods as that is unintended behaviour.
  */
 typedef struct SGFE_contextHintsGL  {
 	/* Type of OpenGL API context (SGFE_glProfile_Core by default). */
@@ -1345,8 +1261,16 @@ typedef struct SGFE_contextHintsGL  {
 	/* Minimum number of bits for the alpha channel of the accumulation buffer (0 by default). */
 	isize accum_alpha;
 
-	/* Number of samples used for multiplesample anti-alisaing (0 by default). */
+	/* Number of samples used for MSAA (0 by default). 
+	 * NOTE: Refer to the last paragraph of the struct's description. */
 	isize samples;
+	/* Number of times to downscale the framebuffer's width for SSAA (0 by default). 
+	 * NOTE: Refer to the last paragraph of the struct's description. */
+	isize downscale_width;
+	/* Number of times to downscale the framebuffer's height for SSAA (0 by default). 
+	 * NOTE: Refer to the last paragraph of the struct's description. */
+	isize downscale_height;
+
 	/* Number of auxiliary buffers. (0 by default). Deprecated OpenGL feature, do not use for new code. */
 	isize aux_buffers;
 
@@ -1476,6 +1400,214 @@ SGFE_DEF SGFE_bool SGFE_platformRotateScreenGL(GLuint shader_program, const char
 
 
 
+/* TODO(EimaMei): NEW FUNCTION. */
+typedef void (*SGFE_deviceSleepProc)(SGFE_window* win, SGFE_bool is_sleeping);
+
+/*! SGFE_eventQuit, the window that was closed */
+typedef void (*SGFE_quitProc)(SGFE_window* win);
+/* TODO(EimaMei): NEW FUNCTION. */
+typedef void (*SGFE_refreshProc)(SGFE_window* win);
+/* TODO(EimaMei): NEW FUNCTION. */
+typedef void (*SGFE_focusProc)(SGFE_window* win, SGFE_bool is_focused);
+
+/*! SGFE_controllerConnected / SGFE_controllerDisconnected, the window that got the event, the controller in question, if the controller was connected (else it was disconnected) */
+typedef void (*SGFE_controllerProc)(SGFE_window* win, SGFE_controller* controller, SGFE_bool is_connected);
+
+/*! SGFE_buttonPressed, the window that got the event, the button that was pressed, the scroll value, if it was a press (else it's a release) */
+typedef void (*SGFE_buttonProc)(SGFE_window* win, SGFE_controller* controller, SGFE_buttonType button, SGFE_bool down);
+/*! SGFE_axisMove, the window that got the event, the controller in question, the axis values and the axis count */
+typedef void (*SGFE_axisProc)(SGFE_window* win, SGFE_controller* controller, const SGFE_axis* axis);
+/* TODO(EimaMei): NEW FUNCTION. */
+typedef void (*SGFE_pointerProc)(SGFE_window* win, SGFE_controller* controller, const SGFE_pointer* pointer);
+/* TODO(EimaMei): NEW FUNCTION. */
+typedef void (*SGFE_motionProc)(SGFE_window* win, SGFE_controller* controller, const SGFE_motion* motion);
+
+
+/*! TODO(EimaMei): new function. */
+SGFE_DEF SGFE_deviceSleepProc SGFE_windowSetDeviceSleepCallback(SGFE_window* win, SGFE_deviceSleepProc func);
+
+/*! set callback for a window quit event. Returns previous callback function (if it was set)  */
+SGFE_DEF SGFE_quitProc SGFE_windowSetQuitCallback(SGFE_window* win, SGFE_quitProc func);
+/*! TODO(EimaMei): new function. */
+SGFE_DEF SGFE_refreshProc SGFE_windowSetRefreshCallback(SGFE_window* win, SGFE_refreshProc func);
+/*! TODO(EimaMei): new function. */
+SGFE_DEF SGFE_focusProc SGFE_windowSetFocusCallback(SGFE_window* win, SGFE_focusProc func);
+
+/*! set callback for when a controller is connected or disconnected. Returns the previous callback function (if it was set) */
+SGFE_DEF SGFE_controllerProc SGFE_windowSetControllerCallback(SGFE_window* win, SGFE_controllerProc func);
+
+/*! set callback for a controller button (press / release) event. Returns previous callback function (if it was set)  */
+SGFE_DEF SGFE_buttonProc SGFE_windowSetButtonCallback(SGFE_window* win, SGFE_buttonProc func);
+/*! set callback for a controller axis move event. Returns previous callback function (if it was set)  */
+SGFE_DEF SGFE_axisProc SGFE_windowSetAxisCallback(SGFE_window* win, SGFE_axisProc func);
+/* TODO(EimaMei): NEW FUNCTION. */
+SGFE_DEF SGFE_pointerProc SGFE_windowSetPointerCallback(SGFE_window* win, SGFE_pointerProc func);
+/* TODO(EimaMei): NEW FUNCTION. */
+SGFE_DEF SGFE_motionProc SGFE_windowSetMotionCallback(SGFE_window* win, SGFE_motionProc func);
+
+
+
+typedef SGFE_ENUM(isize, SGFE_debugSource) {
+	/* TODO */
+	SGFE_debugSourceAPI,
+	/* TODO */
+	SGFE_debugSourcePlatformAPI,
+	/* TODO */
+	SGFE_debugSourceSystem,
+	/* TODO */
+	SGFE_debugSourceGL,
+	/* TODO */
+	SGFE_debugSourceApp,
+
+	SGFE_debugSourceCount
+};
+
+typedef SGFE_ENUM(isize, SGFE_debugType) {
+	SGFE_debugTypeError,
+	SGFE_debugTypeWarning,
+	SGFE_debugTypeInfo,
+
+	SGFE_debugTypeCount
+};
+
+typedef const struct SGFE_debugContext {
+	/* From which source the debug message came from. */
+	SGFE_debugSource source;
+	/* Type/severity of the debug message. */
+	SGFE_debugType type;
+	/* Implementation defined debug message code. The code is defined by the aforementioned source
+	 * and type. */
+	isize code;
+
+	/* Application-defined message length. 0 on every source except on 'SGFE_debugSourceApp'.
+	 * if the user has specified one. */
+	isize msg_len;
+	/* Application-defined message length. Empty string except on 'SGFE_debugSourceApp'.
+	 * if the user has specified one. */
+	const u8* msg;
+
+	/* The file's line count where the debug message was called. */
+	isize line;
+	/* The file where the debug message was called. */
+	const char* filename;
+	/* The function where the debug message was called. */
+	const char* function;
+
+	/* Implementation-defined 'context' parameter. This holds a pointer to an object
+	 * that relates to the debug message. For 'SGFE_debugSource[Platform]API' this
+	 * can be a window, an OpenGL context or buffer context — which one specifically
+	 * depends on the 'code' value. */
+	void* ctx;
+	/* User-supplemented parameter data. This is set by 'SGFE_setDebugCallback'. */
+	void* user_data;
+} SGFE_debugContext;
+
+
+/* TODO */
+typedef void (*SGFE_debugProc)(SGFE_debugContext ctx);
+/* TODO(EimaMei): new function. */
+SGFE_DEF SGFE_debugProc SGFE_setDebugCallback(SGFE_debugProc func, void* user_param);
+
+
+/* TODO | sends SGFE_debugSourceApp */
+#define SGFE_debugSend(ctx, type, code) SGFE_debugSendMsg(ctx, type, NULL)
+/* TODO | sends SGFE_debugSourceApp */
+#define SGFE_debugSendMsg(ctx, type, code, msg) (SGFE_debugSendMsg)(ctx, type, msg, __FILE__, __LINE__, __FUNC__)
+
+/* TODO */
+SGFE_DEF const char* SGFE_debugSourceName(SGFE_debugSource source);
+/* TODO */
+SGFE_DEF const char* SGFE_debugTypeName(SGFE_debugType type);
+
+/* TODO */
+SGFE_DEF const char* SGFE_debugCodeGetName(SGFE_debugSource source, SGFE_debugType type, isize code);
+/* TODO */
+SGFE_DEF const char* SGFE_debugCodeGetDesc(SGFE_debugSource source, SGFE_debugType type, isize code);
+
+
+typedef SGFE_ENUM(isize, SGFE_error) {
+	SGFE_errorOutOfMemory,
+
+	SGFE_errorEventQueue,
+	SGFE_errorMultipleAPIs,
+
+	SGFE_errorCreateContextBuffer,
+	SGFE_errorCreateContextGL,
+
+	SGFE_errorGLContextProfile,
+	SGFE_errorGLContextVersion,
+	SGFE_errorGLContextStencil,
+	SGFE_errorGLContextDepth,
+	SGFE_errorGLContextColor,
+	SGFE_errorGLContextSamples,
+	SGFE_errorGLContextDownscale,
+
+	SGFE_errorCount,
+};
+
+typedef SGFE_ENUM(isize, SGFE_warning) {
+	SGFE_warningGLContextStencil,
+	SGFE_warningGLContextDepth,
+	SGFE_warningGLContextColor,
+
+	SGFE_warningCount,
+};
+
+typedef SGFE_ENUM(isize, SGFE_info) {
+	SGFE_infoCreateContextBuffer,
+	SGFE_infoCreateContextGL,
+
+	SGFE_infoFreeContextBuffer,
+	SGFE_infoFreeContextGL,
+
+	SGFE_infoCount,
+};
+
+/* TODO */
+SGFE_DEF const char* SGFE_debugCodeAPIGetName(SGFE_debugType type, isize code);
+/* TODO */
+SGFE_DEF const char* SGFE_debugCodeAPIGetDesc(SGFE_debugType type, isize code);
+
+
+typedef SGFE_ENUM(isize, SGFE_errorPlatform) {
+	#ifdef SGFE_3DS
+	SGFE_errorPlatformInitKYGX,
+	SGFE_errorPlatformCreateGlassCtx,
+	#endif
+	SGFE_errorPlatformCount
+};
+
+typedef SGFE_ENUM(isize, SGFE_warningPlatform) {
+	SGFE_warningPlatformCount
+};
+
+typedef SGFE_ENUM(isize, SGFE_infoPlatform) {
+	SGFE_infoPlatformCount
+};
+
+/* TODO */
+SGFE_DEF const char* SGFE_debugSourcePlatformAPIGetName(SGFE_debugType type, isize code);
+/* TODO */
+SGFE_DEF const char* SGFE_debugSourcePlatformAPIGetDesc(SGFE_debugType type, isize code);
+
+
+/* TODO */
+SGFE_DEF const char* SGFE_debugCodeSystemGetName(SGFE_debugType type, isize code);
+/* TODO */
+SGFE_DEF const char* SGFE_debugSourceSystemGetDesc(SGFE_debugType type, isize code);
+
+
+/* TODO */
+SGFE_DEF const char* SGFE_debugCodeGLGetName(isize code);
+/* TODO */
+SGFE_DEF const char* SGFE_debugCodeGLGetDesc(isize code);
+
+
+
+#if 1
+void (SGFE_debugSendMsg)(void* ctx_ptr, SGFE_debugType type, isize code,
+	const char* msg, const char* filename, isize line, const char* file);
+#endif
 
 #ifdef SGFE_IMPLEMENTATION
 
@@ -1497,24 +1629,32 @@ const isize SGFE_FORMAT_BYTES_PER_PIXEL_LUT[SGFE_pixelFormatCount];
 const char* SGFE_VIDEO_MODE_NAME_LUT[SGFE_videoModeCount];
 const char* SGFE_PIXEL_FORMAT_NAME_LUT[SGFE_pixelFormatCount];
 
+
+
 /* NOTE(EimaMei): Do not use this! Only used for assertions. */
 SGFE_window* SGFE__ROOT_WIN;
 
 
+
 SGFE_DEF SGFE_bool SGFE_windowMake_platform(SGFE_window* win);
+
 SGFE_DEF void SGFE_windowClose_platform(SGFE_window* win);
+
 #if SGFE_HAS_MULTIPLE_SCREENS != 0
 SGFE_DEF SGFE_screen SGFE_windowGetCurrentScreen_platform(SGFE_window* win);
 SGFE_DEF SGFE_bool SGFE_windowIsScreenEnabled_platform(SGFE_window* win, SGFE_screen screen);
 #endif
 
+
+
 SGFE_DEF const char* SGFE_controllerGetNameButton_platform(const SGFE_controller* controller,
 	SGFE_buttonType button);
 
-SGFE_DEF SGFE_bool SGFE_controllerEnablePointer_platform(SGFE_controller* controller, SGFE_pointerType pointer,
-		SGFE_bool enable);
-SGFE_DEF SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller, SGFE_pointerType pointer,
-		SGFE_bool enable);
+SGFE_DEF SGFE_bool SGFE_controllerEnablePointer_platform(SGFE_controller* controller,
+	SGFE_pointerType pointer, SGFE_bool enable);
+	
+SGFE_DEF SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
+	SGFE_pointerType pointer, SGFE_bool enable);
 SGFE_DEF SGFE_bool SGFE_bufferMakeWithDefaultSettings_platform(SGFE_contextBuffer* out_buffer);
 
 
@@ -1527,6 +1667,11 @@ SGFE_DEF void SGFE__processCallbackAndEventQueue_Axis(SGFE_window* win, SGFE_con
 SGFE_DEF void SGFE__processCallbackAndEventQueue_Pointer(SGFE_window* win, SGFE_controller* controller, const SGFE_pointer* p);
 void SGFE__processCallbackAndEventQueue_Motion(SGFE_window* win, SGFE_controller* controller, const SGFE_motion* m);
 
+void (SGFE_debugSendAPI)(void* ctx_ptr, SGFE_debugType type, isize code, const char* filename, isize line, const char* function);
+void (SGFE_debugSendPlatformAPI)(void* ctx_ptr, SGFE_debugType type, isize code, const char* filename, isize line, const char* function);
+void (SGFE_debugSendSystem)(void* ctx_ptr, isize code, const char* filename, isize line, const char* function);
+SGFE_bool (SGFE_debugSendGL)(void* ctx_ptr, const char* filename, isize line, const char* function);
+SGFE_debugType SGFE_debugSystemGenerateType_platform(void* ctx_ptr, isize code);
 
 /* var - VARIABLE | mask - UINT | set - SGFE_bool
  * Sets/unsets the mask for the variable. */
@@ -1535,112 +1680,58 @@ void SGFE__processCallbackAndEventQueue_Motion(SGFE_window* win, SGFE_controller
 	else     (var) &= ~(mask); \
 } while (0)
 
-u8* SGFE__fetchSwapBuffer(SGFE_contextBuffer* b) {
-	#ifndef SGFE_BUFFER_NO_CONVERSION
-	return SGFE_bufferConvertFramebufferToNative(b);
-	#else
-	return SGFE_bufferGetFramebuffer(b);
-	#endif
-}
+#define SGFE_CALLBACK_TEMPLATE(proc, member_name, args) \
+	if (win->callbacks.member_name) { \
+		((proc)win->callbacks.member_name)args; \
+	} do {} while(0)
 
-
-#define SGFE_CALLBACK_DEFINE(return_type, name, member_name) \
-	return_type name(SGFE_window* win, return_type func) { \
-		SGFE_ASSERT(win != NULL); \
-		\
-		return_type previous_func = win->callbacks.member_name; \
-		win->callbacks.member_name = func; \
-		return previous_func; \
-	}
-
-SGFE_CALLBACK_DEFINE(SGFE_deviceSleepFunc, SGFE_setDeviceSleepCallback, sleep)
-
-SGFE_CALLBACK_DEFINE(SGFE_quitFunc, SGFE_setWindowQuitCallback, quit)
-SGFE_CALLBACK_DEFINE(SGFE_windowRefreshFunc, SGFE_setWindowRefreshCallback, refresh)
-SGFE_CALLBACK_DEFINE(SGFE_windowVideoModeFunc, SGFE_setWindowVideoModeCallback, video_mode)
-SGFE_CALLBACK_DEFINE(SGFE_windowFocusFunc, SGFE_setWindowFocusCallback, focus)
-
-SGFE_CALLBACK_DEFINE(SGFE_controllerFunc, SGFE_setControllerCallback, controller)
-
-SGFE_CALLBACK_DEFINE(SGFE_buttonFunc, SGFE_setButtonCallback, button)
-SGFE_CALLBACK_DEFINE(SGFE_axisFunc, SGFE_setAxisCallback, axis)
-SGFE_CALLBACK_DEFINE(SGFE_pointerFunc, SGFE_setPointerCallback, pointer)
-SGFE_CALLBACK_DEFINE(SGFE_motionFunc, SGFE_setMotionCallback, motion)
-
-SGFE_debugFunc SGFE_debugFuncSrc;
-SGFE_debugFunc SGFE_setDebugCallback(SGFE_debugFunc func) {
-	SGFE_debugFunc previous = SGFE_debugFuncSrc;
-	SGFE_debugFuncSrc = func;
-	return previous;
-}
+SGFE_debugProc SGFE_debugProcSrc;
+void* SGFE__debugProcSrcUserParam;
 
 #define SGFE_windowDeviceSleepCallback(win, is_sleeping) \
-	if (win->callbacks.sleep) { \
-		win->callbacks.sleep(win, is_sleeping); \
-	} do {} while(0)
+	SGFE_CALLBACK_TEMPLATE(SGFE_deviceSleepProc, sleep, (win, is_sleeping))
 
 #define SGFE_windowQuitCallback(win) \
-	if (win->callbacks.quit) { \
-		win->callbacks.quit(win); \
-	} do {} while(0)
+	SGFE_CALLBACK_TEMPLATE(SGFE_quitProc, quit, (win))
 
 #define SGFE_windowRefreshCallback(win) \
-	if (win->callbacks.refresh) { \
-		win->callbacks.refresh(win); \
-	} do {} while(0)
-
-#define SGFE_windowVideoModeCallback(win, video_mode) \
-	if (win->callbacks.video_mode) { \
-		win->callbacks.video_mode(win, video_mode); \
-	} do {} while(0)
+	SGFE_CALLBACK_TEMPLATE(SGFE_refreshProc, refresh, (win))
 
 #define SGFE_windowFocusCallback(win, is_focused) \
-	if (win->callbacks.focus) { \
-		win->callbacks.focus(win, is_focused); \
-	} do {} while(0)
+	SGFE_CALLBACK_TEMPLATE(SGFE_focusProc, focus, (win, is_focused))
 
 #define SGFE_windowControllerCallback(win, controller_s, is_connected) \
-	if (win->callbacks.controller) { \
-		win->callbacks.controller(win, controller_s, is_connected); \
-	} do {} while(0)
+	SGFE_CALLBACK_TEMPLATE(SGFE_controllerProc, controller, (win, controller_s, is_connected))
 
 #define SGFE_windowButtonCallback(win, controller, button_s, pressed) \
-	do { \
-	if (win->callbacks.button) { \
-		win->callbacks.button(win, controller, button_s, pressed); \
-	} \
-	} while(0)
+	SGFE_CALLBACK_TEMPLATE(SGFE_buttonProc, button, (win, controller, button_s, pressed))
 
 #define SGFE_windowAxisCallback(win, controller, type) \
-	if (win->callbacks.axis) { \
-		win->callbacks.axis(win, controller, type); \
-	} do {} while(0)
+	SGFE_CALLBACK_TEMPLATE(SGFE_axisProc, axis, (win, controller, type))
 
 #define SGFE_windowPointerCallback(win, controller, type) \
-	if (win->callbacks.pointer) { \
-		win->callbacks.pointer(win, controller, type); \
-	} do {} while(0)
+	SGFE_CALLBACK_TEMPLATE(SGFE_pointerProc, pointer, (win, controller, type))
 
 #define SGFE_windowMotionCallback(win, controller, type) \
-	if (win->callbacks.motion) { \
-		win->callbacks.motion(win, controller, type); \
+	SGFE_CALLBACK_TEMPLATE(SGFE_motionProc, motion, (win, controller, type))
+
+#define SGFE_debugCallback(ctx) \
+	if (SGFE_debugProcSrc) { \
+		ctx.user_data = SGFE__debugProcSrcUserParam; \
+		SGFE_debugProcSrc(ctx); \
 	} do {} while(0)
 
-void SGFE_sendDebugInfo(SGFE_debugType type, SGFE_error err, SGFE_debugContext ctx, const char* msg) {
-	if (SGFE_debugFuncSrc) {
-		SGFE_debugFuncSrc(type, err, ctx, msg);
-		return;
-	}
 
-	#ifdef SGFE_DEBUG
-	switch (type) {
-		case SGFE_debugTypeInfo: SGFE_PRINTF("SGFE INFO (%i %i): %s\n", type, err, msg); break;
-		case SGFE_debugTypeError: SGFE_PRINTF("SGFE ERROR (%i %i): %s\n", type, err, msg); break;
-		case SGFE_debugTypeWarning: SGFE_PRINTF("SGFE WARNING (%i %i): %s\n", type, err, msg); break;
-		default: break;
-	}
-	#endif
-}
+
+/* TODO */
+#define SGFE_debugSendAPI(ctx, type, code) (SGFE_debugSendAPI)(ctx, type, code, __FILE__, __LINE__, __func__)
+/* TODO */
+#define SGFE_debugSendPlatformAPI(ctx, type, code) (SGFE_debugSendPlatformAPI)(ctx, type, code, __FILE__, __LINE__, __func__)
+/* TODO */
+#define SGFE_debugSendSystem(ctx, code) (SGFE_debugSendSystem)(ctx, code, __FILE__, __LINE__, __func__)
+/* TODO | can return true or false */
+#define SGFE_debugSendGL(ctx) (SGFE_debugSendGL)(ctx, __FILE__, __LINE__, __func__)
+
 
 
 void SGFE__processCallbackAndEventQueue_ButtonDown(SGFE_window* win, SGFE_controller* controller) {
@@ -1770,10 +1861,10 @@ SGFE_bool SGFE_windowIsScreenEnabled(SGFE_window* win, SGFE_screen screen) {
 
 
 
-SGFE_window* SGFE_windowMake(SGFE_videoMode mode, SGFE_windowFlags flags) {
+SGFE_window* SGFE_windowMake(SGFE_videoMode mode, SGFE_windowFlag flags) {
 	SGFE_window* win = (SGFE_window*)SGFE_ALLOC(sizeof(SGFE_window));
 	if (win == NULL) {
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOutOfMemory, SGFE_DEBUG_CTX(NULL, 0), "Failed to allocate a window.");
+		SGFE_debugSendAPI(win, SGFE_debugTypeError, SGFE_errorOutOfMemory);
 		return NULL;
 	}
 
@@ -1784,7 +1875,7 @@ SGFE_window* SGFE_windowMake(SGFE_videoMode mode, SGFE_windowFlags flags) {
 	return res;
 }
 
-SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlags flags,
+SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlag flags,
 		SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 
@@ -1809,9 +1900,9 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlags flags,
 	SGFE__ROOT_WIN = win;
 	SGFE_windowSetFlags(win, win->flags);
 
-	switch (win->flags & (SGFE_windowBuffer | SGFE_windowOpenGL)) {
+	switch (win->flags & (SGFE_windowFlagBuffer | SGFE_windowFlagOpenGL)) {
 		case 0: break;
-		case SGFE_windowBuffer: {
+		case SGFE_windowFlagBuffer: {
 			#ifndef SGFE_BUFFER_NO_CONVERSION
 			SGFE_pixelFormat format = SGFE_pixelFormatRGBA8;
 			SGFE_bool is_native = SGFE_FALSE;
@@ -1824,12 +1915,13 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlags flags,
 		} break;
 
 		#ifdef SGFE_OPENGL
-		case SGFE_windowOpenGL: {
+		case SGFE_windowFlagOpenGL: {
 			res = SGFE_windowCreateContextGL(win, mode);
 		} break;
 		#endif
 
-		default: SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorSystem, SGFE_DEBUG_CTX(win, 0), "Multiple graphical APIs were specified. Creating nothing.");
+		default:
+			SGFE_debugSendAPI(win, SGFE_debugTypeError, SGFE_errorMultipleAPIs);
 	}
 
 	if (!res) {
@@ -1840,12 +1932,12 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlags flags,
 	return win;
 }
 
-SGFE_window* SGFE_windowMakeContextless(SGFE_windowFlags flags) {
-	SGFE_ASSERT((flags & (SGFE_windowOpenGL | SGFE_windowBuffer)) == 0);
+SGFE_window* SGFE_windowMakeContextless(SGFE_windowFlag flags) {
+	SGFE_ASSERT((flags & (SGFE_windowFlagOpenGL | SGFE_windowFlagBuffer)) == 0);
 	return SGFE_windowMake(0, flags);
 }
 
-SGFE_window* SGFE_windowMakePtrContextless(SGFE_windowFlags flags, SGFE_window* win) {
+SGFE_window* SGFE_windowMakePtrContextless(SGFE_windowFlag flags, SGFE_window* win) {
 	return SGFE_windowMakePtr(0, flags, win);
 }
 
@@ -1865,14 +1957,14 @@ void SGFE_windowFreeContext(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 
 	for (SGFE_screen screen = SGFE_screenPrimary; screen < SGFE_screenCount; screen += 1) {
-		switch (win->flags & (SGFE_windowBuffer | SGFE_windowOpenGL)) {
+		switch (win->flags & (SGFE_windowFlagBuffer | SGFE_windowFlagOpenGL)) {
 			case 0: break;
-			case SGFE_windowBuffer: {
+			case SGFE_windowFlagBuffer: {
 				SGFE_bufferFreeContext(&win->ctx[screen].buffer);
 			} break;
 
 			#ifdef SGFE_OPENGL
-			case SGFE_windowOpenGL: {
+			case SGFE_windowFlagOpenGL: {
 				SGFE_glFreeContext(&win->ctx[screen].gl);
 			} break;
 			#endif
@@ -1881,11 +1973,11 @@ void SGFE_windowFreeContext(SGFE_window* win) {
 		}
 	}
 
-	win->flags &= ~(SGFE_windowFlags)(SGFE_windowBuffer | SGFE_windowOpenGL);
+	win->flags &= ~(SGFE_windowFlag)(SGFE_windowFlagBuffer | SGFE_windowFlagOpenGL);
 }
 
 
-SGFE_windowFlags SGFE_windowGetFlags(const SGFE_window* win) {
+SGFE_windowFlag SGFE_windowGetFlags(const SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 	return win->flags;
 }
@@ -1978,7 +2070,7 @@ SGFE_bool SGFE_windowEventPush(SGFE_window* win, const SGFE_event* event) {
 	SGFE_ASSERT(win->event_len >= 0);
 
 	if (win->event_len >= SGFE_COUNTOF(win->events)) {
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorEventQueue, SGFE_DEBUG_CTX(NULL, 0), "Event queue limit 'SGFE_MAX_EVENTS' has been reached.");
+		SGFE_debugSendAPI(win, SGFE_debugTypeError, SGFE_errorEventQueue);
 		SGFE_windowEventQueueFlush(win);
 		return SGFE_FALSE;
 	}
@@ -2108,7 +2200,7 @@ void SGFE_windowAssert(SGFE_window* win, SGFE_bool is_asserted, const char* cond
 	if (win == NULL) { win = SGFE__ROOT_WIN; }
 
 	if (win == NULL) {
-		win = SGFE_windowMakeContextless(SGFE_windowFlagsNone);
+		win = SGFE_windowMakeContextless(SGFE_windowFlagNone);
 		if (win == NULL) {
 			/* NOTE(EimaMei): In case that 'stderr' actually leads to somewhere. */
 			SGFE_PRINTF("%s:%zi: %s: %s\n", file, line, condition_str, message ? message : "");
@@ -2171,10 +2263,16 @@ SGFE_bool SGFE_windowCreateContextBuffer(SGFE_window* win, SGFE_videoMode mode,
 		b->is_native = is_native;
 
 		SGFE_bool res = SGFE_bufferAllocFramebuffers(b);
-		if (res == SGFE_FALSE) { return SGFE_FALSE; }
+		if (res == SGFE_FALSE) {
+			SGFE_debugSendAPI(b, SGFE_debugTypeError, SGFE_errorCreateContextBuffer);
+			return SGFE_FALSE;
+		}
 
 		res = SGFE_bufferCreateContext(b);
-		if (res == SGFE_FALSE) { return SGFE_FALSE; }
+		if (res == SGFE_FALSE) {
+			SGFE_debugSendAPI(b, SGFE_debugTypeError, SGFE_errorCreateContextBuffer);
+			return SGFE_FALSE;
+		}
 
 		SGFE_windowSetContextExBuffer(win, b, screen);
 	}
@@ -2187,7 +2285,7 @@ SGFE_bool SGFE_windowCreateContextBuffer(SGFE_window* win, SGFE_videoMode mode,
 	}
 	#endif
 
-	win->flags |= SGFE_windowBuffer;
+	win->flags |= SGFE_windowFlagBuffer;
 	return SGFE_TRUE;
 }
 
@@ -2610,6 +2708,12 @@ void SGFE_glHintsAssert(const SGFE_contextHintsGL* gl) {
 	SGFE_ASSERT_NOT_NEG(gl->accum_alpha);
 
 	SGFE_ASSERT_NOT_NEG(gl->samples);
+	SGFE_ASSERT_NOT_NEG(gl->downscale_width);
+	SGFE_ASSERT_NOT_NEG(gl->downscale_height);
+	SGFE_ASSERT_MSG(gl->samples == 0 || (gl->downscale_width == 0 && gl->downscale_height == 0), "You can only select to use _one_ of the anti-aliasing methods.");
+	SGFE_ASSERT_MSG(gl->downscale_width == 0 || gl->samples == 0, "You can only select to use _one_ of the anti-aliasing methods.");
+	SGFE_ASSERT_MSG(gl->downscale_height == 0 || gl->samples == 0, "You can only select to use _one_ of the anti-aliasing methods.");
+
 	SGFE_ASSERT_NOT_NEG(gl->aux_buffers);
 
 	SGFE_ASSERT_BOOL(gl->is_double_buffered);
@@ -2658,12 +2762,14 @@ SGFE_bool SGFE_windowCreateContextGL(SGFE_window* win, SGFE_videoMode mode) {
 		hints->screen = screen;
 
 		SGFE_bool res = SGFE_glCreateContext(gl, mode, hints);
-		if (res == SGFE_FALSE) { return SGFE_FALSE; }
+		if (res == SGFE_FALSE) {
+			SGFE_debugSendAPI(gl, SGFE_debugTypeError, SGFE_errorCreateContextBuffer);
+		}
 
 		SGFE_windowSetContextExGL(win, gl, screen);
 	}
 
-	win->flags |= SGFE_windowOpenGL;
+	win->flags |= SGFE_windowFlagOpenGL;
 	return SGFE_TRUE;
 }
 
@@ -2707,6 +2813,324 @@ const char* SGFE_videoModeStr(SGFE_videoMode mode) {
 	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
 	return SGFE_VIDEO_MODE_NAME_LUT[mode];
 }
+
+
+
+u8* SGFE__fetchSwapBuffer(SGFE_contextBuffer* b) {
+	#ifndef SGFE_BUFFER_NO_CONVERSION
+	return SGFE_bufferConvertFramebufferToNative(b);
+	#else
+	return SGFE_bufferGetFramebuffer(b);
+	#endif
+}
+
+
+#define SGFE_CALLBACK_DEFINE(return_type, name, member_name) \
+	return_type name(SGFE_window* win, return_type func) { \
+		SGFE_ASSERT_NOT_NULL(win); \
+		\
+		return_type previous_func = (return_type)win->callbacks.member_name; \
+		win->callbacks.member_name = (void (*)(void))func; \
+		return  (return_type)previous_func; \
+	}
+
+SGFE_CALLBACK_DEFINE(SGFE_deviceSleepProc, SGFE_windowSetDeviceSleepCallback, sleep)
+
+SGFE_CALLBACK_DEFINE(SGFE_quitProc, SGFE_windowSetQuitCallback, quit)
+SGFE_CALLBACK_DEFINE(SGFE_refreshProc, SGFE_windowSetRefreshCallback, refresh)
+SGFE_CALLBACK_DEFINE(SGFE_focusProc, SGFE_windowSetFocusCallback, focus)
+
+SGFE_CALLBACK_DEFINE(SGFE_controllerProc, SGFE_windowSetControllerCallback, controller)
+
+SGFE_CALLBACK_DEFINE(SGFE_buttonProc, SGFE_windowSetButtonCallback, button)
+SGFE_CALLBACK_DEFINE(SGFE_axisProc, SGFE_windowSetAxisCallback, axis)
+SGFE_CALLBACK_DEFINE(SGFE_pointerProc, SGFE_windowSetPointerCallback, pointer)
+SGFE_CALLBACK_DEFINE(SGFE_motionProc, SGFE_windowSetMotionCallback, motion)
+
+
+SGFE_debugProc SGFE_setDebugCallback(SGFE_debugProc func, void* user_param) {
+	SGFE_debugProc previous = SGFE_debugProcSrc;
+	SGFE_debugProcSrc = func;
+	SGFE__debugProcSrcUserParam = user_param;
+	return previous;
+}
+
+
+
+void (SGFE_debugSendMsg)(void* ctx_ptr, SGFE_debugType type, isize code, const char* msg,
+		const char* filename, isize line, const char* function) {
+	SGFE_ASSERT(type >= 0 && type < SGFE_debugTypeCount);
+
+	struct SGFE_debugContext ctx;
+	ctx.source = SGFE_debugSourceApp;
+	ctx.type = type;
+	ctx.code = code;
+
+	ctx.msg_len = msg ? SGFE_STRLEN(msg) : 0;
+	ctx.msg = (const u8*)msg;
+
+	ctx.filename = filename;
+	ctx.line = line;
+	ctx.function = function;
+
+	ctx.ctx = ctx_ptr;
+
+	SGFE_debugCallback(ctx);
+}
+
+
+const char* SGFE_debugSourceName(SGFE_debugSource source) {
+	SGFE_ASSERT(source >= 0 && source < SGFE_debugSourceCount);
+
+	static const char* NAME_LUT[SGFE_debugSourceCount] = {
+		"SGFE_debugSourceAPI",
+		"SGFE_debugSourcePlatformAPI",
+		"SGFE_debugSourceSystem",
+		"SGFE_debugSourceGL",
+		"SGFE_debugSourceApp",
+	};
+	return NAME_LUT[source];
+}
+
+const char* SGFE_debugTypeName(SGFE_debugType type) {
+	SGFE_ASSERT(type >= 0 && type < SGFE_debugTypeCount);
+
+	static const char* NAME_LUT[SGFE_debugSourceCount] = {
+		"SGFE_debugTypeError",
+		"SGFE_debugTypeWarning",
+		"SGFE_debugTypeInfo"
+	};
+	return NAME_LUT[type];
+}
+
+
+const char* SGFE_debugCodeGetName(SGFE_debugSource source, SGFE_debugType type, isize code) {
+	SGFE_ASSERT(source >= 0 && source < SGFE_debugSourceCount);
+	SGFE_ASSERT(type >= 0 && type < SGFE_debugTypeCount);
+
+	switch (source) {
+		case SGFE_debugSourceAPI: return SGFE_debugCodeAPIGetName(type, code);
+		case SGFE_debugSourcePlatformAPI: return SGFE_debugSourcePlatformAPIGetName(type, code);
+		case SGFE_debugSourceSystem: return SGFE_debugCodeSystemGetName(type, code);
+		case SGFE_debugSourceGL: return SGFE_debugCodeGLGetName(code);
+	}
+
+	return "";
+}
+
+const char* SGFE_debugCodeGetDesc(SGFE_debugSource source, SGFE_debugType type, isize code) {
+	SGFE_ASSERT(source >= 0 && source < SGFE_debugSourceCount);
+	SGFE_ASSERT(type >= 0 && type < SGFE_debugTypeCount);
+
+	switch (source) {
+		case SGFE_debugSourceAPI: return SGFE_debugCodeAPIGetDesc(type, code);
+		case SGFE_debugSourcePlatformAPI: return SGFE_debugSourcePlatformAPIGetDesc(type, code);
+		case SGFE_debugSourceSystem: return SGFE_debugSourceSystemGetDesc(type, code);
+		case SGFE_debugSourceGL: return SGFE_debugCodeGLGetDesc(code);
+	}
+
+	return "";
+}
+
+
+const char* SGFE_debugCodeAPIGetName(SGFE_debugType type, isize code) {
+	SGFE_ASSERT(
+		(type == SGFE_debugTypeError   && (code >= 0 && code < SGFE_errorCount))   ||
+		(type == SGFE_debugTypeWarning && (code >= 0 && code < SGFE_warningCount)) ||
+		(type == SGFE_debugTypeInfo    && (code >= 0 && code < SGFE_infoCount))
+	);
+
+	static const char* ERROR_LUT[SGFE_errorCount] = {
+		"SGFE_errorOutOfMemory",
+
+		"SGFE_errorEventQueue",
+		"SGFE_errorMultipleAPIs",
+
+		"SGFE_errorCreateContextBuffer",
+		"SGFE_errorCreateContextGL",
+
+		"SGFE_errorGLContextProfile",
+		"SGFE_errorGLContextVersion",
+		"SGFE_errorGLContextStencil",
+		"SGFE_errorGLContextDepth",
+		"SGFE_errorGLContextColor",
+		"SGFE_errorGLContextSamples",
+		"SGFE_errorGLContextDownscale"
+	};
+
+	static const char* WARNING_LUT[SGFE_warningCount] = {
+		"SGFE_warningGLContextStencil",
+		"SGFE_warningGLContextDepth",
+		"SGFE_warningGLContextColor",
+	};
+
+	static const char* INFO_LUT[SGFE_infoCount] = {
+		"SGFE_infoCreateContextBuffer",
+		"SGFE_infoCreateContextGL",
+
+		"SGFE_infoFreeContextBuffer",
+		"SGFE_infoFreeContextGL",
+	};
+
+	static const char** ARR_LUT[] = {ERROR_LUT, WARNING_LUT, INFO_LUT};
+	return ARR_LUT[type][code];
+}
+
+const char* SGFE_debugCodeAPIGetDesc(SGFE_debugType type, isize code) {
+	SGFE_ASSERT(
+		(type == SGFE_debugTypeError   && (code >= 0 && code < SGFE_errorCount))   ||
+		(type == SGFE_debugTypeWarning && (code >= 0 && code < SGFE_warningCount)) ||
+		(type == SGFE_debugTypeInfo    && (code >= 0 && code < SGFE_infoCount))
+	);
+
+	static const char* ERROR_LUT[SGFE_errorCount] = {
+		"Ran out of memory",
+
+		"Event queue limit 'SGFE_MAX_EVENTS' has been reached",
+		"Multiple graphical APIs have been specified when you can only pick one",
+
+		"Failed to create a buffer context",
+		"Failed to create an OpenGL context",
+
+		"OpenGL profile is not supported",
+		"OpenGL version is not supported",
+		"OpenGL stencil buffer size is not supported",
+		"OpenGL depth buffer size is not supported",
+		"OpenGL color buffer size is not supported",
+		"OpenGL sample count is not supported",
+		"OpenGL downscale count is not supported",
+	};
+
+	static const char* WARNING_LUT[SGFE_warningCount] = {
+		"Specified OpenGL stencil buffer size is not supported, but a suitable one has been found instead",
+		"Specified OpenGL depth buffer size is not supported but a suitable one has been found instead",
+		"Specified OpenGL color buffer size is not supported but a suitable one has been found instead",
+	};
+
+	static const char* INFO_LUT[SGFE_infoCount] = {
+		"Succesfully created a window",
+		"Succesfully created a buffer context",
+		"Succesfully created an OpenGL context",
+	};
+
+	static const char** ARR_LUT[] = {ERROR_LUT, WARNING_LUT, INFO_LUT};
+	return ARR_LUT[type][code];
+}
+
+
+const char* SGFE_debugCodeGLGetName(isize code) {
+	switch (code) {
+		case 0x0500 /* GL_INVALID_ENUM                  */: return "GL_INVALID_ENUM";
+		case 0x0501 /* GL_INVALID_VALUE                 */: return "GL_INVALID_VALUE";
+		case 0x0502 /* GL_INVALID_OPERATION             */: return "GL_INVALID_OPERATION";
+		case 0x0503 /* GL_STACK_OVERFLOW                */: return "GL_STACK_OVERFLOW";
+		case 0x0504 /* GL_STACK_UNDERFLOW               */: return "GL_STACK_UNDERFLOW";
+		case 0x0505 /* GL_OUT_OF_MEMORY                 */: return "GL_OUT_OF_MEMORY";
+		case 0x0506 /* GL_INVALID_FRAMEBUFFER_OPERATION */: return "GL_INVALID_FRAMEBUFFER_OPERATION";
+	}
+
+	return "Unknown error";
+}
+
+const char* SGFE_debugCodeGLGetDesc(isize code) {
+	switch (code) {
+		case 0x0500 /* GL_INVALID_ENUM                  */: return "An invalid enumeration has been specified";
+		case 0x0501 /* GL_INVALID_VALUE                 */: return "An invalid value has been specified";
+		case 0x0502 /* GL_INVALID_OPERATION             */: return "The set of state is not legal for the parameters given to that command";
+		case 0x0503 /* GL_STACK_OVERFLOW                */: return "A stack pushing operation cannot be done";
+		case 0x0504 /* GL_STACK_UNDERFLOW               */: return "A stack popping operation cannot be done";
+		case 0x0505 /* GL_OUT_OF_MEMORY                 */: return "Ran out of memory";
+		case 0x0506 /* GL_INVALID_FRAMEBUFFER_OPERATION */: return "Tried accessing a framebuffer that is not complete";
+	}
+
+	return "Unknown error";
+}
+
+
+
+void (SGFE_debugSendAPI)(void* ctx_ptr, SGFE_debugType type, isize code,
+		const char* filename, isize line, const char* function) {
+	struct SGFE_debugContext ctx;
+	ctx.source = SGFE_debugSourceAPI;
+	ctx.type = type;
+	ctx.code = code;
+
+	ctx.msg_len = 0;
+	ctx.msg = (const u8*)"";
+
+	ctx.filename = filename;
+	ctx.line = line;
+	ctx.function = function;
+
+	ctx.ctx = ctx_ptr;
+
+	SGFE_debugCallback(ctx);
+}
+
+void (SGFE_debugSendPlatformAPI)(void* ctx_ptr, SGFE_debugType type, isize code,
+		const char* filename, isize line, const char* function) {
+	struct SGFE_debugContext ctx;
+	ctx.source = SGFE_debugSourcePlatformAPI;
+	ctx.type = type;
+	ctx.code = code;
+
+	ctx.msg_len = 0;
+	ctx.msg = (const u8*)"";
+
+	ctx.filename = filename;
+	ctx.line = line;
+	ctx.function = function;
+
+	ctx.ctx = ctx_ptr;
+
+	SGFE_debugCallback(ctx);
+}
+
+void (SGFE_debugSendSystem)(void* ctx_ptr, isize code, const char* filename, isize line,
+		const char* function) {
+	struct SGFE_debugContext ctx;
+	ctx.source = SGFE_debugSourceSystem;
+	ctx.type = SGFE_debugSystemGenerateType_platform(ctx_ptr, code);
+	ctx.code = code;
+
+	ctx.msg_len = 0;
+	ctx.msg = (const u8*)"";
+
+	ctx.filename = filename;
+	ctx.line = line;
+	ctx.function = function;
+
+	ctx.ctx = ctx_ptr;
+
+	SGFE_debugCallback(ctx);
+}
+
+#ifdef SGFE_OPENGL
+SGFE_bool (SGFE_debugSendGL)(void* ctx_ptr, const char* filename, isize line, const char* function) {
+	const char* msg = NULL;
+	GLenum error;
+
+	while ((error = glGetError()) != GL_NO_ERROR) {
+		struct SGFE_debugContext ctx;
+		ctx.source = SGFE_debugSourceGL;
+		ctx.type = SGFE_debugTypeError;
+		ctx.code = (isize)error;
+
+		ctx.msg_len = SGFE_STRLEN(msg);
+		ctx.msg = (const u8*)msg;
+
+		ctx.filename = filename;
+		ctx.line = line;
+		ctx.function = function;
+
+		ctx.ctx = ctx_ptr;
+
+		SGFE_debugCallback(ctx);
+	}
+
+	return (msg == NULL);
+}
+#endif
 
 
 
@@ -2853,7 +3277,7 @@ void _SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer) {
 
 SGFE_screen SGFE_windowGetCurrentScreen_platform(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
-	return (win->flags & SGFE_windowTopScreen) ? SGFE_screenTop : SGFE_screenBottom;
+	return (win->flags & SGFE_windowFlagTopScreen) ? SGFE_screenTop : SGFE_screenBottom;
 }
 
 SGFE_bool SGFE_windowIsScreenEnabled_platform(SGFE_window* win, SGFE_screen screen) {
@@ -2863,8 +3287,8 @@ SGFE_bool SGFE_windowIsScreenEnabled_platform(SGFE_window* win, SGFE_screen scre
 
 
 SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
-	if ((win->flags & SGFE_windowDualScreen) == 0) {
-		win->flags |= SGFE_windowTopScreen;
+	if ((win->flags & SGFE_windowFlagDualScreen) == 0) {
+		win->flags |= SGFE_windowFlagTopScreen;
 	}
 
 	SGFE_controller* controller = &win->controllers[0];
@@ -2895,7 +3319,7 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 
 	Result res = gspInit();
 	if (res != 0) {
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorSystem, SGFE_DEBUG_CTX(win, 0), "Failed to initialize GSP.");
+		SGFE_debugSendSystem(win, res);
 		return SGFE_FALSE;
 	}
 
@@ -2903,7 +3327,7 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 	gfxInitDefault();
 	SGFE_bool kygx_init = kygxInit();
 	if (!kygx_init) {
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Failed to initialize KYGX.");
+		SGFE_debugSendPlatformAPI(win, SGFE_debugTypeError, SGFE_errorPlatformInitKYGX);
 		return SGFE_FALSE;
 	}
 	#endif
@@ -2927,8 +3351,12 @@ void SGFE_windowClose_platform(SGFE_window* win) {
 }
 
 
-void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlags flags) {
+void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlag flags) {
 	SGFE_ASSERT(win != NULL);
+	if (flags & SGFE_windowFlagTerminal) {
+		SGFE_bool res = SGFE_windowInitTerminalOutput(win);
+		if (res) { flags &= ~(SGFE_windowFlag)SGFE_windowFlagTerminal; }
+	}
 
 	win->flags = flags;
 }
@@ -3069,7 +3497,7 @@ SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 	}
 
 	/* TODO(EimaMei): Should be kept in the library. */
-	/*if ((win->flags & SGFE_windowDualScreen) == SGFE_windowDualScreen) {
+	/*if ((win->flags & SGFE_windowFlagDualScreen) == SGFE_windowFlagDualScreen) {
 		win->current ^= 1;
 	}*/
 
@@ -3140,13 +3568,13 @@ SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
 
 	_SGFE__gspPresentFramebuffer(b, (b->is_native) ? b->buffers[0] : b->buffers_native[0]);
 
-	SGFE_sendDebugInfo(SGFE_debugTypeInfo, SGFE_infoBuffer, SGFE_DEBUG_CTX(0, 0), "Creating framebuffers");
+	SGFE_debugSendAPI(b, SGFE_debugTypeInfo, SGFE_infoCreateContextBuffer);
 	return SGFE_TRUE;
 }
 
 void SGFE_bufferFreeContext(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
 	SGFE_bufferFreeFramebuffers(b);
+	SGFE_debugSendAPI(b, SGFE_debugTypeInfo, SGFE_infoFreeContextBuffer);
 }
 
 
@@ -3161,17 +3589,26 @@ SGFE_bool SGFE_bufferAllocFramebuffers(SGFE_contextBuffer* b) {
 
 	if (b->is_native) {
 		u8* buffers = linearAlloc((size_t)(2 * size));
-		if (buffers == NULL) { return SGFE_FALSE; }
+		if (buffers == NULL) {
+			SGFE_debugSendAPI(b, SGFE_debugTypeError, SGFE_errorOutOfMemory);
+			return SGFE_FALSE;
+		}
 
 		b->buffers[0] = &buffers[0 * size];
 		b->buffers[1] = &buffers[1 * size];
 	}
 	else {
 		u8* buffers = SGFE_ALLOC((size_t)(2 * size));
-		if (buffers == NULL) { return SGFE_FALSE; }
+		if (buffers == NULL) {
+			SGFE_debugSendAPI(b, SGFE_debugTypeError, SGFE_errorOutOfMemory);
+			return SGFE_FALSE;
+		}
 
 		u8* native_buffers = linearAlloc((size_t)(2 * size));
-		if (native_buffers == NULL) { return SGFE_FALSE; }
+		if (native_buffers == NULL) {
+			SGFE_debugSendAPI(b, SGFE_debugTypeError, SGFE_errorOutOfMemory);
+			return SGFE_FALSE;
+		}
 
 		b->buffers[0] = &buffers[0 * size];
 		b->buffers[1] = &buffers[1 * size];
@@ -3303,31 +3740,36 @@ SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_con
 	SGFE_glHintsAssert(hints);
 
 	if (hints->profile != SGFE_glProfileES) {
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "3DS only supports GLES.");
+		SGFE_debugSendAPI(gl, SGFE_debugTypeError, SGFE_errorGLContextProfile);
 		return SGFE_FALSE;
 	}
 
 	if (hints->major != 1 || (hints->minor != 0 && hints->minor != 1)) {
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "3DS can only support up to GLES 1.1.");
+		SGFE_debugSendAPI(gl, SGFE_debugTypeError, SGFE_errorGLContextVersion);
 		return SGFE_FALSE;
 	}
 
 	if (hints->stencil > 8) {
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported stencil buffer size.");
+		SGFE_debugSendAPI(gl, SGFE_debugTypeError, SGFE_errorGLContextStencil);
 		return SGFE_FALSE;
 	}
 	else if (hints->stencil != 0 && hints->stencil != 8) {
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported stencil buffer size. Defaulting to 8.");
+		SGFE_debugSendAPI(gl, SGFE_debugTypeWarning, SGFE_warningGLContextStencil);
 		hints->stencil = 8;
 	}
 
 	if (hints->depth > 24) {
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported depth buffer size.");
+		SGFE_debugSendAPI(gl, SGFE_debugTypeError, SGFE_errorGLContextDepth);
 		return SGFE_FALSE;
 	}
 	else if (hints->depth != 0 && hints->depth != 24) {
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported depth buffer size. Defaulting to 24.");
+		SGFE_debugSendAPI(gl, SGFE_debugTypeWarning, SGFE_warningGLContextDepth);
 		hints->depth = 24;
+	}
+
+	if (hints->samples != 0) {
+		SGFE_debugSendAPI(gl, SGFE_debugTypeError, SGFE_errorGLContextSamples);
+		return SGFE_FALSE;
 	}
 
 	isize r = hints->red,
@@ -3341,7 +3783,7 @@ SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_con
 			internal_format = GL_RGB565;
 
 			if (r != 5 || g != 6 || b != 5) {
-				SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGB565.");
+				SGFE_debugSendAPI(gl, SGFE_debugTypeWarning, SGFE_warningGLContextColor);
 				hints->red = 5;
 				hints->green = 6;
 				hints->blue = 5;
@@ -3351,12 +3793,12 @@ SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_con
 			internal_format = GL_RGB8_OES;
 
 			if (r != 8 || g != 8 || b != 8) {
-				SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGB8.");
+				SGFE_debugSendAPI(gl, SGFE_debugTypeWarning, SGFE_warningGLContextColor);
 				hints->red = hints->green = hints->blue = 8;
 			}
 		}
 		else {
-			SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format.");
+			SGFE_debugSendAPI(gl, SGFE_debugTypeError, SGFE_errorGLContextColor);
 			return SGFE_FALSE;
 		}
 	}
@@ -3365,17 +3807,17 @@ SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_con
 			internal_format = GL_RGB5_A1;
 
 			if (r != 5 || g != 5 || b != 5) {
-				SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGB5_A1.");
+				SGFE_debugSendAPI(gl, SGFE_debugTypeWarning, SGFE_warningGLContextColor);
 				hints->red = hints->green = hints->blue = 5;
 			}
 		}
 		else if (r <= 8 && g <= 8 && b <= 8) {
+			SGFE_debugSendAPI(gl, SGFE_debugTypeWarning, SGFE_warningGLContextColor);
 			internal_format = GL_RGBA8_OES;
-			SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGBA8.");
 			hints->red = hints->green = hints->blue = hints->alpha = 8;
 		}
 		else {
-			SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format.");
+			SGFE_debugSendAPI(gl, SGFE_debugTypeError, SGFE_errorGLContextColor);
 			return SGFE_FALSE;
 		}
 	}
@@ -3384,18 +3826,17 @@ SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_con
 			internal_format = GL_RGBA4;
 
 			if (r != 4 || g != 4 || b != 4 || a != 4) {
-				SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGBA4.");
+				SGFE_debugSendAPI(gl, SGFE_debugTypeWarning, SGFE_warningGLContextColor);
 				hints->red = hints->green = hints->blue = hints->alpha = 4;
 			}
 		}
 		else if (r <= 8 && g <= 8 && b <= 8) {
+			SGFE_debugSendAPI(gl, SGFE_debugTypeWarning, SGFE_warningGLContextColor);
 			internal_format = GL_RGBA8_OES;
 			hints->red = hints->green = hints->blue = hints->alpha = 8;
-
-			SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGBA8.");
 		}
 		else {
-			SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format.");
+			SGFE_debugSendAPI(gl, SGFE_debugTypeError, SGFE_errorGLContextColor);
 			return SGFE_FALSE;
 		}
 	}
@@ -3405,58 +3846,77 @@ SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_con
 
 			if (r != 8 || g != 8 || b != 8 || a != 8) {
 				hints->red = hints->green = hints->blue = hints->alpha = 8;
-				SGFE_sendDebugInfo(SGFE_debugTypeWarning, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format. Defaulting to RGBA8.");
+				SGFE_debugSendAPI(gl, SGFE_debugTypeWarning, SGFE_warningGLContextColor);
 			}
 		}
 		else {
-			SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format.");
+			SGFE_debugSendAPI(gl, SGFE_debugTypeError, SGFE_errorGLContextColor);
 			return SGFE_FALSE;
 		}
 	}
 	else {
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Unsupported color buffer format.");
+		SGFE_debugSendAPI(gl, SGFE_debugTypeError, SGFE_errorGLContextColor);
 		return SGFE_FALSE;
 	}
 
 	GLASSCtxParams param;
 	param.version = GLASS_VERSION_ES_2;
-    param.targetScreen = (GLASSScreen)hints->screen;
-    param.targetSide = GLASS_SIDE_LEFT;
-    param.GPUCmdList.mainBuffer = NULL;
-    param.GPUCmdList.secondBuffer = NULL;
-    param.GPUCmdList.capacity = 0;
-    param.GPUCmdList.offset = 0;
-    param.vsync = hints->is_vsync;
-    param.horizontalFlip = false;
-    param.flushAllLinearMem = true;
-    param.downscale = GLASS_DOWNSCALE_NONE;
+	param.targetScreen = (GLASSScreen)hints->screen;
+	param.targetSide = GLASS_SIDE_LEFT;
+	param.GPUCmdList.mainBuffer = NULL;
+	param.GPUCmdList.secondBuffer = NULL;
+	param.GPUCmdList.capacity = 0;
+	param.GPUCmdList.offset = 0;
+	param.vsync = hints->is_vsync;
+	param.horizontalFlip = false;
+	param.flushAllLinearMem = true;
+
+	if (hints->downscale_width == 0 && hints->downscale_height == 0) {
+		param.downscale = GLASS_DOWNSCALE_NONE;
+	}
+	else if (hints->downscale_width == 0 && hints->downscale_height == 1) {
+		param.downscale = GLASS_DOWNSCALE_1X2;
+	}
+	else if (hints->downscale_width == 1 && hints->downscale_height == 1) {
+		param.downscale = GLASS_DOWNSCALE_2X2;
+	}
+	else {
+		SGFE_debugSendAPI(gl, SGFE_debugTypeError, SGFE_errorGLContextDownscale);
+		return SGFE_FALSE;
+	}
 
 	gl->ctx = glassCreateContext(&param);
 	if (gl->ctx == NULL) {
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext, SGFE_DEBUG_CTX(NULL, 0), "Failed to create a GLASS context.");
+		SGFE_debugSendPlatformAPI(NULL, SGFE_debugTypeError, SGFE_errorPlatformCreateGlassCtx);
 		return SGFE_FALSE;
 	}
 	glassBindContext(gl->ctx);
 
-	isize width;
+	isize width, height;
 	if (hints->screen == SGFE_screenTop) {
-		SGFE_videoModeResolution(hints->is_stereo ? SGFE_videoMode3D : mode, &width, NULL);
+		SGFE_videoModeResolution(hints->is_stereo ? SGFE_videoMode3D : mode, &width, &height);
 	}
 	else {
-		width = 320;
+		width  = 320;
+		height = 240;
 	}
+	width  *= hints->downscale_width  + 1;
+	height *= hints->downscale_height + 1;
 
 	glGenRenderbuffers(1, &gl->renderbuffer);
 	glBindRenderbuffer(GL_RENDERBUFFER, gl->renderbuffer);
-	glRenderbufferStorage(GL_RENDERBUFFER, internal_format, width, 240);
+	glRenderbufferStorage(GL_RENDERBUFFER, internal_format, width, height);
+	SGFE_debugSendGL(NULL);
 
 	glGenFramebuffers(1, &gl->framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, gl->framebuffer);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, gl->renderbuffer);
+	SGFE_debugSendGL(NULL);
 
-	glViewport(0, 0, width, 240);
+	glViewport(0, 0, width, height);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
+	SGFE_debugSendAPI(gl, SGFE_debugTypeInfo, SGFE_infoCreateContextGL);
 	return SGFE_TRUE;
 }
 
@@ -3471,6 +3931,8 @@ void SGFE_glFreeContext(SGFE_contextGL* gl) {
 	glassDestroyContext(gl->ctx);
 	glassBindContext(NULL);
 	gl->ctx = NULL;
+
+	SGFE_debugSendAPI(gl, SGFE_debugTypeInfo, SGFE_infoFreeContextGL);
 }
 
 
@@ -3568,15 +4030,119 @@ SGFE_bool SGFE_platformRotateScreenGL(GLuint shader_program, const char* mat4_un
 
 	GLint uniform = glGetUniformLocation(shader_program, mat4_uniform_name);
 	if (uniform == -1) {
-		SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOpenGLContext,  SGFE_DEBUG_CTX(NULL, 0), "Invalid uniform name.");
+		SGFE_debugSendGL(NULL);
 		return SGFE_FALSE;
 	}
 
 	glUniformMatrix4fv(uniform, 1, GL_FALSE, (const float*)deg90_rotation_matrix);
-	return SGFE_TRUE;
+	return SGFE_debugSendGL(NULL);
 }
 #endif
 
+
+
+const char* SGFE_debugSourcePlatformAPIGetName(SGFE_debugType type, isize code) {
+	SGFE_ASSERT(
+		(type == SGFE_debugTypeError   && (code >= 0 && code < SGFE_errorPlatformCount))   ||
+		(type == SGFE_debugTypeWarning && (code >= 0 && code < SGFE_warningPlatformCount)) ||
+		(type == SGFE_debugTypeInfo    && (code >= 0 && code < SGFE_infoPlatformCount))
+	);
+
+	static const char* ERROR_LUT[SGFE_errorPlatformCount] = {
+		"SGFE_errorPlatformInitKYGX",
+		"SGFE_errorPlatformCreateGlassCtx"
+	};
+
+	return ERROR_LUT[code];
+}
+
+const char* SGFE_debugSourcePlatformAPIGetDesc(SGFE_debugType type, isize code) {
+	SGFE_ASSERT(
+		(type == SGFE_debugTypeError   && (code >= 0 && code < SGFE_errorPlatformCount))   ||
+		(type == SGFE_debugTypeWarning && (code >= 0 && code < SGFE_warningPlatformCount)) ||
+		(type == SGFE_debugTypeInfo    && (code >= 0 && code < SGFE_infoPlatformCount))
+	);
+
+	static const char* ERROR_LUT[SGFE_errorPlatformCount] = {
+		"Failed to initialize KYGX",
+		"Failed to create GLASS context",
+	};
+
+	return ERROR_LUT[code];
+}
+
+
+const char* SGFE_debugCodeSystemGetName(SGFE_debugType type, isize code) {
+	switch (R_DESCRIPTION(code)) {
+		case RD_SUCCESS:              return "RD_SUCCESS";
+		case RD_INVALID_RESULT_VALUE: return "RD_INVALID_RESULT_VALUE";
+		case RD_TIMEOUT:              return "RD_TIMEOUT";
+		case RD_OUT_OF_RANGE:         return "RD_OUT_OF_RANGE";
+		case RD_ALREADY_EXISTS:       return "RD_ALREADY_EXISTS";
+		case RD_CANCEL_REQUESTED:     return "RD_CANCEL_REQUESTED";
+		case RD_NOT_FOUND:            return "RD_NOT_FOUND";
+		case RD_ALREADY_INITIALIZED:  return "RD_ALREADY_INITIALIZED";
+		case RD_NOT_INITIALIZED:      return "RD_NOT_INITIALIZED";
+		case RD_INVALID_HANDLE:       return "RD_INVALID_HANDLE";
+		case RD_INVALID_POINTER:      return "RD_INVALID_POINTER";
+		case RD_INVALID_ADDRESS:      return "RD_INVALID_ADDRESS";
+		case RD_NOT_IMPLEMENTED:      return "RD_NOT_IMPLEMENTED";
+		case RD_OUT_OF_MEMORY:        return "RD_OUT_OF_MEMORY";
+		case RD_MISALIGNED_SIZE:      return "RD_MISALIGNED_SIZE";
+		case RD_MISALIGNED_ADDRESS:   return "RD_MISALIGNED_ADDRESS";
+		case RD_BUSY:                 return "RD_BUSY";
+		case RD_NO_DATA:              return "RD_NO_DATA";
+		case RD_INVALID_COMBINATION:  return "RD_INVALID_COMBINATION";
+		case RD_INVALID_ENUM_VALUE:   return "RD_INVALID_ENUM_VALUE";
+		case RD_INVALID_SIZE:         return "RD_INVALID_SIZE";
+		case RD_ALREADY_DONE:         return "RD_ALREADY_DONE";
+		case RD_NOT_AUTHORIZED:       return "RD_NOT_AUTHORIZED";
+		case RD_TOO_LARGE:            return "RD_TOO_LARGE";
+		case RD_INVALID_SELECTION:    return "RD_INVALID_SELECTION";
+	}
+	return "Unknown";
+	SGFE_UNUSED(type);
+}
+
+const char* SGFE_debugSourceSystemGetDesc(SGFE_debugType type, isize code) {
+	switch (R_DESCRIPTION(code)) {
+		case RD_SUCCESS:             return "Operation completed successfully";
+		case RD_TIMEOUT:             return "Operation timed out";
+		case RD_OUT_OF_RANGE:        return "Value is out of valid range";
+		case RD_ALREADY_EXISTS:      return "Specified resource already exists";
+		case RD_CANCEL_REQUESTED:    return "Operation was canceled by request";
+		case RD_NOT_FOUND:           return "Specified resource was not found";
+		case RD_ALREADY_INITIALIZED: return "Object is already initialized";
+		case RD_NOT_INITIALIZED:     return "Object has not been initialized";
+		case RD_INVALID_HANDLE:      return "Specified handle is invalid";
+		case RD_INVALID_POINTER:     return "Specified pointer is invalid";
+		case RD_INVALID_ADDRESS:     return "Specified address is invalid";
+		case RD_NOT_IMPLEMENTED:     return "Requested functionality is not implemented";
+		case RD_OUT_OF_MEMORY:       return "Ran out of memory";
+		case RD_MISALIGNED_SIZE:     return "Specified size is not aligned correctly";
+		case RD_MISALIGNED_ADDRESS:  return "Specified address is not aligned correctly";
+		case RD_BUSY:                return "Resource is busy";
+		case RD_NO_DATA:             return "No data is available";
+		case RD_INVALID_COMBINATION: return "Specified combination of parameters is invalid";
+		case RD_INVALID_ENUM_VALUE:  return "Invalid enumeration value has been specified";
+		case RD_INVALID_SIZE:        return "Specified size is invalid";
+		case RD_ALREADY_DONE:        return "Operation has already been completed";
+		case RD_NOT_AUTHORIZED:      return "Not authorized to perform this operation";
+		case RD_TOO_LARGE:           return "Specified value or object is too large";
+		case RD_INVALID_SELECTION:   return "Specified selection is invalid";
+	}
+	return "Unknown";
+	SGFE_UNUSED(type);
+}
+
+SGFE_debugType SGFE_debugSystemGenerateType_platform(void* ctx_ptr, isize code) {
+	switch (R_LEVEL(code)) {
+		case RL_FATAL: return SGFE_debugTypeError;
+		case RL_INFO:  return SGFE_debugTypeInfo;
+	}
+	return SGFE_debugTypeWarning;
+	SGFE_UNUSED(ctx_ptr);
+}
 
 
 #endif /* SGFE_3DS */
