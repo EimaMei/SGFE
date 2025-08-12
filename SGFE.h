@@ -225,8 +225,9 @@ extern "C" {
 	#define SGFE_MAX_CONTROLLERS 1
 	#endif
 
-	#define SGFE_HAS_OPENGL           1
-	#define SGFE_HAS_MULTIPLE_SCREENS 1
+	#define SGFE_HAS_OPENGL              1
+	#define SGFE_HAS_MULTIPLE_SCREENS    1
+	#define SGFE_VBLANK_RATE            60
 
 	#ifdef SGFE_IMPLEMENTATION
 	#include <3ds/types.h>
@@ -794,6 +795,10 @@ typedef SGFE_ENUM(u32, SGFE_windowFlag) {
 
 struct SGFE_contextBufferSource {
 	u32 size;
+
+	/* NOTE(EimaMei): for FPS. */
+	isize frames_counter;
+	SGFE_bool* run_gsp_loop;
 };
 
 #ifdef SGFE_OPENGL
@@ -853,6 +858,7 @@ struct SGFE_contextBuffer {
 	SGFE_bool is_double_buffered;
 	SGFE_bool is_native;
 
+	isize frames;
 	u8* buffers_native[2];
 	struct SGFE_contextBufferSource src;
 };
@@ -899,14 +905,14 @@ struct SGFE_window {
 
 	struct {
 		void (*sleep)(void);
-		
+
 		void (*quit)(void);
 		void (*refresh)(void);
 		void (*video_mode)(void);
 		void (*focus)(void);
-		
+
 		void (*controller)(void);
-		
+
 		void (*button)(void);
 		void (*axis)(void);
 		void (*pointer)(void);
@@ -1101,8 +1107,7 @@ SGFE_DEF SGFE_bool SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_bu
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* out_buffer);
 /* TODO */
-SGFE_DEF void SGFE_bufferFreeContext(SGFE_contextBuffer* buffer);
-
+SGFE_DEF void SGFE_bufferFreeContext(SGFE_contextBuffer* b);
 
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_bufferAllocFramebuffers(SGFE_contextBuffer* out_buffer);
@@ -1111,6 +1116,17 @@ SGFE_DEF SGFE_bool SGFE_bufferFreeFramebuffers(SGFE_contextBuffer* out_buffer);
 
 /* TODO */
 SGFE_DEF u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b);
+
+
+/* TODO */
+SGFE_DEF isize SGFE_bufferGetSwapInterval(const SGFE_contextBuffer* b);
+/* TODO */
+SGFE_DEF isize SGFE_bufferGetFramesPerSecond(const SGFE_contextBuffer* b);
+
+/* TODO */
+SGFE_DEF void SGFE_bufferSetSwapInterval(SGFE_contextBuffer* b, isize swap_interval);
+/* TODO */
+SGFE_DEF void SGFE_bufferSetFramesPerSecond(SGFE_contextBuffer* b, isize fps);
 
 
 /* TODO(EimaMei): New function. */
@@ -1261,13 +1277,13 @@ typedef struct SGFE_contextHintsGL  {
 	/* Minimum number of bits for the alpha channel of the accumulation buffer (0 by default). */
 	isize accum_alpha;
 
-	/* Number of samples used for MSAA (0 by default). 
+	/* Number of samples used for MSAA (0 by default).
 	 * NOTE: Refer to the last paragraph of the struct's description. */
 	isize samples;
-	/* Number of times to downscale the framebuffer's width for SSAA (0 by default). 
+	/* Number of times to downscale the framebuffer's width for SSAA (0 by default).
 	 * NOTE: Refer to the last paragraph of the struct's description. */
 	isize downscale_width;
-	/* Number of times to downscale the framebuffer's height for SSAA (0 by default). 
+	/* Number of times to downscale the framebuffer's height for SSAA (0 by default).
 	 * NOTE: Refer to the last paragraph of the struct's description. */
 	isize downscale_height;
 
@@ -1330,7 +1346,9 @@ SGFE_DEF SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode,
 SGFE_DEF void SGFE_glFreeContext(SGFE_contextGL* gl);
 
 /* TODO */
-SGFE_DEF void SGFE_glSwapInterval(SGFE_contextGL* gl, isize swap_interval);
+SGFE_DEF isize SGFE_glGetSwapInterval(const SGFE_contextGL* gl);
+/* TODO */
+SGFE_DEF void SGFE_glSetSwapInterval(SGFE_contextGL* gl, isize swap_interval);
 
 
 /* TODO */
@@ -1378,6 +1396,9 @@ SGFE_DEF SGFE_systemModel SGFE_platformGetModel(void);
 
 /* TODO(EimaMei): new function. */
 SGFE_DEF SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b);
+
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_platformBufferSetPlatformSettings(SGFE_contextBuffer* b);
 
 #ifdef SGFE_3DS
 
@@ -1652,10 +1673,9 @@ SGFE_DEF const char* SGFE_controllerGetNameButton_platform(const SGFE_controller
 
 SGFE_DEF SGFE_bool SGFE_controllerEnablePointer_platform(SGFE_controller* controller,
 	SGFE_pointerType pointer, SGFE_bool enable);
-	
+
 SGFE_DEF SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
 	SGFE_pointerType pointer, SGFE_bool enable);
-SGFE_DEF SGFE_bool SGFE_bufferMakeWithDefaultSettings_platform(SGFE_contextBuffer* out_buffer);
 
 
 SGFE_DEF u8* SGFE__fetchSwapBuffer(SGFE_contextBuffer* b);
@@ -2328,18 +2348,44 @@ SGFE_bool SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
 	b->is_double_buffered = SGFE_TRUE;
 	b->is_native = SGFE_FALSE;
 
-	SGFE_bool res;
 	if (allocate_buffers) {
-		res = SGFE_bufferAllocFramebuffers(out_buffer);
+		SGFE_bool res = SGFE_bufferAllocFramebuffers(out_buffer);
+		if (res) { return SGFE_FALSE; }
 	}
 	else {
-		res = SGFE_TRUE;
 		SGFE_MEMSET(b->buffers, 0, sizeof(b->buffers));
 		SGFE_MEMSET(b->buffers_native, 0, sizeof(b->buffers_native));
 	}
 
-	return (res) ? SGFE_bufferMakeWithDefaultSettings_platform(b) : SGFE_FALSE;
+	SGFE_bool res = SGFE_platformBufferSetPlatformSettings(b);
+	if (res) { return SGFE_FALSE; }
+
+	SGFE_bufferSetSwapInterval(b, 1);
+	return SGFE_TRUE;
 }
+
+
+isize SGFE_bufferGetSwapInterval(const SGFE_contextBuffer* b) {
+	isize fps = SGFE_bufferGetFramesPerSecond(b);
+	return (fps >= 0) ? SGFE_VBLANK_RATE / fps : fps;
+}
+
+isize SGFE_bufferGetFramesPerSecond(const SGFE_contextBuffer* b) {
+	SGFE_ASSERT_NOT_NULL(b);
+	return b->frames;
+}
+
+void SGFE_bufferSetSwapInterval(SGFE_contextBuffer* b, isize swap_interval) {
+	SGFE_bufferSetFramesPerSecond(
+		b, (swap_interval >= 0) ? (SGFE_VBLANK_RATE / swap_interval) : swap_interval
+	);
+}
+void SGFE_bufferSetFramesPerSecond(SGFE_contextBuffer* b, isize fps) {
+	SGFE_ASSERT_NOT_NULL(b);
+	b->frames = fps;
+}
+
+
 SGFE_bool SGFE_bufferSetFormat(SGFE_contextBuffer* b, SGFE_pixelFormat format) {
 	if (b == NULL) { return SGFE_FALSE; }
 
@@ -3197,8 +3243,6 @@ const isize SGFE_FORMAT_BYTES_PER_PIXEL_LUT[SGFE_pixelFormatCount] = {
 
 
 
-void SGFE__aptHookCallback(APT_HookType hook, void* param);
-void _SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer);
 
 /* NOTE(EimaMei): sys/iosupport.h stuff alongside some initialization stuff
  * from consoleInit. The reason why we define everything is so that we
@@ -3220,6 +3264,12 @@ extern const struct _SGFE_devoptab_t* devoptab_list[];
 
 extern PrintConsole* currentConsole;
 extern PrintConsole defaultConsole;
+
+
+
+void SGFE__aptHookCallback(APT_HookType hook, void* param);
+void SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer);
+void SGFE__bufferOnVblankFPS(void* buffer_ptr);
 
 
 void SGFE__aptHookCallback(APT_HookType hook, void* param) {
@@ -3252,7 +3302,7 @@ void SGFE__aptHookCallback(APT_HookType hook, void* param) {
 }
 
 /* NOTE(EimaMei): Taken from libctru gfx.c */
-void _SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer) {
+void SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer) {
 	u32 stride = GSP_SCREEN_WIDTH * (u32)SGFE_pixelFormatBytesPerPixel(b->format);
 	u32 pixel_format = (u32)b->format | (1 << 8);
 
@@ -3272,6 +3322,17 @@ void _SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer) {
 
 	gspPresentBuffer((u32)b->screen, (u32)b->current, buffer, fb_b, stride, pixel_format);
 }
+
+void SGFE__bufferOnVblankFPS(void* buffer_ptr) {
+	SGFE_contextBuffer* b = (SGFE_contextBuffer*)buffer_ptr;
+
+	b->src.frames_counter += b->frames;
+	if (b->src.frames_counter >= 60) {
+		b->src.frames_counter = 0;
+		*b->src.run_gsp_loop = SGFE_FALSE;
+	}
+}
+
 
 
 
@@ -3507,6 +3568,17 @@ SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 
 
 
+SGFE_bool SGFE_platformBufferSetPlatformSettings(SGFE_contextBuffer* b) {
+	SGFE_ASSERT_NOT_NULL(b);
+
+	b->src.size = 0;
+	b->src.frames_counter = 0;
+	b->src.run_gsp_loop = NULL;
+	return SGFE_TRUE;
+}
+
+
+
 SGFE_button SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
 	SGFE_ASSERT(type > 0 && type <= SGFE_controllerTypeCount);
 	return SGFE_platformButtonFromAPI(mask);
@@ -3552,12 +3624,6 @@ SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
 
 
 
-SGFE_bool SGFE_bufferMakeWithDefaultSettings_platform(SGFE_contextBuffer* out_buffer) {
-	out_buffer->src.size = 0;
-	return SGFE_TRUE;
-}
-
-
 SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
 
@@ -3566,7 +3632,7 @@ SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
 	b->src.size = (u32)(width * height * SGFE_pixelFormatBytesPerPixel(b->format));
 	b->current = 0;
 
-	_SGFE__gspPresentFramebuffer(b, (b->is_native) ? b->buffers[0] : b->buffers_native[0]);
+	SGFE__gspPresentFramebuffer(b, (b->is_native) ? b->buffers[0] : b->buffers_native[0]);
 
 	SGFE_debugSendAPI(b, SGFE_debugTypeInfo, SGFE_infoCreateContextBuffer);
 	return SGFE_TRUE;
@@ -3644,6 +3710,7 @@ SGFE_bool SGFE_bufferFreeFramebuffers(SGFE_contextBuffer* b) {
 	return SGFE_TRUE;
 }
 
+
 u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b) {
 	u8* src = SGFE_bufferGetFramebuffer(b);
 
@@ -3711,18 +3778,39 @@ void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* ou
 
 
 void SGFE_windowSwapBuffersBuffer(SGFE_window* win) {
+	SGFE_bool wait[2];
+
 	for (SGFE_screen screen = 0; screen < SGFE_screenCount; screen += 1) {
-		if (win->current_type[screen] != SGFE_contextTypeBuffer) { continue; }
+		if (win->current_type[screen] != SGFE_contextTypeBuffer) {
+			wait[screen] = SGFE_FALSE;
+			continue;
+		}
 
 		SGFE_contextBuffer* b = SGFE_windowGetContextExBuffer(win, screen);
 
 		u8* buffer = SGFE__fetchSwapBuffer(b);
 		GSPGPU_FlushDataCache(buffer, b->src.size);
-		_SGFE__gspPresentFramebuffer(b, buffer);
+		SGFE__gspPresentFramebuffer(b, buffer);
 
 		b->current ^= b->is_double_buffered;
+
+		if ((win->flags & (u32)(SGFE_windowFlagTopScreen << screen)) != 0) {
+			gspSetEventCallback(GSPGPU_EVENT_VBlank0 + (GSPGPU_Event)screen, onVBlank0, b, SGFE_FALSE);
+			b->src.run_gsp_loop = &wait[screen];
+			wait[screen] = SGFE_TRUE;
+		}
+		else {
+			wait[screen] = SGFE_FALSE;
+		}
 	}
-	gspWaitForVBlank();
+
+
+	while (wait[0] || wait[1]) {
+		gspWaitForAnyEvent();
+	}
+
+	gspSetEventCallback(GSPGPU_EVENT_VBlank0, NULL, NULL, SGFE_FALSE);
+	gspSetEventCallback(GSPGPU_EVENT_VBlank1, NULL, NULL, SGFE_FALSE);
 }
 
 
@@ -3936,10 +4024,16 @@ void SGFE_glFreeContext(SGFE_contextGL* gl) {
 }
 
 
-void SGFE_glSwapInterval(SGFE_contextGL* gl, isize swap_interval) {
-	SGFE_ASSERT(gl != NULL);
+isize SGFE_glGetSwapInterval(const SGFE_contextGL* gl) {
+	SGFE_ASSERT_NOT_NULL(gl);
+	SGFE_ASSERT_NOT_NULL(gl->ctx);
+	return (isize)glassHasVSync(gl->ctx);
+}
+
+void SGFE_glSetSwapInterval(SGFE_contextGL* gl, isize swap_interval) {
+	SGFE_ASSERT_NOT_NULL(gl);
+	SGFE_ASSERT_NOT_NULL(gl->ctx);
 	SGFE_ASSERT_NOT_NEG(swap_interval);
-	if (gl->ctx == NULL) { return; }
 
 	glassSetVSync(gl->ctx, SGFE_BOOL(swap_interval));
 }

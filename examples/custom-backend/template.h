@@ -5,8 +5,9 @@
 #define SGFE_MAX_CONTROLLERS 1
 #endif
 
-#define SGFE_HAS_OPENGL           1
-#define SGFE_HAS_MULTIPLE_SCREENS 1
+#define SGFE_HAS_OPENGL              1
+#define SGFE_HAS_MULTIPLE_SCREENS    1
+#define SGFE_VBLANK_RATE            60
 
 
 #ifndef SGFE_ENUM
@@ -184,7 +185,7 @@ const char* SGFE_CONTROLLER_NAME_LUT[SGFE_controllerTypeCount] = {
 	/* "..." */
 };
 #if 0
-/* NOTE(EimaMei): You need to define your own lookup-table for each controller type. 
+/* NOTE(EimaMei): You need to define your own lookup-table for each controller type.
  * as well as the SGFE_controllerGetNameButton_platform() function. */
 const char* SGFE_BUTTON_NAMES_<CONTROLLER_TYPE_NAME_HERE>_LUT[SGFE_buttonCount_Nunchuk] = {
 	/* "..." */
@@ -279,7 +280,7 @@ void SGFE_windowPollEvents(SGFE_window* win) {
 			return;
 		}
 	}
- 
+
 	/* ... */
 
 	if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonDown)) {
@@ -335,7 +336,7 @@ u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_button button) {
 const char* SGFE_controllerGetNameButton_platform(const SGFE_controller* controller,
 		SGFE_buttonType button) {
 	/* NOTE(EimaMei): 'SGFE_controllerGetNameButton' already asserts that the
-	 * controller cannot be NULL and that the button is valid for the controller 
+	 * controller cannot be NULL and that the button is valid for the controller
 	 * type. */
 	#warning "Warning to notify that this function hasn't been implemented yet."
 }
@@ -343,29 +344,20 @@ const char* SGFE_controllerGetNameButton_platform(const SGFE_controller* control
 
 SGFE_bool SGFE_controllerEnablePointer_platform(SGFE_controller* controller,
 		SGFE_pointerType pointer, SGFE_bool enable) {
-	/* NOTE(EimaMei): 'SGFE_controllerEnablePointer' already asserts that the 
-	 * controller cannot be NULL, that motion is valid for the controller and that 
+	/* NOTE(EimaMei): 'SGFE_controllerEnablePointer' already asserts that the
+	 * controller cannot be NULL, that motion is valid for the controller and that
 	 * the boolean is either a one or zero. */
 	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
 		SGFE_motionType motion, SGFE_bool enable) {
-	/* NOTE(EimaMei): 'SGFE_controllerEnableMotion' already asserts that the 
-	 * controller cannot be NULL, that motion is valid for the controller and that 
+	/* NOTE(EimaMei): 'SGFE_controllerEnableMotion' already asserts that the
+	 * controller cannot be NULL, that motion is valid for the controller and that
 	 * the boolean is either a one or zero. */
 	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
-
-
-SGFE_bool SGFE_bufferMakeWithDefaultSettings_platform(SGFE_contextBuffer* out_buffer) {
-	/* NOTE(EimaMei): 'SGFE_bufferMakeWithDefaultSettings' already asserts that 
-	 * the controller cannot be NULL, that motion is valid for the controller and
-	 * that the boolean is either a one or zero. */
-	#warning "Warning to notify that this function hasn't been implemented yet."
-	return SGFE_TRUE;
-}
 
 
 SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
@@ -421,7 +413,7 @@ u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b) {
 
 	/* ... */
 	#warning "Warning to notify that this function hasn't been implemented yet."
-	
+
 	return dst;
 }
 
@@ -467,10 +459,16 @@ void SGFE_glFreeContext(SGFE_contextGL* gl) {
 }
 
 
-void SGFE_glSwapInterval(SGFE_contextGL* gl, isize swap_interval) {
-	SGFE_ASSERT(gl != NULL);
-	SGFE_ASSERT_NOT_NEG(swap_interval);
-	/* if (gl->ctx == NULL) { return; } */
+
+isize SGFE_glGetSwapInterval(const SGFE_contextGL* gl) {
+	SGFE_ASSERT_NOT_NULL(gl);
+	/* SGFE_ASSERT_NOT_NULL(gl->ctx); */
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+
+void SGFE_glSetSwapInterval(SGFE_contextGL* gl, isize swap_interval) {
+	SGFE_ASSERT_NOT_NULL(gl);
+	/* SGFE_ASSERT_NOT_NULL(gl->ctx); */
 	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
@@ -524,11 +522,17 @@ SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 	#if 0
 	/* If there are no ways to initialize a terminal output, return SGFE_FALSE. */
 	return SGFE_FALSE;
-	#else 
+	#else
 	/* ... */
 	return SGFE_TRUE;
 	#endif
 }
+
+SGFE_bool SGFE_platformBufferSetPlatformSettings(SGFE_contextBuffer* out_buffer) {
+	SGFE_ASSERT_NOT_NULL(out_buffer);
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+
 #endif
 /* === DEBUG FUNCTIONS === */
 /* NOTE(EimaMei): The backend has to providee string representations of all
@@ -548,6 +552,7 @@ const char* SGFE_debugSourcePlatformAPIGetName(SGFE_debugType type, isize code) 
 	/* NOTE(EimaMei): If the custom backend does not contain any errors, warnings
 	 * or infos, these arrays can be removed. */
 
+	#if 0
 	static const char* ERROR_LUT[SGFE_errorPlatformCount] = {
 		/* ... */
 	};
@@ -563,6 +568,7 @@ const char* SGFE_debugSourcePlatformAPIGetName(SGFE_debugType type, isize code) 
 
 	static const char** ARR_LUT[] = {ERROR_LUT, WARNING_LUT, INFO_LUT};
 	return ARR_LUT[type][code];
+	#endif
 }
 
 const char* SGFE_debugSourcePlatformAPIGetDesc(SGFE_debugType type, isize code) {

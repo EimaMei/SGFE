@@ -1,8 +1,7 @@
 Features:
 - Add changes from Desktop to Embedded
 - (3DS) Resize event.
-- (3DS) Add anti-aliasing for OpenGL.
-- (3DS) Update GLASS, libctru and other 3ds dependencies.
+- (3DS) Update GLASS and KYGX.
 - (3DS) Implement 'GSPGPU_SetLcdForceBlack' using the "showWindow" functions. Add
 back the window flags for it.
 - Implement a show flag.
@@ -58,6 +57,7 @@ version of libctru.
 - (3ds) figure out why 3DS console isn't properly aligned AGAIN.
 - swapInterval example
 - Add an OpenGL hint that'd force SGFE to create a strict format (warnings become errors?).
+- Guide on building for each platform.
 
 
 Bug fixes:
@@ -73,8 +73,6 @@ Build system:
 
 Maybe TODOs:
 - (3DS) Find a way to not use gfxInitDefault for GLASS.
-- OpenGL hint to request specific values instead of relying on minimums.
-- SGFE_window_swapInterval for buffer rendering.
 - Knob?
 - Add angle to sensor.
 - Replace wpad code with wiiuse.
@@ -92,6 +90,7 @@ opengl already provides that?
 - (3DS) replace "hidScanInput" with raw events.
 - Booleans to indicate if system supports certain OpenGL hints that aren't already
 provided by glGetInteger (SSAA/downscale)
+- test GLASS fps controller example on real hardware/azahar.
 
 
 Distant TODO:
