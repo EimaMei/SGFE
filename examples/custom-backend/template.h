@@ -571,9 +571,30 @@ SGFE_videoMode SGFE_pixelFormatOptimal(void) {
 
 
 /* === PLATFORM FUNCTIONS === */
-/* NOTE(EimaMei): All 'SGFE_platform' functions except 'SGFE_platformGetModel()' and
- * are 'SGFE_platformInitTerminalOutput()' implementation-specified and can be anything.*/
+/* NOTE(EimaMei): The 'platform' functions below are the only ones that must be
+ * present on every backend.
+ *
+ * Platform functions are backend-specific functions that do not fit anywhere in
+ * the base SGFE API, but might be useful to the end user such as hardware-specific
+ * features (e.g. 3D slider on the 3DS). The API also includes general functions
+ * that are platform-dependent (e.g. getting time and CPU clock speed, initializing
+ * terminal output, getting system model, etc). */
 #if 1
+
+
+i64 SGFE_platformGetTimeFromTicks(u64 ticks) {
+	/* NOTE(EimaMei): The return must be UNIX time with nanosecond precision. */
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+
+u64 SGFE_platformGetTicks(void) { 
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+
+u64 SGFE_platformGetClockSpeed(void) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+
 
 SGFE_systemModel SGFE_platformGetModel(void) {
 	#warning "Warning to notify that this function hasn't been implemented yet."

@@ -1,12 +1,10 @@
 Features:
 - Add changes from Desktop to Embedded
 - (3DS) Resize event.
-- (3DS) Update GLASS and KYGX.
 - (3DS) Implement 'GSPGPU_SetLcdForceBlack' using the "showWindow" functions. Add
 back the window flags for it.
 - Implement a show flag.
 - Add a sizeof and getters/setters for each opaque struct type.
-- Add timestamp to events.
 - Controller battery event (battery update, dead, etc).
 - Linked list for controllers.
 - Add a "end poll" event and function. On 3ds pay mind that software keyboard should be taken account of.
@@ -64,6 +62,7 @@ Let the example be an introduction to SGFE's API design.
 - port over examples from RGFW
 - create READMEs for each example?
 - ptr != NULL -> ASSERT_NOT_NULL
+- Document that time since the UNIX epoch with nanosecond precision.
 
 Bugs:
 - (3DS) Fix flicker when opening standard buffer.

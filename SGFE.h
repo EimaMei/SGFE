@@ -664,15 +664,18 @@ typedef SGFE_ENUM(isize, SGFE_eventType) {
 
 typedef struct SGFE_event_common {
 	SGFE_eventType type;
+	u64 timestamp;
 } SGFE_event_common;
 
 typedef struct SGFE_event_controller {
 	SGFE_eventType type;
+	u64 timestamp;
 	SGFE_controller* controller;
 } SGFE_event_controller;
 
 typedef struct SGFE_event_button {
 	SGFE_eventType type;
+	u64 timestamp;
 	SGFE_controller* controller;
 
 	SGFE_buttonType button;
@@ -682,7 +685,9 @@ typedef struct SGFE_event_button {
 
 typedef struct SGFE_event_axis {
 	SGFE_eventType type;
+	u64 timestamp;
 	SGFE_controller* controller;
+
 	SGFE_axisType which;
 	float value;
 	float deadzone;
@@ -690,26 +695,34 @@ typedef struct SGFE_event_axis {
 
 typedef struct SGFE_event_pointer {
 	SGFE_eventType type;
+	u64 timestamp;
 	SGFE_controller* controller;
+
 	SGFE_pointerType which;
 	i32 x, y;
 } SGFE_event_pointer;
 
 typedef struct SGFE_event_motion {
 	SGFE_eventType type;
+	u64 timestamp;
 	SGFE_controller* controller;
+
 	SGFE_motionType which;
 	float x, y, z;
 } SGFE_event_motion;
 
 typedef struct SGFE_event_text {
 	SGFE_eventType type;
+	u64 timestamp;
+
 	u8* text;
 	isize text_len;
 } SGFE_event_text;
 
 typedef struct SGFE_event_user {
 	SGFE_eventType type;
+	u64 timestamp;
+
 	isize code;
 	void* data1;
 	void* data2;
@@ -1479,6 +1492,40 @@ SGFE_DEF const char* SGFE_pixelFormatStr(SGFE_pixelFormat format);
 
 
 
+/**
+ * Returns the current time since the UNIX epoch with nanosecond precision.
+ *
+ * Time representation range:
+ * min: 1677-09-21 00:12:44.145224192 UTC+0
+ * max: 2262-04-11 23:47:16.854775807 UTC+0
+ *
+ * \returns The current time
+ */
+SGFE_DEF i64 SGFE_platformGetTime(void);
+/**
+ * Converts system ticks into time.
+ *
+ * \returns The current time
+ */
+SGFE_DEF i64 SGFE_platformGetTimeFromTicks(u64 ticks);
+
+/**
+ * Returns the amount of ticks/the current time-stamp counter.
+ *
+ * This function is equivalent to RDTSC on x86. It is is specifically useful for
+ * durations as the returned time is monotonic.
+ *
+ * \returns The amount of ticks/The time-stamp counter.
+ */
+SGFE_DEF u64 SGFE_platformGetTicks(void);
+/**
+ * Returns the system's clock speed in Hz.
+ *
+ * \returns The system's clock speed in Hz.
+ */
+SGFE_DEF u64 SGFE_platformGetClockSpeed(void);
+
+
 /* TODO(EimaMei): new function. */
 SGFE_DEF SGFE_systemModel SGFE_platformGetModel(void);
 
@@ -1868,6 +1915,7 @@ void SGFE__processCallbackAndEventQueue_ButtonDown(SGFE_window* win, SGFE_contro
 		if (win->is_queueing_events) {
 			SGFE_event event;
 			event.type = SGFE_eventButtonDown;
+			event.button.timestamp = SGFE_platformGetTicks();
 			event.button.controller = controller;
 			event.button.button = button;
 			event.button.repeat = (controller->buttons_down & SGFE_BIT(button)) == 0;
@@ -2194,7 +2242,10 @@ SGFE_bool SGFE_windowEventPush(SGFE_window* win, const SGFE_event* event) {
 	}
 
 	win->event_len += 1;
-	win->events[SGFE_COUNTOF(win->events) - win->event_len] = *event;
+	SGFE_event* out = &win->events[SGFE_COUNTOF(win->events) - win->event_len];
+	*out = *event;
+	out->text.timestamp = SGFE_platformGetTicks();
+
 	return SGFE_TRUE;
 }
 
@@ -4377,6 +4428,27 @@ SGFE_videoMode SGFE_pixelFormatOptimal(void) {
 
 
 
+i64 SGFE_platformGetTimeFromTicks(u64 ticks) {
+	osTimeRef_s ref = osGetTimeRef();
+
+	ticks -= ref.value_tick;
+	u64 clock_hz  = (u64)ref.sysclock_hz;
+	u64 seconds = (ticks / clock_hz + (u64)ref.drift_ms * 1000000) - ((u64)1000000000 * 60 * 60 * 24 * 25567);
+	u64 rem_cycles = ticks % clock_hz;
+
+	return (i64)(seconds * 1000000000 + (rem_cycles * 1000000000) / clock_hz);
+}
+
+u64 SGFE_platformGetTicks(void) {
+	return svcGetSystemTick();
+}
+
+u64 SGFE_platformGetClockSpeed(void) {
+	osTimeRef_s ref = osGetTimeRef();
+	return (u64)ref.sysclock_hz;
+}
+
+
 SGFE_systemModel SGFE_platformGetModel(void) {
 	u8 model;
 	Result res = CFGU_GetSystemModel(&model);
@@ -4553,33 +4625,7 @@ const char* SGFE_debugCodeSystemGetName(SGFE_debugType type, isize code) {
 }
 
 const char* SGFE_debugSourceSystemGetDesc(SGFE_debugType type, isize code) {
-	switch (R_DESCRIPTION(code)) {
-		case RD_SUCCESS:             return "Operation completed successfully";
-		case RD_TIMEOUT:             return "Operation timed out";
-		case RD_OUT_OF_RANGE:        return "Value is out of valid range";
-		case RD_ALREADY_EXISTS:      return "Specified resource already exists";
-		case RD_CANCEL_REQUESTED:    return "Operation was canceled by request";
-		case RD_NOT_FOUND:           return "Specified resource was not found";
-		case RD_ALREADY_INITIALIZED: return "Object is already initialized";
-		case RD_NOT_INITIALIZED:     return "Object has not been initialized";
-		case RD_INVALID_HANDLE:      return "Specified handle is invalid";
-		case RD_INVALID_POINTER:     return "Specified pointer is invalid";
-		case RD_INVALID_ADDRESS:     return "Specified address is invalid";
-		case RD_NOT_IMPLEMENTED:     return "Requested functionality is not implemented";
-		case RD_OUT_OF_MEMORY:       return "Ran out of memory";
-		case RD_MISALIGNED_SIZE:     return "Specified size is not aligned correctly";
-		case RD_MISALIGNED_ADDRESS:  return "Specified address is not aligned correctly";
-		case RD_BUSY:                return "Resource is busy";
-		case RD_NO_DATA:             return "No data is available";
-		case RD_INVALID_COMBINATION: return "Specified combination of parameters is invalid";
-		case RD_INVALID_ENUM_VALUE:  return "Invalid enumeration value has been specified";
-		case RD_INVALID_SIZE:        return "Specified size is invalid";
-		case RD_ALREADY_DONE:        return "Operation has already been completed";
-		case RD_NOT_AUTHORIZED:      return "Not authorized to perform this operation";
-		case RD_TOO_LARGE:           return "Specified value or object is too large";
-		case RD_INVALID_SELECTION:   return "Specified selection is invalid";
-	}
-	return "Unknown";
+	return osStrError(code);
 	SGFE_UNUSED(type);
 }
 
