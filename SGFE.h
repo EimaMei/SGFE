@@ -600,8 +600,6 @@ typedef SGFE_ENUM(isize, SGFE_eventType) {
 	SGFE_eventDeviceSleep, /* The device has entered sleep mode. */
 	SGFE_eventDeviceWakeup, /* The device has exited out of sleep mode. */
 
-	SGFE_windowRefresh, /* The window content needs to be refreshed */
-	SGFE_eventVideoModeChanged, /* Video mode for the window has been changed (usually by 'SGFE_windowChangeVideoMode'). */
 	SGFE_eventFocusOut, /* User has exited the window and entered a new environment (eg. "Home Menu".) */
 	SGFE_eventFocusIn, /* 	User has entered the window from an external environment (usually the "Home Menu"). */
 
@@ -925,8 +923,6 @@ struct SGFE_window {
 		void (*sleep)(void);
 
 		void (*quit)(void);
-		void (*refresh)(void);
-		void (*video_mode)(void);
 		void (*focus)(void);
 
 		void (*controller)(void);
@@ -1579,8 +1575,6 @@ typedef void (*SGFE_deviceSleepProc)(SGFE_window* win, SGFE_bool is_sleeping);
 /*! SGFE_eventQuit, the window that was closed */
 typedef void (*SGFE_quitProc)(SGFE_window* win);
 /* TODO(EimaMei): NEW FUNCTION. */
-typedef void (*SGFE_refreshProc)(SGFE_window* win);
-/* TODO(EimaMei): NEW FUNCTION. */
 typedef void (*SGFE_focusProc)(SGFE_window* win, SGFE_bool is_focused);
 
 /*! SGFE_controllerConnected / SGFE_controllerDisconnected, the window that got the event, the controller in question, if the controller was connected (else it was disconnected) */
@@ -1604,8 +1598,6 @@ SGFE_DEF SGFE_deviceSleepProc SGFE_windowSetDeviceSleepCallback(SGFE_window* win
 
 /*! set callback for a window quit event. Returns previous callback function (if it was set)  */
 SGFE_DEF SGFE_quitProc SGFE_windowSetQuitCallback(SGFE_window* win, SGFE_quitProc func);
-/*! TODO(EimaMei): new function. */
-SGFE_DEF SGFE_refreshProc SGFE_windowSetRefreshCallback(SGFE_window* win, SGFE_refreshProc func);
 /*! TODO(EimaMei): new function. */
 SGFE_DEF SGFE_focusProc SGFE_windowSetFocusCallback(SGFE_window* win, SGFE_focusProc func);
 
@@ -1872,9 +1864,6 @@ void* SGFE__debugProcSrcUserParam;
 
 #define SGFE_windowQuitCallback(win) \
 	SGFE_CALLBACK_TEMPLATE(SGFE_quitProc, quit, (win))
-
-#define SGFE_windowRefreshCallback(win) \
-	SGFE_CALLBACK_TEMPLATE(SGFE_refreshProc, refresh, (win))
 
 #define SGFE_windowFocusCallback(win, is_focused) \
 	SGFE_CALLBACK_TEMPLATE(SGFE_focusProc, focus, (win, is_focused))
@@ -2197,8 +2186,6 @@ void SGFE_windowSetEventEnabledDefault(SGFE_window* win) {
 	SGFE_windowSetEventEnabled(win, SGFE_eventQuit, SGFE_TRUE);
 	SGFE_windowSetEventEnabled(win, SGFE_eventDeviceSleep, SGFE_TRUE);
 	SGFE_windowSetEventEnabled(win, SGFE_eventDeviceWakeup, SGFE_TRUE);
-	SGFE_windowSetEventEnabled(win, SGFE_windowRefresh, SGFE_TRUE);
-	SGFE_windowSetEventEnabled(win, SGFE_eventVideoModeChanged, SGFE_TRUE);
 	SGFE_windowSetEventEnabled(win, SGFE_eventFocusOut, SGFE_TRUE);
 	SGFE_windowSetEventEnabled(win, SGFE_eventFocusIn, SGFE_TRUE);
 
@@ -3074,7 +3061,6 @@ u8* SGFE__fetchSwapBuffer(SGFE_contextBuffer* b) {
 SGFE_CALLBACK_DEFINE(SGFE_deviceSleepProc, SGFE_windowSetDeviceSleepCallback, sleep)
 
 SGFE_CALLBACK_DEFINE(SGFE_quitProc, SGFE_windowSetQuitCallback, quit)
-SGFE_CALLBACK_DEFINE(SGFE_refreshProc, SGFE_windowSetRefreshCallback, refresh)
 SGFE_CALLBACK_DEFINE(SGFE_focusProc, SGFE_windowSetFocusCallback, focus)
 
 SGFE_CALLBACK_DEFINE(SGFE_controllerProc, SGFE_windowSetControllerCallback, controller)

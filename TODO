@@ -1,6 +1,5 @@
 Features:
 - Add changes from Desktop to Embedded
-- (3DS) Resize event.
 - Add a sizeof and getters/setters for each opaque struct type.
 - Controller battery event (battery update, dead, etc).
 - Linked list for controllers.
@@ -12,14 +11,8 @@ Features:
 - Get cable function.
 - Add a window flag to use native mode instead.
 - Make "setNative" alloc non-native buffers if false is specified and buffers are null.
-- (Wii) Add video refresh event.
-- (3DS) Add video refresh event.
-	- notes on implementing it: use a callback for when VSync must on. Set a boolean,
-	then in the pollEvenets function call 'refresh'. See if you have to wait a frame
-	after vsync or if this can be done instantaneously
 - (Wii) add keyboard support. Add TextInput support for it.
 - (Wii) add mouse support.
-- (3DS) add virtual software keyboard support.
 - Add options to disable app termination/loss of focus.
 - Replace  SGFE_ASSERT(0) with PANIC.
 - (3DS) implement opengl hints
@@ -28,6 +21,7 @@ Features:
 - implement exit key from RGFW.
 - implement window state fully (take queues from events/RGFW window state)
 - SGFE_textInputSettingsAssert
+- add a "wait for vblank" function
 
 
 API-breaking changes:
