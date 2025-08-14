@@ -4,7 +4,6 @@
 
 size_t counter = 0;
 
-#define SGFE_DEBUG
 #define SGFE_IMPLEMENTATION
 #include <SGFE.h>
 #include <resources/controls.h>
@@ -14,7 +13,7 @@ SGFE_bool shutup = 0;
 static
 void callback_error(SGFE_debugContext ctx) {
 	printf(
-		"%s:%zi:%s: %s %s: %s (%s)\n", 
+		"%s:%zi:%s: %s %s: %s (%s)\n",
 		ctx.filename, ctx.line, ctx.function,
 		SGFE_debugSourceName(ctx.source), SGFE_debugTypeName(ctx.type),
 		SGFE_debugCodeGetDesc(ctx.source, ctx.type, ctx.code),

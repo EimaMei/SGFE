@@ -135,6 +135,11 @@ typedef SGFE_ENUM(isize, SGFE_motionType) {
 	SGFE_motionTypeCount,
 };
 
+
+typedef SGFE_ENUM(u32, SGFE_textInputPlatformFlag) {
+	/* ... */
+};
+
 #endif /* SGFE_CUSTOM_BACKEND */
 
 /* === STRUCTURE TYPES === */
@@ -263,7 +268,7 @@ void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlag flags) {
 }
 
 
-void SGFE_windowPollEvents(SGFE_window* win) {
+const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 	#warning "Warning to notify that this function hasn't been implemented yet."
 
@@ -277,7 +282,7 @@ void SGFE_windowPollEvents(SGFE_window* win) {
 				event.type = SGFE_eventQuit;
 				SGFE_windowEventPush(win, &event);
 			}
-			return;
+			return &win->state;
 		}
 	}
 
@@ -318,6 +323,35 @@ void SGFE_windowPollEvents(SGFE_window* win) {
 			}
 		}
 	}
+
+
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventTextInput)) {
+		/* win->state.has_text_input = ...; */
+		/* win->state.text = ...; */
+		/* win->state.text_len = ...; */
+
+		#if 0
+		if (win->state.has_text_input)
+			SGFE_windowTextInputCallback(win, win->state.text, win->state.text_len);
+			if (win->is_queueing_events) {
+				SGFE_event event;
+				event.type = SGFE_eventTextInput;
+				event.text.text = win->state.text;
+				event.text.text_len = win->state.text_len;
+				SGFE_windowEventPush(win, &event);
+			}
+
+			SGFE_windowTextInputEnd(win);
+		}
+		#endif
+	}
+	else if (win->state.has_text_input) {
+		win->state.has_text_input = SGFE_FALSE;
+		win->state.text = NULL;
+		win->state.text_len = 0;
+	}
+
+	return &win->state;
 }
 
 
@@ -480,7 +514,7 @@ void SGFE_windowSwapBuffersGL(SGFE_window* win) {
 
 
 void SGFE_windowSetContextExGL(SGFE_window* win, SGFE_contextGL* gl, SGFE_screen screen) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_ASSERT(screen >= 0 && screen < SGFE_screenCount);
 
 	win->current[screen] = gl;
@@ -489,6 +523,40 @@ void SGFE_windowSetContextExGL(SGFE_window* win, SGFE_contextGL* gl, SGFE_screen
 }
 
 #endif
+
+
+
+SGFE_bool SGFE_textInputSetPlatformFlags(SGFE_textInputSettings* s) {
+	SGFE_ASSERT_NOT_NULL(s);
+	#warning "Warning to notify that this function hasn't been implemented yet."
+
+	/* If backend does not support text input, return false. */
+	/* s->platform_flags = ... */
+	return SGFE_TRUE;
+}
+
+
+SGFE_bool SGFE_windowTextInputBegin(SGFE_window* win, u8* buffer, isize buffer_len,
+		SGFE_textInputSettings* s) {
+	SGFE_ASSERT_NOT_NULL(win);
+	SGFE_ASSERT_NOT_NULL(buffer);
+	SGFE_ASSERT_NOT_NULL(s);
+	SGFE_ASSERT_NOT_NEG(buffer_len);
+	SGFE_windowTextInputEnd(win);
+
+	#warning "Warning to notify that this function hasn't been implemented yet."
+
+	/* If backend does not support text input, return false. */
+	/* s->platform_flags = ... */
+	return SGFE_TRUE;
+}
+
+void SGFE_windowTextInputEnd(SGFE_window* win) {
+	SGFE_ASSERT_NOT_NULL(win);
+	if (!SGFE_windowTextInputIsActive(win)) { return; }
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+
 
 
 
@@ -528,7 +596,7 @@ SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 	#endif
 }
 
-SGFE_bool SGFE_platformBufferSetPlatformSettings(SGFE_contextBuffer* out_buffer) {
+SGFE_bool SGFE_bufferSetPlatformSettings(SGFE_contextBuffer* out_buffer) {
 	SGFE_ASSERT_NOT_NULL(out_buffer);
 	#warning "Warning to notify that this function hasn't been implemented yet."
 }
@@ -581,6 +649,7 @@ const char* SGFE_debugSourcePlatformAPIGetDesc(SGFE_debugType type, isize code) 
 	/* NOTE(EimaMei): If the custom backend does not contain any errors, warnings
 	 * or infos, these arrays can be removed. */
 
+	#if 0
 	static const char* ERROR_LUT[SGFE_errorPlatformCount] = {
 		/* ... */
 	};
@@ -588,14 +657,15 @@ const char* SGFE_debugSourcePlatformAPIGetDesc(SGFE_debugType type, isize code) 
 	static const char* WARNING_LUT[SGFE_warningPlatformCount] = {
 		/* ... */
 
-	}
+	};
 
 	static const char* INFO_LUT[SGFE_infoPlatformCount] = {
 		/* ... */
-	}
+	};
 
 	static const char** ARR_LUT[] = {ERROR_LUT, WARNING_LUT, INFO_LUT};
 	return ARR_LUT[type][code];
+	#endif
 }
 
 

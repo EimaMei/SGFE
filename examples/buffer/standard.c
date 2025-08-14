@@ -1,5 +1,4 @@
 #define SGFE_IMPLEMENTATION
-#define SGFE_DEBUG
 
 #include <SGFE.h>
 #include <resources/controls.h>

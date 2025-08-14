@@ -7,8 +7,10 @@
 	#define BUTTON_UP     SGFE_DpadUp
 	#define BUTTON_DOWN   SGFE_DpadDown
 
-	#define BUTTON_PRIMARY   SGFE_B
-	#define BUTTON_SECONDARY SGFE_A
+	#define BUTTON_PRIMARY    SGFE_B
+	#define BUTTON_SECONDARY  SGFE_A
+	#define BUTTON_TERTIARY   SGFE_Y
+	#define BUTTON_QUATERNARY SGFE_X
 
 	#define BUTTON_BACK  SGFE_Select
 	#define BUTTON_START SGFE_Start

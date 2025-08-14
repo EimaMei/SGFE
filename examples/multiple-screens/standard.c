@@ -1,5 +1,4 @@
 #define SGFE_IMPLEMENTATION
-#define SGFE_DEBUG
 
 #include <SGFE.h>
 #include <resources/controls.h>
@@ -23,7 +22,7 @@ int main(void) {
 	surface_clear_buffers(&bottom);
 	surface_clear_buffers(&top);
 #else
-    #error "This platform does not support multiple screens."
+	#error "This platform does not support multiple screens."
 #endif
 
 	CPU_Rect r = CPU_rectMake(100, 100, img_lonic_width, img_lonic_height);

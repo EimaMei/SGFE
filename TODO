@@ -9,7 +9,7 @@ back the window flags for it.
 - Add timestamp to events.
 - Controller battery event (battery update, dead, etc).
 - Linked list for controllers.
-- Add a "end poll" event and function.
+- Add a "end poll" event and function. On 3ds pay mind that software keyboard should be taken account of.
 - (Wii) GameCube controller support.
 - Add a controller event that'd notify the user of specific events. For wii it'd be adding/removing extensions to the wii remote.
 - (3DS) Add an error if the users selects SGFE_videoModeWide on non 3DS and New 2DS XL consoles.
@@ -32,6 +32,9 @@ back the window flags for it.
 - In the "free window" function call a "hide window" function that turns the screen
 black. Remove that kind of code from the 3DS code.
 - Make platform-specific SGFE_buttonFromAPI/ToAPI functions available as platform functions.
+- implement exit key from RGFW.
+- implement window state fully (take queues from events/RGFW window state)
+- SGFE_textInputSettingsAssert
 
 
 API-breaking changes:
@@ -50,20 +53,25 @@ version of libctru.
 - Add an example where the "non-primary" screen is only used.
 - Remove swapBuffers in the callbacks example and replace it with a video fresh event:
 - split basic.c into multiple examples.
-- turn basic.c into info.c (gives information about what's available on the system).
+- turn basic.c into hello-world.c/info.c (gives information about what's available on the system).
+Let the example be an introduction to SGFE's API design.
 - finish custom-backend example
 - Document all SGFE_<PLATFORM> macros.
 - Create a screenshot of SGFE working on Wii and 3DS emulators/real hardware.
-- (3ds) figure out why 3DS console isn't properly aligned AGAIN.
 - swapInterval example
 - Add an OpenGL hint that'd force SGFE to create a strict format (warnings become errors?).
 - Guide on building for each platform.
+- port over examples from RGFW
+- create READMEs for each example?
+- ptr != NULL -> ASSERT_NOT_NULL
 
-
-Bug fixes:
+Bugs:
 - (3DS) Fix flicker when opening standard buffer.
 - (3DS) Fix flicker when closing basic buffer.
+- (3DS) Left stick X reports over 1.0.
+- (3DS) Left stick Y spam report events when holding down.
 - (Wii) Fix bug where nunchuk controllers are eligible for gyroscope support.
+- (3DS) initial text length bug for software keyboard (see text-input.c)
 
 
 Build system:
@@ -80,7 +88,6 @@ Maybe TODOs:
 - Make an SDL-style library that'd combine SGFE and RGFW.
 - (Wii) White/black/red/blue Wiis as "system models"? Or maybe base it on this: https://en-americas-support.nintendo.com/app/answers/detail/a_id/2650/~/what-is-the-difference-between-the-models-of-wii-consoles%3F
 - Make private API functions visible in the platform section.
-- Implement a SDL_StartTextInput?/SDL_TextInputEvent.
 - UIApplicationMain & example.
 - Make a CHANGELOG
 - GitHub actions test for all platforms.
@@ -91,7 +98,8 @@ opengl already provides that?
 - Booleans to indicate if system supports certain OpenGL hints that aren't already
 provided by glGetInteger (SSAA/downscale)
 - test GLASS fps controller example on real hardware/azahar.
-
+- (3DS) aptSetSleepAllowed/aptIsSleepAllowed and aptSetHomeAllowed/aptIsHomeAllowed
+- (3DS) see if it's possible to implement and remove 3dsx.specs
 
 Distant TODO:
 - Create a portable stdout/stderr library that'd write the text on screen.

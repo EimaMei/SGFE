@@ -1,4 +1,3 @@
-#define SGFE_DEBUG
 #define SGFE_IMPLEMENTATION
 
 /* Specifying 'SGFE_BUFFER_NO_CONVERSION' disables Embedded functionality to convert

@@ -2,7 +2,6 @@
 #define _GLASS_DEFS_H
 
 #include <KYGX/GX.h>
-#include <RIP/Tex3DS.h>
 
 typedef void GLvoid;
 typedef char GLchar;

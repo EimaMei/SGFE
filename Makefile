@@ -111,7 +111,7 @@ ifeq ($(PLATFORM),3DS)
 	FLAGS = $(GNU_FLAGS) -specs=3dsx.specs -D __3DS__ -mword-relocations -ffunction-sections -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 	INCLUDES = -I"resources/3DS/include" $(GNU_INCLUDES) -I"$(CURDIR)" -I"$(DEVKITPRO)/libctru/include" -I"$(DEVKITARM)/include"
 
-	LIBS = -L"resources/3DS/lib" -lGLASSv2 -lkygx -lrip -L$(DEVKITPRO)/libctru/lib/ -lctru -lm
+	LIBS = -L"resources/3DS/lib" -lGLASSv2 -lkygx -lctru -L$(DEVKITPRO)/libctru/lib/ -lm
 	EXE_OUT = .3dsx
 
 	export PATH := $(DEVKITPRO)/tools/bin:$(DEVKITARM)/bin:$(DEVKITPRO)/portlibs/3ds/bin:$(PATH)

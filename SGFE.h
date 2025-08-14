@@ -45,8 +45,6 @@ LICENSE
 
 /*
 	#define SGFE_IMPLEMENTATION - (required) makes it so the source code is included
-	#define SGFE_DEBUG - (optional) makes it so SGFE prints debug messages and errors when they're found
-	#define SGFE_NO_INFO - do not define the SGFE_info struct (without SGFE_IMPLEMENTATION)
 
 	#define SGFE_ALLOC x  - choose the default allocation function (defaults to standard malloc)
 	#define SGFE_FREE x  - choose the default deallocation function (defaults to standard free)
@@ -57,47 +55,6 @@ LICENSE
 	#define SGFE_bool x - choose what type to use for bool, by default u32 is used
 */
 
-
-/*
-	=== ORIGINAL SGFE ===
-	Credits :
-		EimaMei/Sacode : Much of the code for creating windows using winapi, Wrote the Silicon library, helped with MacOS Support, siliapp.h -> referencing
-
-		stb - This project is heavily inspired by the stb single header files
-
-		GLFW:
-			certain parts of winapi and X11 are very poorly documented,
-			GLFW's source code was referenced and used throughout the project.
-
-		contributors : (feel free to put yourself here if you contribute)
-		krisvers (@krisvers) -> code review
-		EimaMei (@SaCode) -> code review
-		Nycticebus (@Code-Nycticebus) -> bug fixes
-		Rob Rohan (@robrohan) -> X11 bugs and missing features, MacOS/Cocoa fixing memory issues/bugs
-		AICDG (@THISISAGOODNAME) -> vulkan support (example)
-		@Easymode -> support, testing/debugging, bug fixes and reviews
-		Joshua Rowe (omnisci3nce) - bug fix, review (macOS)
-		@lesleyrs -> bug fix, review (OpenGL)
-		Nick Porcino (@meshula) - testing, organization, review (MacOS, examples)
-		@therealmarrakesh -> documentation
-		@DarekParodia -> code review (X11) (C++)
-		@NishiOwO -> fix BSD support, fix OSMesa example
-		@BaynariKattu -> code review and documentation
-		Miguel Pinto (@konopimi) -> code review, fix vulkan example
-		@m-doescode -> code review (wayland)
-		Robert Gonzalez (@uni-dos) -> code review (wayland)
-		@TheLastVoyager -> code review
-		@yehoravramenko -> code review (winapi)
-		@halocupcake -> code review (OpenGL)
-		@GideonSerf -> documentation
-		Alexandre Almeida (@M374LX) -> code review (keycodes)
-		Vũ Xuân Trường (@wanwanvxt) -> code review (winapi)
-		Lucas (@lightspeedlucas) -> code review (msvc++)
-		Jeffery Myers (@JeffM2501) -> code review (msvc)
-		Zeni (@zenitsuyo) -> documentation
-		TheYahton (@TheYahton) -> documentation
-		nonexistant_object (@DiarrheaMcgee
-*/
 
 #ifndef SGFE_INCLUDE_SGFE_H
 #define SGFE_INCLUDE_SGFE_H
@@ -175,8 +132,7 @@ extern "C" {
 	#define SGFE_BIT(x) (1 << (x))
 #endif
 
-#if !defined(SGFE_PRINTF)
-	/* required when using SGFE_DEBUG */
+#ifndef SGFE_PRINTF
 	#include <stdio.h>
 	#define SGFE_PRINTF(fmt, ...) printf(fmt, __VA_ARGS__)
 #endif
@@ -677,10 +633,9 @@ typedef SGFE_ENUM(isize, SGFE_eventType) {
 	SGFE_eventKeyboardDown,
 	/* TODO */
 	SGFE_eventKeyboardUp,
+
 	/* TODO */
-	SGFE_eventTextIsEditing,
-	/* TODO */
-	SGFE_eventTextHasFinished,
+	SGFE_eventTextInput,
 
 
 	/* TODO */
@@ -707,6 +662,10 @@ typedef SGFE_ENUM(isize, SGFE_eventType) {
 #define SGFE_MAX_EVENTS 32
 #endif
 
+typedef struct SGFE_event_common {
+	SGFE_eventType type;
+} SGFE_event_common;
+
 typedef struct SGFE_event_controller {
 	SGFE_eventType type;
 	SGFE_controller* controller;
@@ -722,6 +681,7 @@ typedef struct SGFE_event_button {
 } SGFE_event_button;
 
 typedef struct SGFE_event_axis {
+	SGFE_eventType type;
 	SGFE_controller* controller;
 	SGFE_axisType which;
 	float value;
@@ -729,31 +689,41 @@ typedef struct SGFE_event_axis {
 } SGFE_event_axis;
 
 typedef struct SGFE_event_pointer {
+	SGFE_eventType type;
 	SGFE_controller* controller;
 	SGFE_pointerType which;
 	i32 x, y;
 } SGFE_event_pointer;
 
 typedef struct SGFE_event_motion {
+	SGFE_eventType type;
 	SGFE_controller* controller;
 	SGFE_motionType which;
 	float x, y, z;
 } SGFE_event_motion;
 
+typedef struct SGFE_event_text {
+	SGFE_eventType type;
+	u8* text;
+	isize text_len;
+} SGFE_event_text;
+
 typedef struct SGFE_event_user {
+	SGFE_eventType type;
 	isize code;
 	void* data1;
 	void* data2;
 } SGFE_event_user;
 
-typedef struct SGFE_event {
+typedef union SGFE_event {
 	SGFE_eventType type;
-
+	SGFE_event_common common;
 	SGFE_event_controller controller;
 	SGFE_event_button button;
 	SGFE_event_axis axis;
 	SGFE_event_pointer pointer;
 	SGFE_event_motion motion;
+	SGFE_event_text text;
 	SGFE_event_user user;
 } SGFE_event;
 
@@ -781,14 +751,30 @@ typedef SGFE_ENUM(u32, SGFE_windowFlag) {
 };
 
 
+typedef struct SGFE_windowState {
+	/* TODO */
+	SGFE_bool should_quit;
+	/* TODO */
+	SGFE_bool has_text_input;
+
+
+	/* TODO */
+	SGFE_controller controllers[SGFE_MAX_CONTROLLERS];
+
+	/* TOOD */
+	isize text_len;
+	/* TODO */
+	u8* text;
+} SGFE_windowState;
+
 #if defined(SGFE_IMPLEMENTATION) || !defined(SGFE_NO_WINDOW_SRC)
 
 #ifdef SGFE_3DS
 
 #include <3ds.h>
+#include <malloc.h>
 
 #ifdef SGFE_OPENGL
-#define RIP_BACKEND RIP_BACKEND_KYGX
 #include <GLES/gl2.h>
 #endif
 
@@ -813,6 +799,11 @@ struct SGFE_contextGL {
 struct SGFE_windowSource {
 	SGFE_bool lcd_is_on;
 	aptHookCookie apt_hook;
+
+	SwkbdState keyboard;
+	char* swkbd_shared_mem;
+	Handle swkbd_shared_mem_handle;
+	SGFE_bool kb_null_terminated;
 };
 
 #elif SGFE_WII
@@ -866,6 +857,8 @@ struct SGFE_contextBuffer {
 struct SGFE_window {
 	/* TODO */
 	SGFE_windowSource src;
+	/* TODO */
+	SGFE_windowState state;
 
 	/* TODO */
 	SGFE_contextType current_type[SGFE_screenCount];
@@ -891,17 +884,12 @@ struct SGFE_window {
 	SGFE_bool enabled_events[SGFE_eventCount];
 
 	/* TODO */
-	SGFE_controller controllers[SGFE_MAX_CONTROLLERS];
-
-	/* TODO */
 	SGFE_windowFlag flags;
 	/* TODO */
 	void* user_ptr;
 
 	/* TODO */
 	SGFE_bool is_allocated;
-	/* TODO */
-	SGFE_bool should_quit;
 
 	struct {
 		void (*sleep)(void);
@@ -918,6 +906,8 @@ struct SGFE_window {
 		void (*pointer)(void);
 		void (*motion)(void);
 		void (*debug)(void);
+
+		void (*text_input)(void);
 	} callbacks;
 }; /*!< window structure for managing the window */
 
@@ -979,7 +969,7 @@ void SGFE_windowSetEventEnabled(SGFE_window* win, SGFE_eventType type, SGFE_bool
 void SGFE_windowSetEventEnabledDefault(SGFE_window* win);
 
 /* TODO */
-SGFE_DEF void SGFE_windowPollEvents(SGFE_window* win);
+SGFE_DEF const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win);
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_windowCheckEvent(SGFE_window* win, const SGFE_event** out_event);
 /* TODO */
@@ -1102,6 +1092,8 @@ typedef struct SGFE_contextBuffer SGFE_contextBuffer;
 /* */
 SGFE_DEF SGFE_bool SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
 	SGFE_videoMode mode, SGFE_pixelFormat format, SGFE_bool allocate_buffers);
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_bufferSetPlatformSettings(SGFE_contextBuffer* b);
 
 
 /* TODO */
@@ -1370,6 +1362,102 @@ SGFE_DEF void SGFE_windowSetContextExGL(SGFE_window* win, SGFE_contextGL* ctx, S
 
 
 
+typedef SGFE_ENUM(isize, SGFE_textInputType) {
+	/* TODO */
+	SGFE_textInputTypeStandard,
+	/* TODO */
+	SGFE_textInputTypeQWERTY,
+	/* TODO */
+	SGFE_textInputTypeNumpad,
+	/* TODO */
+	SGFE_textInputTypeWestern,
+};
+
+typedef SGFE_ENUM(isize, SGFE_textInputPassword) {
+	/* TODO */
+	SGFE_textInputPasswordNone,
+	/* TODO */
+	SGFE_textInputPasswordHide,
+	/* TODO */
+	SGFE_textInputPasswordHideDelay,
+};
+
+typedef SGFE_ENUM(u32, SGFE_textInputFlag) {
+	/* TODO */
+	SGFE_textInputFlagMultiline                = SGFE_BIT(0),
+
+	/* TODO */
+	SGFE_textInputFlagFixedLength              = SGFE_BIT(1),
+	/* TODO */
+	SGFE_textInputFlagNotEmpty                 = SGFE_BIT(2),
+	/* TODO */
+	SGFE_textInputFlagNotBlank                 = SGFE_BIT(3),
+};
+
+#ifndef SGFE_CUSTOM_BACKEND
+typedef SGFE_ENUM(u32, SGFE_textInputPlatformFlag) {
+	#ifdef SGFE_3DS
+	SGFE_textInputPlatformFlagParental        = SGFE_BIT(0),
+	SGFE_textInputPlatformFlagDarkenTopScreen = SGFE_BIT(1),
+	SGFE_textInputPlatformFlagPredictiveInput = SGFE_BIT(2),
+	SGFE_textInputPlatformFlagMultiline       = SGFE_BIT(3),
+	SGFE_textInputPlatformFlagFixedWidth      = SGFE_BIT(4),
+	SGFE_textInputPlatformFlagAllowHome       = SGFE_BIT(5),
+	SGFE_textInputPlatformFlagAllowReset      = SGFE_BIT(6),
+	SGFE_textInputPlatformFlagAllowPower      = SGFE_BIT(7),
+	SGFE_textInputPlatformFlagDefaultQwerty   = SGFE_BIT(9),
+	#endif
+};
+#endif
+
+typedef struct SGFE_textInputSettings {
+	/* TODO */
+	SGFE_textInputType type;
+	/* TODO */
+	SGFE_textInputPassword password_mode;
+
+	/* TODO */
+	SGFE_textInputFlag flags;
+	/* TODO */
+	SGFE_textInputPlatformFlag platform_flags;
+
+	/* TODO */
+	SGFE_bool null_terminated_strings;
+
+	/* TODO */
+	isize initial_text_len;
+	/* TODO */
+	const char* initial_text;
+
+	/* TODO */
+	isize hint_text_len;
+	/* TODO */
+	const char* hint_text;
+
+	/* TODO | -1 | remove? */
+	isize dialog_button_count;
+} SGFE_textInputSettings;
+
+
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_textInputSettingsMakeDefault(SGFE_textInputSettings* s,
+	SGFE_bool null_terminated_strings);
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_textInputSetPlatformFlags(SGFE_textInputSettings* s);
+
+
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_windowTextInputBegin(SGFE_window* win, u8* buffer, isize buffer_len,
+		SGFE_textInputSettings* s);
+/* TODO */
+SGFE_DEF void SGFE_windowTextInputEnd(SGFE_window* win);
+
+
+/* TODO*/
+SGFE_DEF SGFE_bool SGFE_windowTextInputIsActive(const SGFE_window* win);
+
+
+
 /* Returns a video mode that's considered to be the most optimal for the system
  * by the library. Usually this returns a mode that has a standard resolution,
  * refresh rate and technique for drawing scanlines that works across all models. */
@@ -1398,7 +1486,7 @@ SGFE_DEF SGFE_systemModel SGFE_platformGetModel(void);
 SGFE_DEF SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b);
 
 /* TODO */
-SGFE_DEF SGFE_bool SGFE_platformBufferSetPlatformSettings(SGFE_contextBuffer* b);
+SGFE_DEF SGFE_bool SGFE_platformHasSoftwareKeybord(void);
 
 #ifdef SGFE_3DS
 
@@ -1443,6 +1531,9 @@ typedef void (*SGFE_pointerProc)(SGFE_window* win, SGFE_controller* controller, 
 /* TODO(EimaMei): NEW FUNCTION. */
 typedef void (*SGFE_motionProc)(SGFE_window* win, SGFE_controller* controller, const SGFE_motion* motion);
 
+/* TODO(EimaMei): NEW FUNCTION. */
+typedef void (*SGFE_textInputProc)(SGFE_window* win, u8* text, isize len);
+
 
 /*! TODO(EimaMei): new function. */
 SGFE_DEF SGFE_deviceSleepProc SGFE_windowSetDeviceSleepCallback(SGFE_window* win, SGFE_deviceSleepProc func);
@@ -1465,6 +1556,9 @@ SGFE_DEF SGFE_axisProc SGFE_windowSetAxisCallback(SGFE_window* win, SGFE_axisPro
 SGFE_DEF SGFE_pointerProc SGFE_windowSetPointerCallback(SGFE_window* win, SGFE_pointerProc func);
 /* TODO(EimaMei): NEW FUNCTION. */
 SGFE_DEF SGFE_motionProc SGFE_windowSetMotionCallback(SGFE_window* win, SGFE_motionProc func);
+
+/* TODO(EimaMei): NEW FUNCTION. */
+SGFE_DEF SGFE_textInputProc SGFE_windowSetTextInputCallback(SGFE_window* win, SGFE_textInputProc func);
 
 
 
@@ -1531,9 +1625,9 @@ SGFE_DEF SGFE_debugProc SGFE_setDebugCallback(SGFE_debugProc func, void* user_pa
 
 
 /* TODO | sends SGFE_debugSourceApp */
-#define SGFE_debugSend(ctx, type, code) SGFE_debugSendMsg(ctx, type, NULL)
+#define SGFE_debugSend(ctx, type, code) SGFE_debugSendMsg(ctx, type, code, "")
 /* TODO | sends SGFE_debugSourceApp */
-#define SGFE_debugSendMsg(ctx, type, code, msg) (SGFE_debugSendMsg)(ctx, type, msg, __FILE__, __LINE__, __FUNC__)
+#define SGFE_debugSendMsg(ctx, type, code, msg) (SGFE_debugSendMsg)(ctx, type, code, msg, __FILE__, __LINE__, __func__)
 
 /* TODO */
 SGFE_DEF const char* SGFE_debugSourceName(SGFE_debugSource source);
@@ -1594,6 +1688,7 @@ typedef SGFE_ENUM(isize, SGFE_errorPlatform) {
 	#ifdef SGFE_3DS
 	SGFE_errorPlatformInitKYGX,
 	SGFE_errorPlatformCreateGlassCtx,
+	SGFE_errorPlatformTextInput,
 	#endif
 	SGFE_errorPlatformCount
 };
@@ -1627,7 +1722,7 @@ SGFE_DEF const char* SGFE_debugCodeGLGetDesc(isize code);
 
 #if 1
 void (SGFE_debugSendMsg)(void* ctx_ptr, SGFE_debugType type, isize code,
-	const char* msg, const char* filename, isize line, const char* file);
+	const char* msg, const char* filename, isize line, const char* function);
 #endif
 
 #ifdef SGFE_IMPLEMENTATION
@@ -1734,6 +1829,11 @@ void* SGFE__debugProcSrcUserParam;
 
 #define SGFE_windowMotionCallback(win, controller, type) \
 	SGFE_CALLBACK_TEMPLATE(SGFE_motionProc, motion, (win, controller, type))
+
+
+#define SGFE_windowTextInputCallback(win, text, len) \
+	SGFE_CALLBACK_TEMPLATE(SGFE_textInputProc, text_input, (win, text, len))
+
 
 #define SGFE_debugCallback(ctx) \
 	if (SGFE_debugProcSrc) { \
@@ -1904,13 +2004,12 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlag flags,
 	win->event_len = 0;
 	win->flags = flags;
 	win->user_ptr = NULL;
-	win->is_allocated = SGFE_FALSE;
-	win->should_quit = SGFE_FALSE;
+	win->state.should_quit = SGFE_FALSE;
 
 	SGFE_MEMSET(win->current_type, 0, sizeof(win->current_type));
 	SGFE_MEMSET(win->current, 0, sizeof(win->current));
 	SGFE_MEMSET(win->ctx, 0, sizeof(win->ctx));
-	SGFE_MEMSET(win->controllers, 0, sizeof(win->controllers));
+	SGFE_MEMSET(&win->state, 0, sizeof(win->state));
 	SGFE_MEMSET(&win->callbacks, 0, sizeof(win->callbacks));
 
 	SGFE_windowSetEventEnabledDefault(win);
@@ -2049,8 +2148,7 @@ void SGFE_windowSetEventEnabledDefault(SGFE_window* win) {
 	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardDisconnected, SGFE_FALSE);
 	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardDown, SGFE_FALSE);
 	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardUp, SGFE_FALSE);
-	SGFE_windowSetEventEnabled(win, SGFE_eventTextIsEditing, SGFE_FALSE);
-	SGFE_windowSetEventEnabled(win, SGFE_eventTextHasFinished, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_FALSE);
 
 	SGFE_windowSetEventEnabled(win, SGFE_eventMouseConnected, SGFE_FALSE);
 	SGFE_windowSetEventEnabled(win, SGFE_eventMouseDisconnected, SGFE_FALSE);
@@ -2182,13 +2280,13 @@ void SGFE_windowSetContextEx(SGFE_window* win, SGFE_contextType type, void* ctx,
 
 SGFE_bool SGFE_windowShouldClose(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
-	return win->should_quit;
+	return win->state.should_quit;
 }
 
 void SGFE_windowSetShouldClose(SGFE_window* win, SGFE_bool should_close) {
 	SGFE_ASSERT(win != NULL);
 
-	win->should_quit = SGFE_BOOL(should_close);
+	win->state.should_quit = SGFE_BOOL(should_close);
 	if (should_close)  {
 		SGFE_windowQuitCallback(win);
 	}
@@ -2205,8 +2303,7 @@ SGFE_bool SGFE_windowInitTerminalOutput(SGFE_window* win) {
 		if (res == SGFE_FALSE) { return SGFE_FALSE; }
 	}
 
-	SGFE_contextBuffer* out = SGFE_windowGetContextBuffer(win);
-	SGFE_bool res = SGFE_platformInitTerminalOutput(out);
+	SGFE_bool res = SGFE_platformInitTerminalOutput(SGFE_windowGetContextBuffer(win));
 	if (res == SGFE_FALSE) { return res; }
 	SGFE_windowSwapBuffers(win);
 
@@ -2357,8 +2454,8 @@ SGFE_bool SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
 		SGFE_MEMSET(b->buffers_native, 0, sizeof(b->buffers_native));
 	}
 
-	SGFE_bool res = SGFE_platformBufferSetPlatformSettings(b);
-	if (res) { return SGFE_FALSE; }
+	SGFE_bool res = SGFE_bufferSetPlatformSettings(b);
+	if (!res) { return SGFE_FALSE; }
 
 	SGFE_bufferSetSwapInterval(b, 1);
 	return SGFE_TRUE;
@@ -2475,7 +2572,7 @@ SGFE_bool SGFE_bufferIsStereoscopic(SGFE_contextBuffer* b) {
 SGFE_controller* SGFE_windowGetController(SGFE_window* win, isize port) {
 	SGFE_ASSERT(win != NULL);
 	SGFE_ASSERT(port >= 0 && port < SGFE_MAX_CONTROLLERS);
-	return &win->controllers[port];
+	return &win->state.controllers[port];
 }
 
 
@@ -2838,6 +2935,29 @@ void SGFE_windowSetContextGL(SGFE_window* win, SGFE_contextGL* ctx) {
 
 
 
+SGFE_bool SGFE_textInputSettingsMakeDefault(SGFE_textInputSettings* s, SGFE_bool null_terminated_strings) {
+	SGFE_ASSERT_NOT_NULL(s);
+
+	s->type = SGFE_textInputTypeStandard;
+	s->password_mode = SGFE_textInputPasswordNone;
+	s->flags = 0;
+	s->dialog_button_count = -1;
+	s->null_terminated_strings = null_terminated_strings;
+	s->initial_text = NULL;
+	s->hint_text = NULL;
+	s->initial_text_len = (isize)(SIZE_MAX >> 1);
+	s->hint_text_len = (isize)(SIZE_MAX >> 1);
+
+	return SGFE_textInputSetPlatformFlags(s);
+}
+
+
+SGFE_bool SGFE_windowTextInputIsActive(const SGFE_window* win) {
+	return SGFE_windowGetEventEnabled(win, SGFE_eventTextInput);
+}
+
+
+
 void SGFE_videoModeResolution(SGFE_videoMode mode, isize* out_width, isize* out_height) {
 	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
 	if (out_width)  {  *out_width = SGFE_VIDEO_RESOLUTION_LUT[mode][0]; }
@@ -2892,6 +3012,8 @@ SGFE_CALLBACK_DEFINE(SGFE_buttonProc, SGFE_windowSetButtonCallback, button)
 SGFE_CALLBACK_DEFINE(SGFE_axisProc, SGFE_windowSetAxisCallback, axis)
 SGFE_CALLBACK_DEFINE(SGFE_pointerProc, SGFE_windowSetPointerCallback, pointer)
 SGFE_CALLBACK_DEFINE(SGFE_motionProc, SGFE_windowSetMotionCallback, motion)
+
+SGFE_CALLBACK_DEFINE(SGFE_textInputProc, SGFE_windowSetTextInputCallback, text_input)
 
 
 SGFE_debugProc SGFE_setDebugCallback(SGFE_debugProc func, void* user_param) {
@@ -3352,7 +3474,7 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 		win->flags |= SGFE_windowFlagTopScreen;
 	}
 
-	SGFE_controller* controller = &win->controllers[0];
+	SGFE_controller* controller = SGFE_windowGetController(win, 0);
 	controller->port = 0;
 	controller->type = SGFE_controllerTypeStandard;
 	controller->connected = SGFE_TRUE;
@@ -3423,7 +3545,7 @@ void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlag flags) {
 }
 
 
-void SGFE_windowPollEvents(SGFE_window* win) {
+const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 
 	SGFE_bool continue_running = aptMainLoop();
@@ -3437,7 +3559,7 @@ void SGFE_windowPollEvents(SGFE_window* win) {
 				event.type = SGFE_eventQuit;
 				SGFE_windowEventPush(win, &event);
 			}
-			return;
+			return &win->state;
 		}
 	}
 
@@ -3517,64 +3639,101 @@ void SGFE_windowPollEvents(SGFE_window* win) {
 			SGFE__processCallbackAndEventQueue_Motion(win, controller, m);
 		}
 	}
-}
 
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventTextInput) && win->src.swkbd_shared_mem != NULL) {
+		SwkbdState* kb = &win->src.keyboard;
+		isize state = -1;
 
+		while (state == -1) {
+			aptLaunchLibraryApplet(
+				APPID_SOFTWARE_KEYBOARD, kb, sizeof(*kb), win->src.swkbd_shared_mem_handle
+			);
 
-SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
-	/* TODO(EimaMei): Remove this entire function and replace it with a helper library
-	 * and function. */
-	/* NOTE(EimaMei): Taken from libctru console.c */
-	static SGFE_bool console_initialized = SGFE_FALSE;
-	SGFE_ASSERT(b != NULL);
+			switch (kb->result) {
+				case SWKBD_PARENTAL_OK:
+				case SWKBD_D0_CLICK:
+				case SWKBD_D1_CLICK1:
+				case SWKBD_D2_CLICK2: {
+					state = 1;
+				} break;
 
-	SGFE_bufferSetNative(b, SGFE_TRUE);
-	SGFE_bufferSetFormat(b, SGFE_pixelFormatRGB565);
-	SGFE_bufferSetDoubleBuffered(b, SGFE_FALSE);
+				/* NOTE(EimaMei): Window focus events are automatically handled thankfully. */
+				case SWKBD_HOMEPRESSED:
+				case SWKBD_D2_CLICK1: {
+					state = 2;
+				} break;
 
-	if (!console_initialized) {
-		/* NOTE(EimaMei): Taken from libctru console.c */
-		static struct _SGFE_devoptab_t dotab_stdout;
-		dotab_stdout.name = "con";
-		dotab_stdout.write_r = con_write;
+				case SWKBD_RESETPRESSED: {
+					SGFE_windowSetShouldClose(win, SGFE_TRUE);
+					aptSetChainloaderToSelf();
+					state = 0;
+				} break;
 
-		devoptab_list[1] = &dotab_stdout;
-		devoptab_list[2] = &dotab_stdout;
+				case SWKBD_INVALID_INPUT: {
+					SGFE_debugSendPlatformAPI(win, SGFE_debugTypeError, SGFE_errorPlatformTextInput);
+					state = 0;
+				} break;
 
-		setvbuf(stdout, NULL, _IONBF, 0);
-		setvbuf(stderr, NULL, _IONBF, 0);
+				case SWKBD_OUTOFMEM: {
+					SGFE_debugSendAPI(win, SGFE_debugTypeError, SGFE_errorOutOfMemory);
+					state = 0;
+				} break;
 
-		console_initialized = SGFE_TRUE;
+				case SWKBD_POWERPRESSED:
+				case SWKBD_D1_CLICK0:
+				case SWKBD_D2_CLICK0: {
+					state = 0;
+				} break;
+
+				case SWKBD_NONE:
+				case SWKBD_BANNED_INPUT:
+				case SWKBD_PARENTAL_FAIL:
+					break;
+			}
+		}
+
+		win->state.has_text_input = (state == 1);
+		switch (state) {
+			/* NOTE(EimaMei): No input, end text input.*/
+			case 0: {
+				SGFE_windowTextInputEnd(win);
+			} break;
+
+			/* NOTE(EimaMei): Succesful input, end text input.*/
+			case 1: {
+				win->state.text_len = utf16_to_utf8(
+					win->state.text,
+					(u16*)(void*)(win->src.swkbd_shared_mem) + kb->text_offset,
+					kb->max_text_len
+				);
+				if (win->src.kb_null_terminated) {
+					win->state.text[win->state.text_len] = '\0';
+				}
+
+				SGFE_windowTextInputCallback(win, win->state.text, win->state.text_len);
+				if (win->is_queueing_events) {
+					SGFE_event event;
+					event.type = SGFE_eventTextInput;
+					event.text.text = win->state.text;
+					event.text.text_len = win->state.text_len;
+					SGFE_windowEventPush(win, &event);
+				}
+
+				SGFE_windowTextInputEnd(win);
+			} break;
+
+			/* NOTE(EimaMei): No input possibly, but text input events should continue.*/
+			default:
+				break;
+		}
 	}
-	*currentConsole = defaultConsole;
-	currentConsole->consoleInitialised = SGFE_TRUE;
-	currentConsole->frameBuffer = (u16*)(void*)SGFE_bufferGetFramebuffer(b);
-
-	/* NOTE(EimaMei): Taken from libctru console.c */
-	if (b->screen == SGFE_screenTop) {
-		SGFE_bool is_wide = (b->mode == SGFE_videoModeWide);
-		currentConsole->consoleWidth = is_wide ? 100 : 50;
-		currentConsole->windowWidth = is_wide ? 100 : 50;
+	else if (win->state.has_text_input) {
+		win->state.has_text_input = SGFE_FALSE;
+		win->state.text = NULL;
+		win->state.text_len = 0;
 	}
 
-	/* TODO(EimaMei): Should be kept in the library. */
-	/*if ((win->flags & SGFE_windowFlagDualScreen) == SGFE_windowFlagDualScreen) {
-		win->current ^= 1;
-	}*/
-
-	consoleClear();
-	return SGFE_TRUE;
-}
-
-
-
-SGFE_bool SGFE_platformBufferSetPlatformSettings(SGFE_contextBuffer* b) {
-	SGFE_ASSERT_NOT_NULL(b);
-
-	b->src.size = 0;
-	b->src.frames_counter = 0;
-	b->src.run_gsp_loop = NULL;
-	return SGFE_TRUE;
+	return &win->state;
 }
 
 
@@ -3622,6 +3781,16 @@ SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
 	SGFE_UNUSED(controller);
 }
 
+
+
+SGFE_bool SGFE_bufferSetPlatformSettings(SGFE_contextBuffer* b) {
+	SGFE_ASSERT_NOT_NULL(b);
+
+	b->src.size = 0;
+	b->src.frames_counter = 0;
+	b->src.run_gsp_loop = NULL;
+	return SGFE_TRUE;
+}
 
 
 SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
@@ -3795,7 +3964,7 @@ void SGFE_windowSwapBuffersBuffer(SGFE_window* win) {
 		b->current ^= b->is_double_buffered;
 
 		if ((win->flags & (u32)(SGFE_windowFlagTopScreen << screen)) != 0) {
-			gspSetEventCallback(GSPGPU_EVENT_VBlank0 + (GSPGPU_Event)screen, onVBlank0, b, SGFE_FALSE);
+			gspSetEventCallback(GSPGPU_EVENT_VBlank0 + (GSPGPU_Event)screen, SGFE__bufferOnVblankFPS, b, SGFE_FALSE);
 			b->src.run_gsp_loop = &wait[screen];
 			wait[screen] = SGFE_TRUE;
 		}
@@ -4066,6 +4235,138 @@ void SGFE_windowSetContextExGL(SGFE_window* win, SGFE_contextGL* gl, SGFE_screen
 
 
 
+SGFE_bool SGFE_textInputSetPlatformFlags(SGFE_textInputSettings* s) {
+	SGFE_ASSERT_NOT_NULL(s);
+	s->platform_flags = SGFE_textInputPlatformFlagDarkenTopScreen |
+						SGFE_textInputPlatformFlagPredictiveInput |
+						SGFE_textInputPlatformFlagAllowHome       |
+						SGFE_textInputPlatformFlagAllowReset      |
+						SGFE_textInputPlatformFlagAllowPower;
+	return SGFE_TRUE;
+}
+
+
+/* NOTE(EimaMei): This is a heavily modified version of libctru's swkbdInputText
+ * to make it more fine-tuned for SGFE. The main rationale behind the rewrite is
+ * adding functionality to omit the NULL byte as (for whatever reason) the original
+ * writes one to the output buffer, which may not be what users want. */
+SGFE_bool SGFE_windowTextInputBegin(SGFE_window* win, u8* buffer, isize buffer_len,
+		SGFE_textInputSettings* s) {
+	SGFE_ASSERT_NOT_NULL(win);
+	SGFE_ASSERT_NOT_NULL(buffer);
+	SGFE_ASSERT_NOT_NULL(s);
+	SGFE_ASSERT_NOT_NEG(buffer_len);
+	SGFE_windowTextInputEnd(win);
+
+	SwkbdState* kb = &win->src.keyboard;
+	swkbdInit(
+		kb,
+		(SwkbdType)s->type,
+		s->dialog_button_count != -1 ? s->dialog_button_count : 2,
+		buffer_len - s->null_terminated_strings
+	);
+
+	SGFE_windowSource* src = &win->src;
+	{
+		kb->shared_memory_size =
+			(((sizeof(u16) * (kb->max_text_len + 1) + 3) & (u32)~3)
+			+ 0xFFF) & (u32)~0xFFF;
+
+		src->swkbd_shared_mem = memalign(0x1000, kb->shared_memory_size);
+		if (!src->swkbd_shared_mem) {
+			SGFE_debugSendAPI(win, SGFE_debugTypeError, SGFE_errorOutOfMemory);
+			return SGFE_FALSE;
+		}
+
+		Result res = svcCreateMemoryBlock(
+			&src->swkbd_shared_mem_handle,
+			(u32)src->swkbd_shared_mem,
+			kb->shared_memory_size,
+			MEMPERM_READ | MEMPERM_WRITE, MEMPERM_READ | MEMPERM_WRITE
+		);
+
+		if (R_FAILED(res)) {
+			free(src->swkbd_shared_mem);
+			SGFE_debugSendAPI(win, SGFE_debugTypeError, SGFE_errorOutOfMemory);
+			return SGFE_FALSE;
+		}
+	}
+
+	{
+		SwkbdValidInput valid;
+		if (s->flags  & SGFE_textInputFlagFixedLength) {
+			valid = SWKBD_FIXEDLEN;
+		}
+		else {
+			switch (s->flags & (SGFE_textInputFlagNotEmpty | SGFE_textInputFlagNotBlank)) {
+				case 0: valid = SWKBD_ANYTHING; break;
+				case SGFE_textInputFlagNotEmpty:
+					valid = SWKBD_NOTEMPTY; break;
+				case SGFE_textInputFlagNotBlank:
+					valid = SWKBD_NOTBLANK; break;
+				case SGFE_textInputFlagNotEmpty | SGFE_textInputFlagNotBlank:
+					valid = SWKBD_NOTEMPTY_NOTBLANK; break;
+			}
+		}
+		kb->valid_input = (int)valid;
+	}
+
+	{
+		if (s->flags & SGFE_textInputFlagMultiline) {
+			s->platform_flags |= SGFE_textInputPlatformFlagMultiline;
+		}
+		swkbdSetFeatures(kb, s->platform_flags);
+	}
+
+	if (s->initial_text) {
+		kb->initial_text_offset = 0;
+
+		isize len = utf8_to_utf16(
+			(u16*)(void*)src->swkbd_shared_mem,
+			(const u8*)s->initial_text,
+			(buffer_len > s->initial_text_len) ? (usize)s->initial_text_len : (usize)buffer_len
+		);
+		*(((u16*)(void*)src->swkbd_shared_mem) + len) = '\0';
+	}
+
+	if (s->hint_text) {
+		isize len = utf8_to_utf16(
+			kb->hint_text,
+			(const u8*)s->hint_text,
+			(buffer_len > s->hint_text_len) ? (usize)s->hint_text_len : (usize)buffer_len
+		);
+		kb->hint_text[len] = '\0';
+	}
+
+	kb->password_mode = s->password_mode;
+	kb->filter_flags = 0;
+	kb->max_digits = 0;
+	SGFE_MEMSET(kb->reserved, 0, sizeof(kb->reserved));
+
+	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_TRUE);
+	win->state.text = buffer;
+	win->state.text_len = 0;
+	win->src.kb_null_terminated = s->null_terminated_strings;
+
+	return SGFE_TRUE;
+}
+
+void SGFE_windowTextInputEnd(SGFE_window* win) {
+	SGFE_ASSERT_NOT_NULL(win);
+	if (!SGFE_windowTextInputIsActive(win)) { return; }
+
+	SGFE_windowSource* src = &win->src;
+	svcCloseHandle(src->swkbd_shared_mem_handle);
+	free(src->swkbd_shared_mem);
+
+	src->swkbd_shared_mem_handle = 0;
+	src->swkbd_shared_mem = NULL;
+
+	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_FALSE);
+}
+
+
+
 SGFE_videoMode SGFE_videoModeOptimal(void) {
 	return SGFE_videoMode2D;
 }
@@ -4082,6 +4383,57 @@ SGFE_systemModel SGFE_platformGetModel(void) {
 	if (res != 0) { return SGFE_systemModelUnknown; }
 
 	return (model <= SGFE_systemModelN2DSXL) ? (model - 1) : SGFE_systemModelUnknown;
+}
+
+
+SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
+	/* TODO(EimaMei): Remove this entire function and replace it with a helper library
+	 * and function. */
+	/* NOTE(EimaMei): Taken from libctru console.c */
+	static SGFE_bool console_initialized = SGFE_FALSE;
+	SGFE_ASSERT(b != NULL);
+
+	SGFE_bufferSetNative(b, SGFE_TRUE);
+	SGFE_bufferSetFormat(b, SGFE_pixelFormatRGB565);
+	SGFE_bufferSetDoubleBuffered(b, SGFE_FALSE);
+
+	if (!console_initialized) {
+		/* NOTE(EimaMei): Taken from libctru console.c */
+		static struct _SGFE_devoptab_t dotab_stdout;
+		dotab_stdout.name = "con";
+		dotab_stdout.write_r = con_write;
+
+		devoptab_list[1] = &dotab_stdout;
+		devoptab_list[2] = &dotab_stdout;
+
+		setvbuf(stdout, NULL, _IONBF, 0);
+		setvbuf(stderr, NULL, _IONBF, 0);
+
+		console_initialized = SGFE_TRUE;
+	}
+	*currentConsole = defaultConsole;
+	currentConsole->consoleInitialised = SGFE_TRUE;
+	currentConsole->frameBuffer = (u16*)(void*)SGFE_bufferGetFramebuffer(b);
+
+	/* NOTE(EimaMei): Taken from libctru console.c */
+	if (b->screen == SGFE_screenTop) {
+		SGFE_bool is_wide = (b->mode == SGFE_videoModeWide);
+		currentConsole->consoleWidth = is_wide ? 100 : 50;
+		currentConsole->windowWidth = is_wide ? 100 : 50;
+	}
+
+	/* TODO(EimaMei): Should be kept in the library. */
+	/*if ((win->flags & SGFE_windowFlagDualScreen) == SGFE_windowFlagDualScreen) {
+		win->current ^= 1;
+	}*/
+
+	consoleClear();
+	return SGFE_TRUE;
+}
+
+
+SGFE_bool SGFE_platformHasSoftwareKeybord(void) {
+	return SGFE_TRUE;
 }
 
 
@@ -4144,7 +4496,8 @@ const char* SGFE_debugSourcePlatformAPIGetName(SGFE_debugType type, isize code) 
 
 	static const char* ERROR_LUT[SGFE_errorPlatformCount] = {
 		"SGFE_errorPlatformInitKYGX",
-		"SGFE_errorPlatformCreateGlassCtx"
+		"SGFE_errorPlatformCreateGlassCtx",
+		"SGFE_errorPlatformTextInput"
 	};
 
 	return ERROR_LUT[code];
@@ -4160,6 +4513,7 @@ const char* SGFE_debugSourcePlatformAPIGetDesc(SGFE_debugType type, isize code) 
 	static const char* ERROR_LUT[SGFE_errorPlatformCount] = {
 		"Failed to initialize KYGX",
 		"Failed to create GLASS context",
+		"Something went wrong with text input. Possibly a platform API bug."
 	};
 
 	return ERROR_LUT[code];
