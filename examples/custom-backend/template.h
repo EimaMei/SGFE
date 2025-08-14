@@ -355,6 +355,17 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 }
 
 
+void SGFE_windowSetVisible(SGFE_window* win, SGFE_bool is_visible) {
+	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_BOOL(is_visible);
+
+	win->state.is_visible = is_visible;
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* NOTE(EimaMei): Here SGFE should turn on/off the screen using a platform-specific
+	 * function. */
+	/* ... */
+}
+
 
 SGFE_button SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
 	SGFE_ASSERT(type > 0 && type <= SGFE_controllerTypeCount);

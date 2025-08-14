@@ -749,22 +749,39 @@ typedef struct SGFE_windowSource SGFE_windowSource;
 
 /*! Optional arguments for making a windows */
 typedef SGFE_ENUM(u32, SGFE_windowFlag) {
+	/* No window flags. */
 	SGFE_windowFlagNone         = 0,
 
+	/* Disables the default behavior of enabling the screen. */
+	SGFE_windowFlagDontShow     = SGFE_BIT(14),
+	/* Turns the entire screen into a terminal output. */
 	SGFE_windowFlagTerminal     = SGFE_BIT(15),
+	/* Creates a buffer context alongside the window. If failed, all 'makeWindow'
+	 * functions return NULL. */
 	SGFE_windowFlagBuffer       = SGFE_BIT(16),
+	/* Creates an OpenGL context alongside the window. If failed, all 'makeWindow'
+	 * functions return NULL. */
 	SGFE_windowFlagOpenGL       = SGFE_BIT(17),
+	/* Creates an OpenGL context alongside the window. If failed, all 'makeWindow'
+	 * functions return NULL. [This option currently does nothing]. */
 	SGFE_windowFlagEGL          = SGFE_BIT(18),
 
 	#ifdef SGFE_3DS
-	SGFE_windowFlagTopScreen    = SGFE_BIT(29), /* TODO(EimaMei): New enum. */
-	SGFE_windowFlagBottomScreen = SGFE_BIT(30), /* TODO(EimaMei): New enum. */
-	SGFE_windowFlagDualScreen   = SGFE_windowFlagTopScreen | SGFE_windowFlagBottomScreen, /* TODO(EimaMei): New enum. */
+	/* Enables rendering for the top 3DS screen. If none of the screen flags are
+	 * pickes, this flag gets implicitly set during the creation of the window. */
+	SGFE_windowFlagTopScreen    = SGFE_BIT(29),
+	/* Enables rendering for the bottom 3DS screen. This also sets the bottom screen
+	 * as the 'primary' screen for functions that input the window structure. */
+	SGFE_windowFlagBottomScreen = SGFE_BIT(30),
+	/* Enables rendering for both 3DS screen. The primary screen is the top screen. */
+	SGFE_windowFlagDualScreen   = SGFE_windowFlagTopScreen | SGFE_windowFlagBottomScreen,
 	#endif
 };
 
 
 typedef struct SGFE_windowState {
+	/* TODO */
+	SGFE_bool is_visible;
 	/* TODO */
 	SGFE_bool should_quit;
 	/* TODO */
@@ -1022,6 +1039,12 @@ SGFE_DEF SGFE_controller* SGFE_windowGetController(SGFE_window* win, isize port)
 SGFE_DEF SGFE_bool SGFE_windowShouldClose(SGFE_window* win);
 /* TODO */
 SGFE_DEF void SGFE_windowSetShouldClose(SGFE_window* win, SGFE_bool should_close);
+
+
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_windowIsVisible(const SGFE_window* win);
+/* TODO */
+SGFE_DEF void SGFE_windowSetVisible(SGFE_window* win, SGFE_bool is_visible);
 
 
 /* TODO(EimaMei): new function. */
@@ -1493,19 +1516,13 @@ SGFE_DEF const char* SGFE_pixelFormatStr(SGFE_pixelFormat format);
 
 
 /**
- * Returns the current time since the UNIX epoch with nanosecond precision.
+ * Converts system ticks into UNIX time with nanosecond precision.
  *
  * Time representation range:
  * min: 1677-09-21 00:12:44.145224192 UTC+0
  * max: 2262-04-11 23:47:16.854775807 UTC+0
  *
- * \returns The current time
- */
-SGFE_DEF i64 SGFE_platformGetTime(void);
-/**
- * Converts system ticks into time.
- *
- * \returns The current time
+ * \returns The converted time
  */
 SGFE_DEF i64 SGFE_platformGetTimeFromTicks(u64 ticks);
 
@@ -2111,6 +2128,7 @@ SGFE_window* SGFE_windowMakePtrContextless(SGFE_windowFlag flags, SGFE_window* w
 
 void SGFE_windowClose(SGFE_window* win) {
 	SGFE_windowFreeContext(win);
+	SGFE_windowSetVisible(win, SGFE_FALSE);
 	SGFE_windowClose_platform(win);
 
 	#ifndef SGFE__BACKEND_FREE_WINDOW_IN_CLOSE
@@ -2271,6 +2289,8 @@ void SGFE_windowEventQueueFlush(SGFE_window* win) {
 
 
 void SGFE_windowSwapBuffers(SGFE_window* win) {
+	SGFE_ASSERT_MSG(SGFE_windowIsVisible(win), "Swapping buffers when the screen is not visible. Possibly user-bug?");
+
 	switch (SGFE_windowGetContextType(win)) {
 		case SGFE_contextTypeBuffer: {
 			SGFE_windowSwapBuffersBuffer(win);
@@ -2338,9 +2358,15 @@ void SGFE_windowSetShouldClose(SGFE_window* win, SGFE_bool should_close) {
 	SGFE_ASSERT(win != NULL);
 
 	win->state.should_quit = SGFE_BOOL(should_close);
-	if (should_close)  {
+	if (should_close) {
 		SGFE_windowQuitCallback(win);
 	}
+}
+
+
+SGFE_bool SGFE_windowIsVisible(const SGFE_window* win) {
+	SGFE_ASSERT(win != NULL);
+	return win->state.is_visible;
 }
 
 
@@ -2445,14 +2471,7 @@ SGFE_bool SGFE_windowCreateContextBuffer(SGFE_window* win, SGFE_videoMode mode,
 		SGFE_windowSetContextExBuffer(win, b, screen);
 	}
 
-	#ifdef SGFE_3DS
-	if (!win->src.lcd_is_on) {
-		gspWaitForVBlank();
-		GSPGPU_SetLcdForceBlack(SGFE_FALSE);
-		win->src.lcd_is_on = SGFE_TRUE;
-	}
-	#endif
-
+	SGFE_windowSetVisible(win, !SGFE_BOOL(win->flags & SGFE_windowFlagDontShow));
 	win->flags |= SGFE_windowFlagBuffer;
 	return SGFE_TRUE;
 }
@@ -2963,6 +2982,7 @@ SGFE_bool SGFE_windowCreateContextGL(SGFE_window* win, SGFE_videoMode mode) {
 		SGFE_windowSetContextExGL(win, gl, screen);
 	}
 
+	SGFE_windowSetVisible(win, !SGFE_BOOL(win->flags & SGFE_windowFlagDontShow));
 	win->flags |= SGFE_windowFlagOpenGL;
 	return SGFE_TRUE;
 }
@@ -3571,10 +3591,6 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 
 
 void SGFE_windowClose_platform(SGFE_window* win) {
-	if (gspHasGpuRight()) {
-		gspWaitForVBlank();
-		GSPGPU_SetLcdForceBlack(SGFE_TRUE);
-	}
 	gspExit();
 
 	#ifdef SGFE_OPENGL
@@ -3785,6 +3801,16 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 	}
 
 	return &win->state;
+}
+
+
+void SGFE_windowSetVisible(SGFE_window* win, SGFE_bool is_visible) {
+	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_BOOL(is_visible);
+
+	win->state.is_visible = is_visible;
+	gspWaitForVBlank();
+	GSPGPU_SetLcdForceBlack(!is_visible);
 }
 
 
