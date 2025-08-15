@@ -1,12 +1,9 @@
 Features:
 - Add changes from Desktop to Embedded
 - Add a sizeof and getters/setters for each opaque struct type.
-- Linked list for controllers.
 - Add a "end poll" event and function. On 3ds pay mind that software keyboard should be taken account of.
 - (Wii) GameCube controller support.
-- Add a controller event that'd notify the user of specific events. For wii it'd be adding/removing extensions to the wii remote.
 - Get cable function.
-- Add a window flag to use native mode instead.
 - Make "setNative" alloc non-native buffers if false is specified and buffers are null.
 - (Wii) add keyboard support. Add TextInput support for it.
 - (Wii) add mouse support.
@@ -14,15 +11,8 @@ Features:
 - Replace  SGFE_ASSERT(0) with PANIC.
 - Add rumble functionality.
 - Make platform-specific SGFE_buttonFromAPI/ToAPI functions available as platform functions.
-- implement exit key from RGFW.
-- implement window state fully (take queues from events/RGFW window state)
 - SGFE_textInputSettingsAssert
-- add a "wait for vblank" function
-- remove GLASS header (or at least the GLES headers)
 - SGFE_bufferAssert
-- check which events to implement to window state
-- use malloc for keyboard instead of keeping keyboard.
-- check how long swapBuffers wait
 
 
 API-breaking changes:
@@ -50,16 +40,15 @@ Let the example be an introduction to SGFE's API design.
 - Add an OpenGL hint that'd force SGFE to create a strict format (warnings become errors?).
 - Guide on building for each platform.
 - port over examples from RGFW
-- create READMEs for each example?
+- create READMEs for each example? for each one mention on which platforms the example works
 - ptr != NULL -> ASSERT_NOT_NULL
 - example where SGFE_platformGetModel, SGFE_platformGetCompositeFormat, SGFE_platformGetRegion
 and SGFE_platformGetLanguage are used.
+- rework README.Md
 
 Bugs:
 - (3DS) Fix flicker when opening standard buffer.
 - (3DS) Fix flicker when closing basic buffer.
-- (3DS) Left stick X reports over 1.0.
-- (3DS) Left stick Y spam report events when holding down.
 - (Wii) Fix bug where nunchuk controllers are eligible for gyroscope support.
 - (3DS) initial text length bug for software keyboard (see text-input.c)
 

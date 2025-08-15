@@ -2,20 +2,14 @@
 #define SGFE_IMPLEMENTATION
 #include <SGFE.h>
 #include <resources/controls.h>
-#include "gles1_vshader.h"
+
+#include <GLES/gl2.h>
+#include "gles2_vshader.h"
 
 static
 GLuint load_shader(GLenum shader_type, const u8* binary_source, isize binary_size) {
-	#ifdef SGFE_3DS
-	#ifndef GL_SHADER_BINARY_PICA
-	#define GL_SHADER_BINARY_PICA 0x6000
-	#endif
-
-	GLenum binary_format = GL_SHADER_BINARY_PICA;
-	#endif
-
 	GLuint shader = glCreateShader(shader_type);
-	glShaderBinary(1, &shader, binary_format, binary_source, binary_size);
+	glShaderBinary(1, &shader, (GLenum)SGFE_glGetVertexShaderType(), binary_source, binary_size);
 
 	return shader;
 }

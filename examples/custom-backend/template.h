@@ -323,10 +323,8 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 	}
 
 	if (SGFE_windowGetEventEnabled(win, SGFE_eventControllerBattery)) {
-		/* win->state.is_battery_updated = ...; */
-
 		#if 0
-		if (win->state.is_battery_updated) {
+		if (is_battery_updated) {
 			SGFE_windowControllerBatteryCallback(win, controller, controller->power_state, controller->battery_procent);
 			if (win->is_queueing_events) {
 				SGFE_event event;
@@ -338,8 +336,6 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 			}
 		}
 		#endif
-	} else if (win->state.is_battery_updated) {
-		win->state.is_battery_updated = SGFE_FALSE;
 	}
 
 
@@ -504,6 +500,14 @@ void* SGFE_glGetBoundContext(void) {
 }
 
 
+/* NOTE(EimaMei): If a system does not support an OpenGL shader format, -1 should be
+ * returned. */
+#warning "Warning to notify that THESE function haven't been implemented yet."
+isize SGFE_glGetVertexShaderType(void)   { return -1; }
+isize SGFE_glGetFragmentShaderType(void) { return -1; }
+isize SGFE_glGetGeometryShaderType(void) { return -1; }
+
+
 SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_contextHintsGL* hints) {
 	SGFE_ASSERT(gl != NULL);
 	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
@@ -666,6 +670,10 @@ SGFE_systemLanguage SGFE_platformGetLanguage(void) {
 	#endif
 }
 
+
+void SGFE_platformWaitForVBlank(void) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
 
 SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);

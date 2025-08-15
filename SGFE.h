@@ -390,20 +390,36 @@ typedef SGFE_ENUM(isize, SGFE_pixelFormat) {
 };
 
 
-/* TODO(EimaMei): document */
+/**
+ * SGFE controller type
+ *
+ * All consoles have at least one standard controller to communicate input for
+ * obvious reasons. However many consoles also have multiple controller types that
+ * differ from another dramatically.
+ *
+ * Every SGFE backend has the standard controller type defined under 'SGFE_controllerTypeStandard'
+ * which equals to zero. After that a backend can have any amount of additional
+ * types.
+ *
+ * You can access the controller's type by reading the 'SGFE_controller' structure's
+ * member with the same name.
+ *
+ * \sa SGFE_controller */
 typedef SGFE_ENUM(isize, SGFE_controllerType) {
-	/* TODO(EimaMei): document */
+	/* Standard controller type. The most common/default controller type. */
 	SGFE_controllerTypeStandard = 0,
 
 	#ifdef SGFE_WII
-	/* TODO(EimaMei): document */
+	/* Wii Remote (without any extensions). */
 	SGFE_controllerTypeWiiRemote = SGFE_controllerTypeStandard,
-	/* TODO(EimaMei): document */
+	/* Wii Remote + Nunchuk. */
 	SGFE_controllerTypeNunchuk,
-	/* TODO(EimaMei): document */
+	/* Either a Wii Remote with an unsupported extension, a GameCube controller or
+	 * Wii (U) Classic controller. */
 	SGFE_controllerTypeUnknown,
 	#endif
 
+	/* Amount of controller types for this backend. */
 	SGFE_controllerTypeCount,
 };
 
@@ -839,12 +855,15 @@ typedef SGFE_ENUM(u32, SGFE_windowFlag) {
 typedef struct SGFE_windowState {
 	/* TODO */
 	SGFE_bool is_visible;
+
 	/* TODO */
 	SGFE_bool should_quit;
 	/* TODO */
-	SGFE_bool has_text_input;
+	SGFE_bool is_sleeping;
 	/* TODO */
-	SGFE_bool is_battery_updated;
+	SGFE_bool is_focused;
+	/* TODO */
+	SGFE_bool has_text_input;
 
 
 	/* TODO */
@@ -888,7 +907,7 @@ struct SGFE_contextGL {
 struct SGFE_windowSource {
 	aptHookCookie apt_hook;
 
-	SwkbdState keyboard;
+	SwkbdState* keyboard;
 	char* swkbd_shared_mem;
 	Handle swkbd_shared_mem_handle;
 	SGFE_bool kb_null_terminated;
@@ -980,11 +999,11 @@ struct SGFE_window {
 	SGFE_windowFlag flags;
 	/* TODO */
 	void* user_ptr;
+	/* TODO */
+	SGFE_button exit_buttons;
 
 	/* TODO */
 	SGFE_bool is_allocated;
-	/* TODO */
-	SGFE_bool is_console_initialized;
 
 	struct {
 		void (*sleep)(void);
@@ -1421,6 +1440,14 @@ typedef struct SGFE_contextHintsGL  {
 SGFE_DEF void* SGFE_glGetBoundContext(void);
 
 
+/* TODO | enum | can return -1 */
+SGFE_DEF isize SGFE_glGetVertexShaderType(void);
+/* TODO | can return -1 */
+SGFE_DEF isize SGFE_glGetFragmentShaderType(void);
+/* TODO | can return -1 */
+SGFE_DEF isize SGFE_glGetGeometryShaderType(void);
+
+
 /* TODO */
 SGFE_DEF void SGFE_glHintsMakeWithDefaultSettings(SGFE_contextHintsGL* hints);
 /* TODO */
@@ -1695,12 +1722,15 @@ SGFE_DEF SGFE_systemRegion SGFE_platformGetRegion(void);
 SGFE_DEF SGFE_systemLanguage SGFE_platformGetLanguage(void);
 
 
+/* TODO(EimaMei): new function. */
+SGFE_DEF void SGFE_platformWaitForVBlank(void);
 
 /* TODO(EimaMei): new function. */
 SGFE_DEF SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b);
 
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_platformHasSoftwareKeybord(void);
+
 
 #ifdef SGFE_3DS
 
@@ -2265,7 +2295,6 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlag flags,
 	SGFE_ASSERT(win != NULL);
 
 	win->is_allocated = SGFE_FALSE;
-	win->is_console_initialized = SGFE_TRUE;
 	win->is_queueing_events = SGFE_FALSE;
 	win->has_polled_events = SGFE_FALSE;
 	win->event_len = 0;
@@ -2601,7 +2630,6 @@ SGFE_bool SGFE_windowInitTerminalOutput(SGFE_window* win) {
 	SGFE_windowSwapBuffers(win);
 
 	SGFE__ROOT_WIN = win;
-	win->is_console_initialized = SGFE_TRUE;
 	return SGFE_TRUE;
 }
 
@@ -3699,31 +3727,54 @@ SGFE_bool SGFE__setBatteryState(SGFE_controller* controller);
 
 
 void SGFE__aptHookCallback(APT_HookType hook, void* param) {
-	SGFE_window* win = param;
+	SGFE_window* win = (SGFE_window*)param;
 
-	static const SGFE_eventType APT_HOOK_LUT[APTHOOK_COUNT] = {
-		SGFE_eventFocusOut,
-		SGFE_eventFocusIn,
-		SGFE_eventDeviceSleep,
-		SGFE_eventDeviceWakeup,
-		SGFE_eventQuit
-	};
+	SGFE_eventType type;
+	switch ((int)hook) {
+		case APTHOOK_ONSUSPEND:
+		case APTHOOK_ONRESTORE: {
+			type = (hook == APTHOOK_ONRESTORE) ? SGFE_eventFocusIn : SGFE_eventFocusOut;
 
-	/* TODO(EimaMei): maybe add a way to disbale "focus out" by not allowing to press home. */
-	SGFE_event event;
-	event.type = APT_HOOK_LUT[hook];
+			if (SGFE_windowGetEventEnabled(win, type)) {
+				win->state.is_focused = (type == SGFE_eventFocusIn);
 
-	SGFE_bool res = SGFE_windowEventPush(win, &event);
-	if (res == SGFE_FALSE) { return; }
+				SGFE_windowFocusCallback(win, win->state.is_focused);
+				if (win->is_queueing_events) {
+					SGFE_event event;
+					event.type = type;
+					SGFE_windowEventPush(win, &event);
+				}
+			}
+		} break;
 
-	if (hook <= APTHOOK_ONRESTORE) {
-		SGFE_windowFocusCallback(win, event.type == SGFE_eventFocusIn);
-	}
-	else if (hook <= APTHOOK_ONWAKEUP) {
-		SGFE_windowDeviceSleepCallback(win, event.type == SGFE_eventDeviceSleep);
-	}
-	else {
-		SGFE_windowQuitCallback(win);
+		case APTHOOK_ONSLEEP:
+		case APTHOOK_ONWAKEUP: {
+			type = (hook == APTHOOK_ONSLEEP) ? SGFE_eventDeviceSleep : SGFE_eventDeviceWakeup;
+
+			if (SGFE_windowGetEventEnabled(win, type)) {
+				win->state.is_sleeping = (type == SGFE_eventDeviceSleep);
+
+				SGFE_windowDeviceSleepCallback(win, win->state.is_sleeping);
+				if (win->is_queueing_events) {
+					SGFE_event event;
+					event.type = type;
+					SGFE_windowEventPush(win, &event);
+				}
+			}
+		} break;
+
+		case APTHOOK_ONEXIT: {
+			if (SGFE_windowGetEventEnabled(win, SGFE_eventQuit)) {
+				win->state.should_quit = SGFE_TRUE;
+
+				SGFE_windowQuitCallback(win);
+				if (win->is_queueing_events) {
+					SGFE_event event;
+					event.type = SGFE_eventQuit;
+					SGFE_windowEventPush(win, &event);
+				}
+			}
+		} break;
 	}
 }
 
@@ -3843,7 +3894,7 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 		controller->axes[which].type = which;
 		/* NOTE(EimaMei): I picked '40' as the deadzone based on how the CPAD bits
 		 * are set if the value is larger than 40. (http://3dbrew.org/wiki/HID_Shared_Memory). */
-		controller->axes[which].deadzone = (40.0f / 156.0f);
+		controller->axes[which].deadzone = (40.0f / 175.0f);
 	}
 
 	for (SGFE_pointerType which = 0; which < SGFE_pointerTypeCount; which += 1) {
@@ -3930,13 +3981,13 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 
 		if (held & (KEY_CPAD_LEFT | KEY_CPAD_RIGHT)) {
 			SGFE_axis* a = &controller->axes[SGFE_axisLeftX];
-			a->value = (float)cpad.dx / 156.0f;
+			a->value = (float)cpad.dx / 175.0f;
 			SGFE__processCallbackAndEventQueue_Axis(win, controller, a);
 		}
 
 		if (held & (KEY_CPAD_UP | KEY_CPAD_DOWN)) {
 			SGFE_axis* a = &controller->axes[SGFE_axisLeftY];
-			a->value = (float)cpad.dy / 156.0f;
+			a->value = (float)cpad.dy / 175.0f;
 			SGFE__processCallbackAndEventQueue_Axis(win, controller, a);
 		}
 	}
@@ -3984,9 +4035,9 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 	}
 
 	if (SGFE_windowGetEventEnabled(win, SGFE_eventControllerBattery)) {
-		win->state.is_battery_updated = SGFE__setBatteryState(controller);
+		SGFE_bool update = SGFE__setBatteryState(controller);
 
-		if (win->state.is_battery_updated) {
+		if (update) {
 			SGFE_windowControllerBatteryCallback(win, controller, controller->power_state, controller->battery_procent);
 			if (win->is_queueing_events) {
 				SGFE_event event;
@@ -3997,13 +4048,11 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 				SGFE_windowEventPush(win, &event);
 			}
 		}
-	} else if (win->state.is_battery_updated) {
-		win->state.is_battery_updated = SGFE_FALSE;
 	}
 
 
 	if (SGFE_windowGetEventEnabled(win, SGFE_eventTextInput) && win->src.swkbd_shared_mem != NULL) {
-		SwkbdState* kb = &win->src.keyboard;
+		SwkbdState* kb = win->src.keyboard;
 		isize state = -1;
 
 		while (state == -1) {
@@ -4368,6 +4417,11 @@ void* SGFE_glGetBoundContext(void) {
 }
 
 
+isize SGFE_glGetVertexShaderType(void)   { return GL_SHADER_BINARY_PICA; }
+isize SGFE_glGetFragmentShaderType(void) { return -1; }
+isize SGFE_glGetGeometryShaderType(void) { return GL_GEOMETRY_SHADER_PICA; }
+
+
 SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_contextHintsGL* hints) {
 	SGFE_ASSERT(gl != NULL);
 	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
@@ -4640,7 +4694,13 @@ SGFE_bool SGFE_windowTextInputBegin(SGFE_window* win, u8* buffer, isize buffer_l
 	SGFE_ASSERT_NOT_NEG(buffer_len);
 	SGFE_windowTextInputEnd(win);
 
-	SwkbdState* kb = &win->src.keyboard;
+	SwkbdState* kb = SGFE_ALLOC(sizeof(SwkbdState));
+	if (!kb) {
+		SGFE_debugSendAPI(win, SGFE_debugTypeError, SGFE_errorOutOfMemory);
+		return SGFE_FALSE;
+	}
+	win->src.keyboard = kb;
+
 	swkbdInit(
 		kb,
 		(SwkbdType)s->type,
@@ -4740,9 +4800,11 @@ void SGFE_windowTextInputEnd(SGFE_window* win) {
 	SGFE_windowSource* src = &win->src;
 	svcCloseHandle(src->swkbd_shared_mem_handle);
 	free(src->swkbd_shared_mem);
+	SGFE_FREE(src->keyboard);
 
 	src->swkbd_shared_mem_handle = 0;
 	src->swkbd_shared_mem = NULL;
+	src->keyboard = NULL;
 
 	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_FALSE);
 }
@@ -4833,6 +4895,10 @@ SGFE_systemLanguage SGFE_platformGetLanguage(void) {
 	}
 }
 
+
+void SGFE_platformWaitForVBlank(void) {
+	gspWaitForVBlank();
+}
 
 SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 	/* TODO(EimaMei): Remove this entire function and replace it with a helper library
