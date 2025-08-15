@@ -23,7 +23,7 @@ void uniform_color_fs(float* fs_input, Shader_Builtins* builtins, void* uniforms
 }
 
 
-int main() {
+int main(void) {
 	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowFlagBuffer);
 	if (win == NULL) { return 1; }
 
@@ -36,7 +36,7 @@ int main() {
 	glContext context;
 	init_glContext(&context, (u32**)&buffer, width, height, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
 
-	float points[] = { 
+	float points[] = {
 		-0.5f, -0.5f, 0.0f,
 		 0.5f, -0.5f, 0.0f,
 		 0.0f,  0.5f, 0.0f

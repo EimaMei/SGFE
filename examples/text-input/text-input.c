@@ -45,12 +45,17 @@ void text_input_callback(SGFE_window* win, u8* text, isize len) {
 	);
 }
 
+int si = 0;
+void annoying_af(void* buffer_ptr) {
+	printf("refres!\n");
+	si = 1;
+}
+
 int main(void) {
 	SGFE_setDebugCallback(debug_callback, NULL);
 
 	SGFE_window* win = SGFE_windowMakeContextless(SGFE_windowFlagTerminal);
 	if (win == NULL) { return 1; }
-	SGFE_controller* controller = SGFE_windowGetController(win, 0);
 
 	u8 buf[64];
 	SGFE_textInputSettings settings;
@@ -67,13 +72,13 @@ int main(void) {
 		"\n"
 		"Has software keyboard: %i\n",
 
-		SGFE_controllerGetNameButton(controller, SGFE_buttonGetType(BUTTON_PRIMARY)),
-		SGFE_controllerGetNameButton(controller, SGFE_buttonGetType(BUTTON_SECONDARY)),
-		SGFE_controllerGetNameButton(controller, SGFE_buttonGetType(BUTTON_TERTIARY)),
-		SGFE_controllerGetNameButton(controller, SGFE_buttonGetType(BUTTON_QUATERNARY)),
+		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_PRIMARY)),
+		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_SECONDARY)),
+		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_TERTIARY)),
+		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_QUATERNARY)),
 
-		SGFE_controllerGetNameButton(controller, SGFE_buttonGetType(BUTTON_LEFT)),
-		SGFE_controllerGetNameButton(controller, SGFE_buttonGetType(BUTTON_RIGHT)),
+		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_LEFT)),
+		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_RIGHT)),
 
 		SGFE_platformHasSoftwareKeybord()
 	);
@@ -102,6 +107,9 @@ int main(void) {
 				}
 			} break;
 		}
+
+		SGFE_controller* controller = SGFE_windowGetController(win, 0);
+		if (controller == NULL) { SGFE_windowSwapBuffers(win); continue; }
 
 		if (SGFE_isDown(controller, SGFE_Start)) {
 			SGFE_windowSetShouldClose(win, SGFE_TRUE);

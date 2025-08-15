@@ -45,18 +45,6 @@
 
 #ifdef SGFE_CUSTOM_BACKEND
 
-typedef SGFE_ENUM(isize, SGFE_systemModel) {
-	SGFE_systemModelNone,
-
-	#ifdef SGFE_CUSTOM_BACKEND
-	/* ... */
-	#endif
-
-	SGFE_systemModelUnknown,
-	SGFE_systemModelCount,
-};
-
-
 typedef SGFE_ENUM(isize, SGFE_screen) {
 	SGFE_screenPrimary,
 
@@ -133,6 +121,16 @@ typedef SGFE_ENUM(isize, SGFE_motionType) {
 	#endif
 
 	SGFE_motionTypeCount,
+};
+
+typedef SGFE_ENUM(isize, SGFE_systemModel) {
+	SGFE_systemModelUnknown,
+
+	#ifdef SGFE_CUSTOM_BACKEND
+	/* ... */
+	#endif
+
+	SGFE_systemModelCount,
 };
 
 
@@ -324,6 +322,26 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 		}
 	}
 
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventControllerBattery)) {
+		/* win->state.is_battery_updated = ...; */
+
+		#if 0
+		if (win->state.is_battery_updated) {
+			SGFE_windowControllerBatteryCallback(win, controller, controller->power_state, controller->battery_procent);
+			if (win->is_queueing_events) {
+				SGFE_event event;
+				event.type = SGFE_eventControllerBattery;
+				event.battery.controller = controller;
+				event.battery.state = controller->power_state;
+				event.battery.battery_procent = controller->battery_procent;
+				SGFE_windowEventPush(win, &event);
+			}
+		}
+		#endif
+	} else if (win->state.is_battery_updated) {
+		win->state.is_battery_updated = SGFE_FALSE;
+	}
+
 
 	if (SGFE_windowGetEventEnabled(win, SGFE_eventTextInput)) {
 		/* win->state.has_text_input = ...; */
@@ -378,10 +396,10 @@ u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_button button) {
 }
 
 
-const char* SGFE_controllerGetNameButton_platform(const SGFE_controller* controller,
+const char* SGFE_controllerGetNameButton_platform(SGFE_controllerType,
 		SGFE_buttonType button) {
 	/* NOTE(EimaMei): 'SGFE_controllerGetNameButton' already asserts that the
-	 * controller cannot be NULL and that the button is valid for the controller
+	 * controller type is valid and that the button is valid for the controller
 	 * type. */
 	#warning "Warning to notify that this function hasn't been implemented yet."
 }
@@ -598,7 +616,7 @@ i64 SGFE_platformGetTimeFromTicks(u64 ticks) {
 	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
-u64 SGFE_platformGetTicks(void) { 
+u64 SGFE_platformGetTicks(void) {
 	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
@@ -614,6 +632,40 @@ SGFE_systemModel SGFE_platformGetModel(void) {
 	return SGFE_systemModelNone;
 	#endif
 }
+
+SGFE_videoCompositeMode SGFE_platformGetCompositeFormat(void) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	#if 0
+	/* If there are no available composite formats, return SGFE_videoCompositeModeIsDigital. */
+	return SGFE_videoCompositeModeIsDigital;
+	#endif
+}
+
+
+SGFE_systemRegion SGFE_platformGetRegion(void) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	#if 0
+	/* If platform returned an error or if there's no information, return SGFE_systemRegionUnknown.
+	 *
+	 * If a region is detected but is not in the list, return 'SGFE_systemRegionNotInTheList'.
+	 *
+	 * Make an issue in the SGFE repository for the region to be added. */
+	return SGFE_systemRegionUnknown;
+	#endif
+}
+
+SGFE_systemLanguage SGFE_platformGetLanguage(void) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	#if 0
+	/* If platform returned an error or if there's no information, return SGFE_systemLanguageUnknown.
+	 *
+	 * If a language is detected but is not in the list, return 'SGFE_systemLanguageNotInTheList'.
+	 *
+	 * Make an issue in the SGFE repository for the language to be added. */
+	return SGFE_systemLanguageUnknown;
+	#endif
+}
+
 
 SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);

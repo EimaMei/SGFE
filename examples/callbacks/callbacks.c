@@ -43,12 +43,21 @@ void callback_videoMode(SGFE_window* win, SGFE_videoMode video_mode) {
 
 static
 void callback_controller(SGFE_window* win, SGFE_controller* controller, SGFE_bool connected) {
-	printf("'%s' has been %s\n", SGFE_controllerGetName(controller), connected ? "connected" : "disconnected");
+	printf("'%s' has been %s\n", SGFE_controllerGetName(controller->type), connected ? "connected" : "disconnected");
+}
+
+static
+void callback_battery(SGFE_window* win, SGFE_controller* controller, SGFE_powerState state, isize battery_procent) {
+	printf(
+		"Batery status for '%s' has changed (battery: %zi%%, state: %zi)\n",
+		SGFE_controllerGetName(controller->type),
+		battery_procent, state
+	);
 }
 
 static
 void callback_button(SGFE_window* win, SGFE_controller* controller, SGFE_buttonType button, SGFE_bool pressed) {
-	printf("key %s: %s\n", pressed ? "pressed" : "released", SGFE_controllerGetNameButton(controller, button));
+	printf("key %s: %s\n", pressed ? "pressed" : "released", SGFE_controllerGetNameButton(controller->type, button));
 
 	if (SGFE_isHeld(controller, BUTTON_START)) {
 		SGFE_windowSetShouldClose(win, SGFE_TRUE);
@@ -63,7 +72,7 @@ void callback_axis(SGFE_window* win, SGFE_controller* controller, const SGFE_axi
 
 	printf(
 		"%s: value (%f); deadzone (%f)\n",
-		SGFE_controllerGetNameAxis(controller, axis->type),
+		SGFE_controllerGetNameAxis(controller->type, axis->type),
 		axis->value, axis->deadzone
 	);
 }
@@ -72,7 +81,7 @@ static
 void callback_pointer(SGFE_window* win, SGFE_controller* controller, const SGFE_pointer* pointer) {
 	printf(
 		"%s: %zix%zi\n",
-		SGFE_controllerGetNamePointer(controller, pointer->type),
+		SGFE_controllerGetNamePointer(controller->type, pointer->type),
 		pointer->x, pointer->y
 	);
 }
@@ -81,7 +90,7 @@ static
 void callback_motion(SGFE_window* win, SGFE_controller* controller, const SGFE_motion* motion) {
 	printf(
 		"%s: %fx%fx%f\n",
-		SGFE_controllerGetNameMotion(controller, motion->type),
+		SGFE_controllerGetNameMotion(controller->type, motion->type),
 		motion->x, motion->y, motion->z
 	);
 }
@@ -96,6 +105,7 @@ int main(void) {
 	SGFE_windowSetQuitCallback(win, callback_quit);
 	SGFE_windowSetFocusCallback(win, callback_focus);
 	SGFE_windowSetControllerCallback(win, callback_controller);
+	SGFE_windowSetControllerBatteryCallback(win, callback_battery);
 	SGFE_windowSetButtonCallback(win, callback_button);
 	SGFE_windowSetAxisCallback(win, callback_axis);
 	SGFE_windowSetPointerCallback(win, callback_pointer);

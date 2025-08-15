@@ -56,7 +56,7 @@ int main(void) {
 				case SGFE_eventButtonDown: {
 					printf(
 						"pressed %s (repeat: %i)\n",
-						SGFE_controllerGetNameButton(event->button.controller, event->button.button),
+						SGFE_controllerGetNameButton(event->button.controller->type, event->button.button),
 						event->button.repeat
 					);
 				} break;
@@ -64,7 +64,7 @@ int main(void) {
 				case SGFE_eventButtonUp: {
 					printf(
 						"released %s\n",
-						SGFE_controllerGetNameButton(event->button.controller, event->button.button)
+						SGFE_controllerGetNameButton(event->button.controller->type, event->button.button)
 					);
 				} break;
 
@@ -76,7 +76,7 @@ int main(void) {
 
 					printf(
 						"%s: value (%f); deadzone (%f)\n",
-						SGFE_controllerGetNameAxis(axis.controller, axis.which),
+						SGFE_controllerGetNameAxis(axis.controller->type, axis.which),
 						axis.value, axis.deadzone
 					);
 				} break;
@@ -85,7 +85,7 @@ int main(void) {
 					SGFE_event_pointer pointer = event->pointer;
 					printf(
 						"%s: %ix%i\n",
-						SGFE_controllerGetNamePointer(pointer.controller, pointer.which),
+						SGFE_controllerGetNamePointer(pointer.controller->type, pointer.which),
 						pointer.x, pointer.y
 					);
 				} break;
@@ -96,15 +96,15 @@ int main(void) {
 
 					printf(
 						"%s: %fx%fx%f\n",
-						SGFE_controllerGetNameMotion(motion.controller, motion.which),
+						SGFE_controllerGetNameMotion(motion.controller->type, motion.which),
 						motion.x, motion.y, motion.z
 					);
 				} break;
 			}
 		}
 
-		const SGFE_controller* controller = SGFE_windowGetController(win, 0);
-		if (controller->connected && SGFE_isHeld(controller, BUTTON_BACK)) {
+		SGFE_controller* controller = SGFE_windowGetController(win, 0);
+		if (controller && SGFE_isHeld(controller, BUTTON_BACK)) {
 			if (SGFE_isDown(controller, BUTTON_PRIMARY)) {
 				SGFE_bool state = !SGFE_windowGetEventEnabled(win, SGFE_eventPointer);
 				SGFE_windowSetEventEnabled(win, SGFE_eventPointer, state);
@@ -133,20 +133,20 @@ int main(void) {
 }
 
 void controller_printInfo(SGFE_controller* controller) {
-	if (!controller->connected) { return ; }
+	if (controller == NULL) { return ; }
 	printf("\n\n");
 	isize first, last;
 
-	printf("Controller #%zi: %s\n", controller->port, SGFE_controllerGetName(controller));
+	printf("Controller #%zi: %s\n", controller->index, SGFE_controllerGetName(controller->type));
 
-	SGFE_controllerGetRangeAxis(controller, &first, &last);
+	SGFE_controllerGetRangeAxis(controller->type, &first, &last);
 	for (SGFE_axisType j = first; j <= last; j += 1) {
-		printf("\tAxis #%02zi: %s\n", j, SGFE_controllerGetNameAxis(controller, j));
+		printf("\tAxis #%02zi: %s\n", j, SGFE_controllerGetNameAxis(controller->type, j));
 	}
 
-	SGFE_controllerGetRangeButton(controller, &first, &last);
+	SGFE_controllerGetRangeButton(controller->type, &first, &last);
 	for (SGFE_buttonType j = first; j <= last; j += 1) {
-		printf("\tButton #%02zi: %s\n", j, SGFE_controllerGetNameButton(controller, j));
+		printf("\tButton #%02zi: %s\n", j, SGFE_controllerGetNameButton(controller->type, j));
 	}
 
 	/* NOTE(EimaMei): More often than not motion capabilities are disabled
@@ -155,10 +155,10 @@ void controller_printInfo(SGFE_controller* controller) {
 	 *
 	 * You can see which motion sensors are enabled by checking
 	 * '.enabled_motions[]' and seeing if they equal to true. */
-	SGFE_controllerGetRangeMotion(controller, &first, &last);
+	SGFE_controllerGetRangeMotion(controller->type, &first, &last);
 	for (SGFE_motionType j = first; j <= last; j += 1) {
 		SGFE_controllerEnableMotion(controller, j, SGFE_TRUE);
-		printf("\tMotion device #%02zi: %s\n", j, SGFE_controllerGetNameMotion(controller, j));
+		printf("\tMotion device #%02zi: %s\n", j, SGFE_controllerGetNameMotion(controller->type, j));
 	}
 
 	/* NOTE(EimaMei): Usually most pointer capabilities are enabled by default
@@ -167,9 +167,9 @@ void controller_printInfo(SGFE_controller* controller) {
 	 *
 	 * You can see which pointer functionalities are enabled by checking
 	 * '.enabled_pointers[]' and seeing if they equal to true. */
-	SGFE_controllerGetRangePointer(controller, &first, &last);
+	SGFE_controllerGetRangePointer(controller->type, &first, &last);
 	for (SGFE_pointerType j = first; j <= last; j += 1) {
 		SGFE_controllerEnablePointer(controller, j, SGFE_TRUE);
-		printf("\tPointer device #%02zi: %s\n", j, SGFE_controllerGetNamePointer(controller, j));
+		printf("\tPointer device #%02zi: %s\n", j, SGFE_controllerGetNamePointer(controller->type, j));
 	}
 }

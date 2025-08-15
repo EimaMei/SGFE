@@ -65,8 +65,6 @@ extern "C" {
 
 // Get default context params.
 KYGX_INLINE void glassGetDefaultContextParams(GLASSCtxParams* ctxParams, GLASSVersion version) {
-    KYGX_ASSERT(ctxParams);
-
     ctxParams->version = version;
     ctxParams->targetScreen = GLASS_SCREEN_TOP;
     ctxParams->targetSide = GLASS_SIDE_LEFT;
@@ -169,7 +167,7 @@ void glassLinearFree(void* p);
 size_t glassLinearSize(const void* p);
 bool glassIsLinear(const void* p);
 
-void* glassVRAMAlloc(size_t size, KYGXVRAMBank bank);
+// void* glassVRAMAlloc(size_t size, KYGXVRAMBank bank);
 void glassVRAMFree(void* p);
 size_t glassVRAMSize(const void* p);
 bool glassIsVRAM(const void* p);

@@ -159,12 +159,20 @@ extern "C" {
 /* Constants */
 
 #ifndef SGFE_STANDARD_GRAVITY
-/* TODO */
+/**
+ * A constant to represent standard gravity
+ *
+ * This constant is used for calculating the values for accelerometer sensors.
+ */
 #define SGFE_STANDARD_GRAVITY 9.80665f
 #endif
 
 #ifndef SGFE_PI
-/* TODO */
+/**
+ * Constant Pi (float)
+ *
+ * This constant is used for calculating the values for gyroscopes.
+ */
 #define SGFE_PI 3.141592653589793238462643383279502884f
 #endif
 
@@ -260,33 +268,44 @@ extern "C" {
 
 #ifndef SGFE_CUSTOM_BACKEND
 
-/* TODO(EimaMei): document */
-typedef SGFE_ENUM(isize, SGFE_systemModel) {
-	SGFE_systemModelNone,
-
-	#if SGFE_3DS
-	SGFE_systemModel3DS,
-	SGFE_systemModel3DSXL,
-	SGFE_systemModelN3DS,
-	SGFE_systemModel2DS,
-	SGFE_systemModelN3DSXL,
-	SGFE_systemModelN2DSXL,
-	#endif
-
-	SGFE_systemModelUnknown,
-	SGFE_systemModelCount,
-};
-
-
-/* TODO(EimaMei): document */
+/**
+ * SGFE screen type
+ *
+ * Regular systems tend to have only one screen where all graphical output goes to.
+ * However, some consoles (primarily Nintendo handhelds) contain multiple screens
+ * that need to be taken care of. The SGFE screen type is used to abstract this
+ * in a way that would make the API convenient for all consoles regardless of
+ * screen count.
+ *
+ * For systems that have one screen, SGFE can be used without paying much attention
+ * to structures or function that mention anything about screens. Only nuisance
+ * to note is if you do use said functions, the 'screen' must be 'SGFE_screenPrimary'.
+ *
+ * For systems that have multiple screens, concern is only raised when creating
+ * and using graphical contexts (events are screen-agnostic). When creating buffer/OpenGL
+ * contexts any valid screen can be specified to be used in their respective structures
+ * before calling 'createContext'. Other notable use case is changing the current
+ * context which can be done by calling 'SGFE_windowSetContextEx()'. Because OpenGL
+ * only has _one_ current context, setting the context per screen is required for
+ * rendering multiple screens at once.
+ *
+ *
+ * \sa SGFE_windowGetContextTypeEx
+ * \sa SGFE_windowGetContextEx
+ * \sa SGFE_windowSetContextEx */
 typedef SGFE_ENUM(isize, SGFE_screen) {
+	/* The primary screen for the system. This value is always a constant regardless
+	 * of the window state or currently set context. */
 	SGFE_screenPrimary,
 
 	#ifdef SGFE_3DS
+	/* 3DS top screen. */
 	SGFE_screenTop = SGFE_screenPrimary,
+	/* 3DS bottom screen. */
 	SGFE_screenBottom,
 	#endif
 
+	/* Amount of available screens for this backend. */
 	SGFE_screenCount
 };
 
@@ -302,8 +321,9 @@ typedef SGFE_ENUM(isize, SGFE_videoMode) {
 	 *
 	 * Left image is from 0x0 to 400x240, right image is from 400x240 to 800x240. */
 	SGFE_videoMode3D,
-	/* Sets the video resolution to 800x240 with steroescopy disabled. Only works
-	 * on 3DS consoles and New 2DS XL. */
+	/* Sets the video resolution to 800x240 with steroescopy disabled.
+	 * NOTE: You cannot use wide mode for 2DS consoles (minus XL). Attempt at it
+	 * will result in an assertion error. */
 	SGFE_videoModeWide,
 
 	#elif SGFE_WII
@@ -337,6 +357,7 @@ typedef SGFE_ENUM(isize, SGFE_videoMode) {
 
 	#endif
 
+	/* Amount of video modes for this backend. */
 	SGFE_videoModeCount
 };
 
@@ -349,9 +370,13 @@ typedef SGFE_ENUM(isize, SGFE_pixelFormat) {
 	SGFE_pixelFormatRGBA8,
 
 	#ifdef SGFE_3DS
+	/* BGR format where all channels are 8-bit. */
 	SGFE_pixelFormatBGR8,
+	/* RGB format where red and blue channels are 5-bit, green color channel - 6-bit. */
 	SGFE_pixelFormatRGB565,
+	/* RGBA format where the RGB channels are 5-bit, alpha channel - 1-bit. */
 	SGFE_pixelFormatRGB5_A1,
+	/* RGBA format where all channels are 4-bit. */
 	SGFE_pixelFormatRGBA4,
 
 	#elif SGFE_WII
@@ -360,6 +385,7 @@ typedef SGFE_ENUM(isize, SGFE_pixelFormat) {
 
 	#endif
 
+	/* Amount of pixel formats for this backend. */
 	SGFE_pixelFormatCount,
 };
 
@@ -553,15 +579,22 @@ typedef struct SGFE_motion {
 	float x, y, z;
 } SGFE_motion;
 
+/* TODO */
+typedef SGFE_ENUM(isize, SGFE_powerState) {
+	SGFE_powerStateUnknown,
+	SGFE_powerStateNoBattery,
+	SGFE_powerStateOnBattery,
+	SGFE_powerStateCharging,
+	SGFE_powerStateFullyCharged,
+};
+
 
 /* TODO(EimaMei): new structure. */
 typedef struct SGFE_controller {
 	/* TODO */
-	isize port;
+	isize index;
 	/* Denotes what type of controller it is. */
 	SGFE_controllerType type;
-	/* Denotes if the controller is connected. */
-	SGFE_bool connected;
 
 	/* TODO */
 	SGFE_button buttons_held, buttons_down, buttons_up;
@@ -577,7 +610,22 @@ typedef struct SGFE_controller {
 	SGFE_bool enabled_pointers[SGFE_pointerTypeCount];
 	/* Boolean states of enabled motions. */
 	SGFE_bool enabled_motions[SGFE_motionTypeCount];
+
+	/* TODO */
+	SGFE_powerState power_state;
+	/* TODO */
+	isize battery_procent;
+
+	/* TODO */
+	struct SGFE_controller* prev, *next;
 } SGFE_controller;
+
+/* TODO */
+typedef struct SGFE_controllerList {
+	isize count;
+	SGFE_controller* first;
+	SGFE_controller* last;
+} SGFE_controllerList;
 
 
 
@@ -608,6 +656,8 @@ typedef SGFE_ENUM(isize, SGFE_eventType) {
 	SGFE_eventControllerConnected,
 	/* TODO */
 	SGFE_eventControllerDisconnected,
+	/* TODO */
+	SGFE_eventControllerBattery,
 
 	/* TODO */
 	SGFE_eventButtonDown,
@@ -671,6 +721,14 @@ typedef struct SGFE_event_controller {
 	SGFE_controller* controller;
 } SGFE_event_controller;
 
+typedef struct SGFE_event_battery {
+	SGFE_eventType type;
+	u64 timestamp;
+	SGFE_controller* controller;
+	SGFE_powerState state;
+	isize battery_procent;
+} SGFE_event_battery;
+
 typedef struct SGFE_event_button {
 	SGFE_eventType type;
 	u64 timestamp;
@@ -730,6 +788,7 @@ typedef union SGFE_event {
 	SGFE_eventType type;
 	SGFE_event_common common;
 	SGFE_event_controller controller;
+	SGFE_event_battery battery;
 	SGFE_event_button button;
 	SGFE_event_axis axis;
 	SGFE_event_pointer pointer;
@@ -754,13 +813,13 @@ typedef SGFE_ENUM(u32, SGFE_windowFlag) {
 	SGFE_windowFlagDontShow     = SGFE_BIT(14),
 	/* Turns the entire screen into a terminal output. */
 	SGFE_windowFlagTerminal     = SGFE_BIT(15),
-	/* Creates a buffer context alongside the window. If failed, all 'makeWindow'
+	/* Creates a buffer context alongside the window. If failed, all 'windowMake'
 	 * functions return NULL. */
 	SGFE_windowFlagBuffer       = SGFE_BIT(16),
-	/* Creates an OpenGL context alongside the window. If failed, all 'makeWindow'
+	/* Creates an OpenGL context alongside the window. If failed, all 'windowMake'
 	 * functions return NULL. */
 	SGFE_windowFlagOpenGL       = SGFE_BIT(17),
-	/* Creates an OpenGL context alongside the window. If failed, all 'makeWindow'
+	/* Creates an OpenGL context alongside the window. If failed, all 'windowMake'
 	 * functions return NULL. [This option currently does nothing]. */
 	SGFE_windowFlagEGL          = SGFE_BIT(18),
 
@@ -784,10 +843,12 @@ typedef struct SGFE_windowState {
 	SGFE_bool should_quit;
 	/* TODO */
 	SGFE_bool has_text_input;
+	/* TODO */
+	SGFE_bool is_battery_updated;
 
 
 	/* TODO */
-	SGFE_controller controllers[SGFE_MAX_CONTROLLERS];
+	SGFE_controllerList controllers;
 
 	/* TOOD */
 	isize text_len;
@@ -825,7 +886,6 @@ struct SGFE_contextGL {
 
 
 struct SGFE_windowSource {
-	SGFE_bool lcd_is_on;
 	aptHookCookie apt_hook;
 
 	SwkbdState keyboard;
@@ -903,6 +963,11 @@ struct SGFE_window {
 	} ctx[SGFE_screenCount];
 
 	/* TODO */
+	SGFE_controller controllers[SGFE_MAX_CONTROLLERS];
+	/* TODO */
+	SGFE_controllerList disconnected_controllers;
+
+	/* TODO */
 	SGFE_bool is_queueing_events, has_polled_events;
 	/* TODO */
 	isize event_len;
@@ -918,6 +983,8 @@ struct SGFE_window {
 
 	/* TODO */
 	SGFE_bool is_allocated;
+	/* TODO */
+	SGFE_bool is_console_initialized;
 
 	struct {
 		void (*sleep)(void);
@@ -926,6 +993,7 @@ struct SGFE_window {
 		void (*focus)(void);
 
 		void (*controller)(void);
+		void (*controller_battery)(void);
 
 		void (*button)(void);
 		void (*axis)(void);
@@ -1085,28 +1153,28 @@ SGFE_DEF const SGFE_motion* SGFE_controllerGetMotion(const SGFE_controller* cont
 	SGFE_motionType which);
 
 /* TODO(EimaMei): */
-SGFE_DEF void SGFE_controllerGetRangeButton(const SGFE_controller* controller, SGFE_buttonType* out_first, SGFE_buttonType* out_last);
+SGFE_DEF void SGFE_controllerGetRangeButton(SGFE_controllerType type, SGFE_buttonType* out_first, SGFE_buttonType* out_last);
 /* TODO(EimaMei): NEW FUNCTION */
-SGFE_DEF void SGFE_controllerGetRangeAxis(const SGFE_controller* controller, SGFE_axisType* out_first, SGFE_axisType* out_last);
+SGFE_DEF void SGFE_controllerGetRangeAxis(SGFE_controllerType type, SGFE_axisType* out_first, SGFE_axisType* out_last);
 /* TODO(EimaMei): NEW FUNCTION */
-SGFE_DEF void SGFE_controllerGetRangePointer(const SGFE_controller* controller, SGFE_pointerType* out_first, SGFE_pointerType* out_last);
+SGFE_DEF void SGFE_controllerGetRangePointer(SGFE_controllerType type, SGFE_pointerType* out_first, SGFE_pointerType* out_last);
 /* TODO(EimaMei): NEW FUNCTION */
-SGFE_DEF void SGFE_controllerGetRangeMotion(const SGFE_controller* controller, SGFE_motionType* out_first, SGFE_motionType* out_last);
+SGFE_DEF void SGFE_controllerGetRangeMotion(SGFE_controllerType type, SGFE_motionType* out_first, SGFE_motionType* out_last);
 
 /* TODO(EimaMei): NEW FUNCTION */
-SGFE_DEF const char* SGFE_controllerGetName(const SGFE_controller* controller);
+SGFE_DEF const char* SGFE_controllerGetName(SGFE_controllerType type);
 /* TODO(EimaMei): NEW FUNCTION */
-SGFE_DEF const char* SGFE_controllerGetNameButton(const SGFE_controller* controller,
+SGFE_DEF const char* SGFE_controllerGetNameButton(SGFE_controllerType type,
 	SGFE_buttonType button);
 /* TODO(EimaMei): NEW FUNCTION */
-SGFE_DEF const char* SGFE_controllerGetNameAxis(const SGFE_controller* controller,
+SGFE_DEF const char* SGFE_controllerGetNameAxis(SGFE_controllerType type,
 	SGFE_axisType axis);
 /* TODO(EimaMei): NEW FUNCTION */
-SGFE_DEF const char* SGFE_controllerGetNamePointer(const SGFE_controller* controller,
-	SGFE_pointerType type);
+SGFE_DEF const char* SGFE_controllerGetNamePointer(SGFE_controllerType type,
+	SGFE_pointerType pointer);
 /* TODO(EimaMei): NEW FUNCTION */
-SGFE_DEF const char* SGFE_controllerGetNameMotion(const SGFE_controller* controller,
-	SGFE_motionType type);
+SGFE_DEF const char* SGFE_controllerGetNameMotion(SGFE_controllerType type,
+	SGFE_motionType motion);
 
 /* TODO(EimaMei): NEW FUNCTION */
 SGFE_DEF SGFE_bool SGFE_controllerEnablePointer(SGFE_controller* controller,
@@ -1539,8 +1607,94 @@ SGFE_DEF u64 SGFE_platformGetTicks(void);
 SGFE_DEF u64 SGFE_platformGetClockSpeed(void);
 
 
+
+#ifndef SGFE_CUSTOM_BACKEND
+/* TODO(EimaMei): document */
+typedef SGFE_ENUM(isize, SGFE_systemModel) {
+	SGFE_systemModelUnknown,
+
+	#if SGFE_3DS
+	SGFE_systemModel3DS,
+	SGFE_systemModel3DSXL,
+	SGFE_systemModelN3DS,
+	SGFE_systemModel2DS,
+	SGFE_systemModelN3DSXL,
+	SGFE_systemModelN2DSXL,
+	#endif
+
+	SGFE_systemModelCount,
+};
+#endif
+
+/* TODO(EimaMei): document */
+typedef SGFE_ENUM(isize, SGFE_videoCompositeMode) {
+	SGFE_videoCompositeModeUnknown,
+	SGFE_videoCompositeModeIsDigital,
+
+	SGFE_videoCompositeModeNTSC,
+	SGFE_videoCompositeModePAL,
+	SGFE_videoCompositeModeMPAL,
+};
+
 /* TODO(EimaMei): new function. */
 SGFE_DEF SGFE_systemModel SGFE_platformGetModel(void);
+
+/* TODO(EimaMei): new function. */
+SGFE_DEF SGFE_videoCompositeMode SGFE_platformGetCompositeFormat(void);
+
+
+
+/* TODO(EimaMei): document */
+typedef SGFE_ENUM(isize, SGFE_systemRegion) {
+	SGFE_systemRegionUnknown,
+
+	SGFE_systemRegionUS,
+	SGFE_systemRegionEurope,
+	SGFE_systemRegionAustralia,
+
+	SGFE_systemRegionJapan,
+	SGFE_systemRegionKorea,
+	SGFE_systemRegionTaiwan,
+	SGFE_systemRegionChina,
+	SGFE_systemRegionAsia,
+
+	SGFE_systemRegionBrazil,
+	SGFE_systemRegionLatinAmerica,
+
+	SGFE_systemRegionSouthAfrica,
+	SGFE_systemRegionAfrica,
+
+	SGFE_systemRegionNotInTheList,
+};
+
+/* TODO(EimaMei): document */
+typedef SGFE_ENUM(isize, SGFE_systemLanguage) {
+	SGFE_systemLanguageUnknown,
+
+	SGFE_systemLanguageEnglish,
+	SGFE_systemLanguageFrench,
+	SGFE_systemLanguageGerman,
+	SGFE_systemLanguageItalian,
+	SGFE_systemLanguageSpanish,
+	SGFE_systemLanguagePortuguese,
+	SGFE_systemLanguageDutch,
+	SGFE_systemLanguageRussian,
+
+	SGFE_systemLanguageJapanese,
+	SGFE_systemLanguageKorean,
+	SGFE_systemLanguageTaiwanese,
+	SGFE_systemLanguageChinese,
+
+	SGFE_systemLanguageNotInTheList,
+};
+
+/* TODO(EimaMei): new function. */
+SGFE_DEF SGFE_systemRegion SGFE_platformGetRegion(void);
+
+/* TODO(EimaMei): new function. */
+SGFE_DEF SGFE_systemLanguage SGFE_platformGetLanguage(void);
+
+
 
 /* TODO(EimaMei): new function. */
 SGFE_DEF SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b);
@@ -1579,6 +1733,8 @@ typedef void (*SGFE_focusProc)(SGFE_window* win, SGFE_bool is_focused);
 
 /*! SGFE_controllerConnected / SGFE_controllerDisconnected, the window that got the event, the controller in question, if the controller was connected (else it was disconnected) */
 typedef void (*SGFE_controllerProc)(SGFE_window* win, SGFE_controller* controller, SGFE_bool is_connected);
+/* TODO */
+typedef void (*SGFE_controllerBatteryProc)(SGFE_window* win, SGFE_controller* controller, SGFE_powerState state, isize battery_procent);
 
 /*! SGFE_buttonPressed, the window that got the event, the button that was pressed, the scroll value, if it was a press (else it's a release) */
 typedef void (*SGFE_buttonProc)(SGFE_window* win, SGFE_controller* controller, SGFE_buttonType button, SGFE_bool down);
@@ -1603,6 +1759,8 @@ SGFE_DEF SGFE_focusProc SGFE_windowSetFocusCallback(SGFE_window* win, SGFE_focus
 
 /*! set callback for when a controller is connected or disconnected. Returns the previous callback function (if it was set) */
 SGFE_DEF SGFE_controllerProc SGFE_windowSetControllerCallback(SGFE_window* win, SGFE_controllerProc func);
+/* TODO */
+SGFE_DEF SGFE_controllerBatteryProc SGFE_windowSetControllerBatteryCallback(SGFE_window* win, SGFE_controllerBatteryProc func);
 
 /*! set callback for a controller button (press / release) event. Returns previous callback function (if it was set)  */
 SGFE_DEF SGFE_buttonProc SGFE_windowSetButtonCallback(SGFE_window* win, SGFE_buttonProc func);
@@ -1819,7 +1977,7 @@ SGFE_DEF SGFE_bool SGFE_windowIsScreenEnabled_platform(SGFE_window* win, SGFE_sc
 
 
 
-SGFE_DEF const char* SGFE_controllerGetNameButton_platform(const SGFE_controller* controller,
+SGFE_DEF const char* SGFE_controllerGetNameButton_platform(SGFE_controllerType type,
 	SGFE_buttonType button);
 
 SGFE_DEF SGFE_bool SGFE_controllerEnablePointer_platform(SGFE_controller* controller,
@@ -1831,6 +1989,8 @@ SGFE_DEF SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* control
 
 SGFE_DEF u8* SGFE__fetchSwapBuffer(SGFE_contextBuffer* b);
 
+void SGFE__controllerAddToList(SGFE_controllerList* list, SGFE_controller* controller);
+void SGFE__controllerRemoveFromList(SGFE_controllerList* list, SGFE_controller* controller);
 
 SGFE_DEF void SGFE__processCallbackAndEventQueue_ButtonDown(SGFE_window* win, SGFE_controller* controller);
 SGFE_DEF void SGFE__processCallbackAndEventQueue_ButtonUp(SGFE_window* win, SGFE_controller* controller);
@@ -1871,6 +2031,9 @@ void* SGFE__debugProcSrcUserParam;
 #define SGFE_windowControllerCallback(win, controller_s, is_connected) \
 	SGFE_CALLBACK_TEMPLATE(SGFE_controllerProc, controller, (win, controller_s, is_connected))
 
+#define SGFE_windowControllerBatteryCallback(win, controller, state, battery_procent) \
+	SGFE_CALLBACK_TEMPLATE(SGFE_controllerBatteryProc, controller_battery, (win, controller, state, battery_procent))
+
 #define SGFE_windowButtonCallback(win, controller, button_s, pressed) \
 	SGFE_CALLBACK_TEMPLATE(SGFE_buttonProc, button, (win, controller, button_s, pressed))
 
@@ -1905,6 +2068,54 @@ void* SGFE__debugProcSrcUserParam;
 /* TODO | can return true or false */
 #define SGFE_debugSendGL(ctx) (SGFE_debugSendGL)(ctx, __FILE__, __LINE__, __func__)
 
+
+
+void SGFE__controllerAddToList(SGFE_controllerList* list, SGFE_controller* controller) {
+	SGFE_ASSERT(list->count >= 0 && list->count < SGFE_MAX_CONTROLLERS);
+
+	if (list->first == NULL) {
+		list->count = 1;
+		list->first = controller;
+		list->last = controller;
+
+		controller->prev = NULL;
+		controller->next = NULL;
+		return;
+	}
+	SGFE_controller* previous_last = list->last;
+
+	controller->prev = previous_last;
+	controller->next = NULL;
+
+	previous_last->next = controller;
+	list->last = controller;
+	list->count += 1;
+}
+
+void SGFE__controllerRemoveFromList(SGFE_controllerList* list, SGFE_controller* controller) {
+	SGFE_ASSERT(list->count > 0 && list->count <= SGFE_MAX_CONTROLLERS);
+
+	if (list->count == 1) {
+		list->first = NULL;
+		list->last = NULL;
+		list->count = 0;
+		return;
+	} else if (list->first == controller) {
+		list->first = controller->next;
+		list->count -= 1;
+		return;
+	} else if (list->last == controller) {
+		controller->prev->next = NULL;
+		list->last = controller->prev;
+		list->count -= 1;
+		return;
+	}
+
+	controller->prev->next = controller->next;
+	controller->next->prev = controller->prev;
+
+	list->count += 1;
+}
 
 
 void SGFE__processCallbackAndEventQueue_ButtonDown(SGFE_window* win, SGFE_controller* controller) {
@@ -2053,6 +2264,8 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlag flags,
 		SGFE_window* win) {
 	SGFE_ASSERT(win != NULL);
 
+	win->is_allocated = SGFE_FALSE;
+	win->is_console_initialized = SGFE_TRUE;
 	win->is_queueing_events = SGFE_FALSE;
 	win->has_polled_events = SGFE_FALSE;
 	win->event_len = 0;
@@ -2063,8 +2276,15 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlag flags,
 	SGFE_MEMSET(win->current_type, 0, sizeof(win->current_type));
 	SGFE_MEMSET(win->current, 0, sizeof(win->current));
 	SGFE_MEMSET(win->ctx, 0, sizeof(win->ctx));
+	SGFE_MEMSET(win->controllers, 0, sizeof(win->controllers));
+	SGFE_MEMSET(&win->disconnected_controllers, 0, sizeof(win->disconnected_controllers));
 	SGFE_MEMSET(&win->state, 0, sizeof(win->state));
 	SGFE_MEMSET(&win->callbacks, 0, sizeof(win->callbacks));
+
+	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
+		win->controllers[i].index = i;
+		SGFE__controllerAddToList(&win->disconnected_controllers, &win->controllers[i]);
+	}
 
 	SGFE_windowSetEventEnabledDefault(win);
 
@@ -2119,6 +2339,13 @@ void SGFE_windowClose(SGFE_window* win) {
 	SGFE_windowFreeContext(win);
 	SGFE_windowSetVisible(win, SGFE_FALSE);
 	SGFE_windowClose_platform(win);
+
+	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
+		SGFE_controller* controller = SGFE_windowGetController(win, i);
+		if (win == NULL) { continue; }
+
+		SGFE__controllerAddToList(&win->disconnected_controllers, controller);
+	}
 
 	#ifndef SGFE__BACKEND_FREE_WINDOW_IN_CLOSE
 	if (win->is_allocated) {
@@ -2191,6 +2418,8 @@ void SGFE_windowSetEventEnabledDefault(SGFE_window* win) {
 
 	SGFE_windowSetEventEnabled(win, SGFE_eventControllerConnected, SGFE_TRUE);
 	SGFE_windowSetEventEnabled(win, SGFE_eventControllerDisconnected, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventControllerBattery, SGFE_TRUE);
+
 	SGFE_windowSetEventEnabled(win, SGFE_eventButtonDown, SGFE_TRUE);
 	SGFE_windowSetEventEnabled(win, SGFE_eventButtonUp, SGFE_TRUE);
 	SGFE_windowSetEventEnabled(win, SGFE_eventAxis, SGFE_TRUE);
@@ -2372,6 +2601,7 @@ SGFE_bool SGFE_windowInitTerminalOutput(SGFE_window* win) {
 	SGFE_windowSwapBuffers(win);
 
 	SGFE__ROOT_WIN = win;
+	win->is_console_initialized = SGFE_TRUE;
 	return SGFE_TRUE;
 }
 
@@ -2400,9 +2630,11 @@ void SGFE_windowAssert(SGFE_window* win, SGFE_bool is_asserted, const char* cond
 	while (!SGFE_windowShouldClose(win)) {
 		SGFE_windowPollEvents(win);
 
-		for (ssize_t i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
+		for (ssize_t i = 0; i < win->state.controllers.count; i += 1) {
 			SGFE_controller* controller = SGFE_windowGetController(win, i);
-			if (controller->connected && controller->buttons_down != 0) {
+			if (controller == NULL) { continue; }
+
+			if (controller->buttons_down != 0) {
 				SGFE_windowSetShouldClose(win, SGFE_TRUE);
 				break;
 			}
@@ -2629,7 +2861,16 @@ SGFE_bool SGFE_bufferIsStereoscopic(SGFE_contextBuffer* b) {
 SGFE_controller* SGFE_windowGetController(SGFE_window* win, isize port) {
 	SGFE_ASSERT(win != NULL);
 	SGFE_ASSERT(port >= 0 && port < SGFE_MAX_CONTROLLERS);
-	return &win->state.controllers[port];
+
+	const SGFE_controllerList* list = &win->state.controllers;
+	if (port >= list->count) { return NULL; }
+
+	SGFE_controller* res = list->first;
+	for (isize i = port + 1; i < list->count; i += 1) {
+		res = res->next;
+	}
+
+	return res;
 }
 
 
@@ -2685,7 +2926,7 @@ const SGFE_axis* SGFE_controllerGetAxis(const SGFE_controller* controller,
 	SGFE_ASSERT(controller != NULL);
 	#ifndef NDEBUG
 	SGFE_axisType start, end;
-	SGFE_controllerGetRangeAxis(controller, &start, &end);
+	SGFE_controllerGetRangeAxis(controller->type, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
 	SGFE_ASSERT(which >= start && which <= end);
 	#endif
@@ -2698,7 +2939,7 @@ const SGFE_pointer* SGFE_controllerGetPointer(const SGFE_controller* controller,
 	SGFE_ASSERT(controller != NULL);
 	#ifndef NDEBUG
 	SGFE_pointerType start, end;
-	SGFE_controllerGetRangePointer(controller, &start, &end);
+	SGFE_controllerGetRangePointer(controller->type, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
 	SGFE_ASSERT(which >= start && which <= end);
 	#endif
@@ -2711,7 +2952,7 @@ const SGFE_motion* SGFE_controllerGetMotion(const SGFE_controller* controller,
 	SGFE_ASSERT(controller != NULL);
 	#ifndef NDEBUG
 	SGFE_motionType start, end;
-	SGFE_controllerGetRangeMotion(controller, &start, &end);
+	SGFE_controllerGetRangeMotion(controller->type, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
 	SGFE_ASSERT(which >= start && which <= end);
 	#endif
@@ -2719,90 +2960,90 @@ const SGFE_motion* SGFE_controllerGetMotion(const SGFE_controller* controller,
 	return &controller->motions[which];
 }
 
-void SGFE_controllerGetRangeButton(const SGFE_controller* controller,
+void SGFE_controllerGetRangeButton(SGFE_controllerType type,
 		SGFE_buttonType* out_first,SGFE_buttonType* out_last) {
-	SGFE_ASSERT(controller != NULL);
-	if (out_first) { *out_first = SGFE_BUTTON_RANGE_LUT[controller->type][0]; }
-	if (out_last)  { *out_last  = SGFE_BUTTON_RANGE_LUT[controller->type][1]; }
+	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
+	if (out_first) { *out_first = SGFE_BUTTON_RANGE_LUT[type][0]; }
+	if (out_last)  { *out_last  = SGFE_BUTTON_RANGE_LUT[type][1]; }
 }
 
-void SGFE_controllerGetRangeAxis(const SGFE_controller* controller,
+void SGFE_controllerGetRangeAxis(SGFE_controllerType type,
 		SGFE_axisType* out_first, SGFE_axisType* out_last) {
-	SGFE_ASSERT(controller != NULL);
-	if (out_first) { *out_first = SGFE_AXIS_RANGE_LUT[controller->type][0]; }
-	if (out_last)  { *out_last  = SGFE_AXIS_RANGE_LUT[controller->type][1]; }
+	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
+	if (out_first) { *out_first = SGFE_AXIS_RANGE_LUT[type][0]; }
+	if (out_last)  { *out_last  = SGFE_AXIS_RANGE_LUT[type][1]; }
 }
 
-void SGFE_controllerGetRangePointer(const SGFE_controller* controller,
+void SGFE_controllerGetRangePointer(SGFE_controllerType type,
 		SGFE_pointerType* out_first, SGFE_pointerType* out_last) {
-	SGFE_ASSERT(controller != NULL);
-	if (out_first) { *out_first = SGFE_POINTER_RANGE_LUT[controller->type][0]; }
-	if (out_last)  { *out_last  = SGFE_POINTER_RANGE_LUT[controller->type][1]; }
+	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
+	if (out_first) { *out_first = SGFE_POINTER_RANGE_LUT[type][0]; }
+	if (out_last)  { *out_last  = SGFE_POINTER_RANGE_LUT[type][1]; }
 }
 
-void SGFE_controllerGetRangeMotion(const SGFE_controller* controller,
+void SGFE_controllerGetRangeMotion(SGFE_controllerType type,
 		SGFE_motionType* out_first, SGFE_motionType* out_last) {
-	SGFE_ASSERT(controller != NULL);
-	if (out_first) { *out_first = SGFE_MOTION_RANGE_LUT[controller->type][0]; }
-	if (out_last)  { *out_last  = SGFE_MOTION_RANGE_LUT[controller->type][1]; }
+	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
+	if (out_first) { *out_first = SGFE_MOTION_RANGE_LUT[type][0]; }
+	if (out_last)  { *out_last  = SGFE_MOTION_RANGE_LUT[type][1]; }
 }
 
 
-const char* SGFE_controllerGetName(const SGFE_controller* controller) {
-	SGFE_ASSERT(controller != NULL);
-	return SGFE_CONTROLLER_NAME_LUT[controller->type];
+const char* SGFE_controllerGetName(SGFE_controllerType type) {
+	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
+	return SGFE_CONTROLLER_NAME_LUT[type];
 }
 
-const char* SGFE_controllerGetNameButton(const SGFE_controller* controller,
-		SGFE_buttonType type) {
-	SGFE_ASSERT(controller != NULL);
+const char* SGFE_controllerGetNameButton(SGFE_controllerType type,
+		SGFE_buttonType button) {
+	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
 	#ifndef NDEBUG
 	SGFE_buttonType start, end;
-	SGFE_controllerGetRangeButton(controller, &start, &end);
+	SGFE_controllerGetRangeButton(type, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
-	SGFE_ASSERT(type >= start && type <= end);
+	SGFE_ASSERT(button >= start && button <= end);
 	#endif
 
-	return SGFE_controllerGetNameButton_platform(controller, type);
+	return SGFE_controllerGetNameButton_platform(type, button);
 }
 
-const char* SGFE_controllerGetNameAxis(const SGFE_controller* controller,
-		SGFE_axisType type) {
-	SGFE_ASSERT(controller != NULL);
+const char* SGFE_controllerGetNameAxis(SGFE_controllerType type,
+		SGFE_axisType axis) {
+	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
 	#ifndef NDEBUG
 	SGFE_axisType start, end;
-	SGFE_controllerGetRangeAxis(controller, &start, &end);
+	SGFE_controllerGetRangeAxis(type, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
-	SGFE_ASSERT(type >= start && type <= end);
+	SGFE_ASSERT(axis >= start && axis <= end);
 	#endif
 
-	return SGFE_AXIS_NAME_LUT[type];
+	return SGFE_AXIS_NAME_LUT[axis];
 }
 
-const char* SGFE_controllerGetNamePointer(const SGFE_controller* controller,
-		SGFE_pointerType type) {
-	SGFE_ASSERT(controller != NULL);
+const char* SGFE_controllerGetNamePointer(SGFE_controllerType type,
+		SGFE_pointerType pointer) {
+	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
 	#ifndef NDEBUG
 	SGFE_pointerType start, end;
-	SGFE_controllerGetRangeAxis(controller, &start, &end);
+	SGFE_controllerGetRangePointer(type, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
-	SGFE_ASSERT(type >= start && type <= end);
+	SGFE_ASSERT(pointer >= start && pointer <= end);
 	#endif
 
-	return SGFE_POINTER_NAME_LUT[type];
+	return SGFE_POINTER_NAME_LUT[pointer];
 }
 
-const char* SGFE_controllerGetNameMotion(const SGFE_controller* controller,
-		SGFE_motionType type) {
-	SGFE_ASSERT(controller != NULL);
+const char* SGFE_controllerGetNameMotion(SGFE_controllerType type,
+		SGFE_motionType motion) {
+	SGFE_ASSERT(type >= 0 && type < SGFE_controllerTypeCount);
 	#ifndef NDEBUG
 	SGFE_motionType start, end;
-	SGFE_controllerGetRangeAxis(controller, &start, &end);
+	SGFE_controllerGetRangeMotion(type, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
-	SGFE_ASSERT(type >= start && type <= end);
+	SGFE_ASSERT(motion >= start && motion <= end);
 	#endif
 
-	return SGFE_MOTION_NAME_LUT[type];
+	return SGFE_MOTION_NAME_LUT[motion];
 }
 
 
@@ -2813,7 +3054,7 @@ SGFE_bool SGFE_controllerEnablePointer(SGFE_controller* controller, SGFE_motionT
 
 	#ifndef NDEBUG
 	isize start, end;
-	SGFE_controllerGetRangePointer(controller, &start, &end);
+	SGFE_controllerGetRangePointer(controller->type, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
 	SGFE_ASSERT(pointer >= start && pointer <= end);
 	#endif
@@ -2833,7 +3074,7 @@ SGFE_bool SGFE_controllerEnableMotion(SGFE_controller* controller, SGFE_motionTy
 
 	#ifndef NDEBUG
 	isize start, end;
-	SGFE_controllerGetRangeMotion(controller, &start, &end);
+	SGFE_controllerGetRangeMotion(controller->type, &start, &end);
 	SGFE_ASSERT(start != -1 && end != -1);
 	SGFE_ASSERT(motion >= start && motion <= end);
 	#endif
@@ -3064,6 +3305,7 @@ SGFE_CALLBACK_DEFINE(SGFE_quitProc, SGFE_windowSetQuitCallback, quit)
 SGFE_CALLBACK_DEFINE(SGFE_focusProc, SGFE_windowSetFocusCallback, focus)
 
 SGFE_CALLBACK_DEFINE(SGFE_controllerProc, SGFE_windowSetControllerCallback, controller)
+SGFE_CALLBACK_DEFINE(SGFE_controllerBatteryProc, SGFE_windowSetControllerBatteryCallback, controller_battery)
 
 SGFE_CALLBACK_DEFINE(SGFE_buttonProc, SGFE_windowSetButtonCallback, button)
 SGFE_CALLBACK_DEFINE(SGFE_axisProc, SGFE_windowSetAxisCallback, axis)
@@ -3444,11 +3686,16 @@ extern const struct _SGFE_devoptab_t* devoptab_list[];
 extern PrintConsole* currentConsole;
 extern PrintConsole defaultConsole;
 
-
+#ifdef SGFE_OPENGL
+bool kygxInit(void);
+void kygxExit(void);
+#endif
 
 void SGFE__aptHookCallback(APT_HookType hook, void* param);
+void SGFE__bufferOnVblankCallback(void* buffer_ptr);
+
 void SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer);
-void SGFE__bufferOnVblankFPS(void* buffer_ptr);
+SGFE_bool SGFE__setBatteryState(SGFE_controller* controller);
 
 
 void SGFE__aptHookCallback(APT_HookType hook, void* param) {
@@ -3480,6 +3727,16 @@ void SGFE__aptHookCallback(APT_HookType hook, void* param) {
 	}
 }
 
+void SGFE__bufferOnVblankCallback(void* buffer_ptr) {
+	SGFE_contextBuffer* b = (SGFE_contextBuffer*)buffer_ptr;
+
+	b->src.frames_counter += b->frames;
+	if (b->src.frames_counter >= 60) {
+		b->src.frames_counter = 0;
+		*b->src.run_gsp_loop = SGFE_FALSE;
+	}
+}
+
 /* NOTE(EimaMei): Taken from libctru gfx.c */
 void SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer) {
 	u32 stride = GSP_SCREEN_WIDTH * (u32)SGFE_pixelFormatBytesPerPixel(b->format);
@@ -3502,14 +3759,40 @@ void SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer) {
 	gspPresentBuffer((u32)b->screen, (u32)b->current, buffer, fb_b, stride, pixel_format);
 }
 
-void SGFE__bufferOnVblankFPS(void* buffer_ptr) {
-	SGFE_contextBuffer* b = (SGFE_contextBuffer*)buffer_ptr;
+SGFE_bool SGFE__setBatteryState(SGFE_controller* controller) {
+	static SGFE_bool first_time = SGFE_FALSE;
 
-	b->src.frames_counter += b->frames;
-	if (b->src.frames_counter >= 60) {
-		b->src.frames_counter = 0;
-		*b->src.run_gsp_loop = SGFE_FALSE;
+	u8 level;
+	Result res = MCUHWC_GetBatteryLevel(&level);
+	isize og_battery_proc = controller->battery_procent,
+		  og_power_state = controller->power_state;
+
+	if (res == 0) {
+		if (level == 100) {
+			/* NOTE(EimaMei): For whatever reason (hardware bug?) 'GetBatteryLevel'
+			 * function returns '100' as the battery level for a few frames when
+			 * physically plugging in a charing cable. Blocking the function the
+			 * first time makes it so that the battery event doesn't fire while also
+			 * not taking forever to actually report a battery event.  */
+			if (!first_time) { return SGFE_FALSE; }
+			first_time = SGFE_TRUE;
+		}
+		controller->battery_procent = level;
 	}
+
+	if (controller->battery_procent == 100) {
+		controller->power_state = SGFE_powerStateFullyCharged;
+	}
+	else {
+		res = PTMU_GetBatteryChargeState(&level);
+		if (res == 0) {
+			controller->power_state = level
+				? SGFE_powerStateCharging
+				: SGFE_powerStateOnBattery;
+		}
+	}
+
+	return (og_battery_proc != controller->battery_procent) || (og_power_state != controller->power_state);
 }
 
 
@@ -3531,10 +3814,29 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 		win->flags |= SGFE_windowFlagTopScreen;
 	}
 
-	SGFE_controller* controller = SGFE_windowGetController(win, 0);
-	controller->port = 0;
+	Result res = gspInit();
+	if (res != 0) { SGFE_debugSendSystem(win, res); return SGFE_FALSE; }
+
+	#ifdef SGFE_OPENGL
+	gfxInitDefault();
+	SGFE_bool kygx_init = kygxInit();
+	if (!kygx_init) {
+		SGFE_debugSendPlatformAPI(win, SGFE_debugTypeError, SGFE_errorPlatformInitKYGX);
+		return SGFE_FALSE;
+	}
+	#endif
+
+	res = mcuHwcInit();
+	if (res != 0) { SGFE_debugSendSystem(win, res); }
+
+	res = ptmuInit();
+	if (res != 0) { SGFE_debugSendSystem(win, res); }
+
+	aptHook(&win->src.apt_hook, SGFE__aptHookCallback, win);
+
+	SGFE_controller* controller = &win->controllers[0];
+	controller->index = 0;
 	controller->type = SGFE_controllerTypeStandard;
-	controller->connected = SGFE_TRUE;
 	controller->enabled_pointers[SGFE_pointerTouchscreen] = SGFE_TRUE;
 
 	for (SGFE_axisType which = 0; which < SGFE_axisTypeCount; which += 1) {
@@ -3552,25 +3854,11 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 		controller->motions[which].type = which;
 	}
 
-	SGFE_windowSource* src = &win->src;
-	src->lcd_is_on = SGFE_FALSE;
+	SGFE__setBatteryState(controller);
 
-	aptHook(&src->apt_hook, SGFE__aptHookCallback, win);
 
-	Result res = gspInit();
-	if (res != 0) {
-		SGFE_debugSendSystem(win, res);
-		return SGFE_FALSE;
-	}
-
-	#ifdef SGFE_OPENGL
-	gfxInitDefault();
-	SGFE_bool kygx_init = kygxInit();
-	if (!kygx_init) {
-		SGFE_debugSendPlatformAPI(win, SGFE_debugTypeError, SGFE_errorPlatformInitKYGX);
-		return SGFE_FALSE;
-	}
-	#endif
+	SGFE__controllerRemoveFromList(&win->disconnected_controllers, controller);
+	SGFE__controllerAddToList(&win->state.controllers, controller);
 
 	return SGFE_TRUE;
 }
@@ -3578,6 +3866,8 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 
 void SGFE_windowClose_platform(SGFE_window* win) {
 	gspExit();
+	mcuHwcExit();
+	ptmuExit();
 
 	#ifdef SGFE_OPENGL
 	kygxExit();
@@ -3619,7 +3909,7 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 	hidScanInput();
 	u32 held = hidKeysHeld();
 
-	SGFE_controller* controller = SGFE_windowGetController(win, 0);
+	SGFE_controller* controller = &win->controllers[0];
 
 	if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonDown)) {
 		controller->buttons_held = SGFE_platformButtonFromAPI(held);
@@ -3692,6 +3982,25 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 			SGFE__processCallbackAndEventQueue_Motion(win, controller, m);
 		}
 	}
+
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventControllerBattery)) {
+		win->state.is_battery_updated = SGFE__setBatteryState(controller);
+
+		if (win->state.is_battery_updated) {
+			SGFE_windowControllerBatteryCallback(win, controller, controller->power_state, controller->battery_procent);
+			if (win->is_queueing_events) {
+				SGFE_event event;
+				event.type = SGFE_eventControllerBattery;
+				event.battery.controller = controller;
+				event.battery.state = controller->power_state;
+				event.battery.battery_procent = controller->battery_procent;
+				SGFE_windowEventPush(win, &event);
+			}
+		}
+	} else if (win->state.is_battery_updated) {
+		win->state.is_battery_updated = SGFE_FALSE;
+	}
+
 
 	if (SGFE_windowGetEventEnabled(win, SGFE_eventTextInput) && win->src.swkbd_shared_mem != NULL) {
 		SwkbdState* kb = &win->src.keyboard;
@@ -3812,10 +4121,10 @@ u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_button button) {
 }
 
 
-const char* SGFE_controllerGetNameButton_platform(const SGFE_controller* controller,
+const char* SGFE_controllerGetNameButton_platform(SGFE_controllerType type,
 		SGFE_buttonType button) {
 	return SGFE_BUTTON_NAMES_3DS_LUT[button];
-	SGFE_UNUSED(controller);
+	SGFE_UNUSED(type);
 }
 
 
@@ -3858,6 +4167,11 @@ SGFE_bool SGFE_bufferSetPlatformSettings(SGFE_contextBuffer* b) {
 
 SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_MSG(
+		SGFE_platformGetModel() != SGFE_systemModel2DS || b->mode != SGFE_videoModeWide,
+		"Regular Nintendo 2DS consoles (excluding XLs) _do not_ support wide mode. "
+		"Update your code to take this into account."
+	);
 
 	isize width, height;
 	SGFE_bufferGetResolution(b, &width, &height);
@@ -4027,7 +4341,7 @@ void SGFE_windowSwapBuffersBuffer(SGFE_window* win) {
 		b->current ^= b->is_double_buffered;
 
 		if ((win->flags & (u32)(SGFE_windowFlagTopScreen << screen)) != 0) {
-			gspSetEventCallback(GSPGPU_EVENT_VBlank0 + (GSPGPU_Event)screen, SGFE__bufferOnVblankFPS, b, SGFE_FALSE);
+			gspSetEventCallback(GSPGPU_EVENT_VBlank0 + (GSPGPU_Event)screen, SGFE__bufferOnVblankCallback, b, SGFE_FALSE);
 			b->src.run_gsp_loop = &wait[screen];
 			wait[screen] = SGFE_TRUE;
 		}
@@ -4057,6 +4371,11 @@ void* SGFE_glGetBoundContext(void) {
 SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_contextHintsGL* hints) {
 	SGFE_ASSERT(gl != NULL);
 	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
+	SGFE_ASSERT_MSG(
+		SGFE_platformGetModel() != SGFE_systemModel2DS || mode != SGFE_videoModeWide,
+		"Regular Nintendo 2DS consoles (excluding XLs) _do not_ support wide mode. "
+		"Update your code to take this into account."
+	);
 	SGFE_glHintsAssert(hints);
 
 	if (hints->profile != SGFE_glProfileES) {
@@ -4467,6 +4786,51 @@ SGFE_systemModel SGFE_platformGetModel(void) {
 	if (res != 0) { return SGFE_systemModelUnknown; }
 
 	return (model <= SGFE_systemModelN2DSXL) ? (model - 1) : SGFE_systemModelUnknown;
+}
+
+SGFE_videoCompositeMode SGFE_platformGetCompositeFormat(void) {
+	return SGFE_videoCompositeModeIsDigital;
+}
+
+
+SGFE_systemRegion SGFE_platformGetRegion(void) {
+	u8 region;
+	Result res = CFGU_SecureInfoGetRegion(&region);
+	if (res != 0) { return SGFE_systemRegionUnknown; }
+
+	switch ((CFG_Region)region) {
+		case CFG_REGION_JPN: return SGFE_systemRegionJapan;
+		case CFG_REGION_USA: return SGFE_systemRegionUS;
+		case CFG_REGION_EUR: return SGFE_systemRegionEurope;
+		case CFG_REGION_AUS: return SGFE_systemRegionAustralia;
+		case CFG_REGION_CHN: return SGFE_systemRegionChina;
+		case CFG_REGION_KOR: return SGFE_systemRegionKorea;
+		case CFG_REGION_TWN: return SGFE_systemRegionTaiwan;
+		default: return SGFE_systemRegionNotInTheList;
+	}
+}
+
+SGFE_systemLanguage SGFE_platformGetLanguage(void) {
+	u8 region;
+	Result res = CFGU_GetSystemLanguage(&region);
+	if (res != 0) { return SGFE_systemLanguageUnknown; }
+
+	switch ((CFG_Language)region) {
+		case CFG_LANGUAGE_JP: return SGFE_systemLanguageJapanese;
+		case CFG_LANGUAGE_EN: return SGFE_systemLanguageEnglish;
+		case CFG_LANGUAGE_FR: return SGFE_systemLanguageFrench;
+		case CFG_LANGUAGE_DE: return SGFE_systemLanguageGerman;
+		case CFG_LANGUAGE_IT: return SGFE_systemLanguageItalian;
+		case CFG_LANGUAGE_ES: return SGFE_systemLanguageSpanish;
+		case CFG_LANGUAGE_ZH: return SGFE_systemLanguageChinese;
+		case CFG_LANGUAGE_KO: return SGFE_systemLanguageKorean;
+		case CFG_LANGUAGE_NL: return SGFE_systemLanguageDutch;
+		case CFG_LANGUAGE_PT: return SGFE_systemLanguagePortuguese;
+		case CFG_LANGUAGE_RU: return SGFE_systemLanguageRussian;
+		case CFG_LANGUAGE_TW: return SGFE_systemLanguageTaiwanese;
+		case CFG_LANGUAGE_DEFAULT:
+		default: return SGFE_systemLanguageNotInTheList;
+	}
 }
 
 

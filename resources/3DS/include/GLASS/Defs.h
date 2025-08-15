@@ -1,13 +1,17 @@
 #ifndef _GLASS_DEFS_H
 #define _GLASS_DEFS_H
 
-#include <KYGX/GX.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+#define KYGX_INLINE static inline
 
 typedef void GLvoid;
 typedef char GLchar;
-typedef u8 GLubyte;
-typedef s32 GLint;
-typedef u32 GLuint;
+typedef uint8_t GLubyte;
+typedef int32_t GLint;
+typedef uint32_t GLuint;
 typedef float GLfloat;
 
 typedef GLuint GLboolean;
