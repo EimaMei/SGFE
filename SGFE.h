@@ -211,8 +211,9 @@ extern "C" {
 	#define SGFE_MAX_CONTROLLERS 4
 	#endif
 
-	#define SGFE_HAS_OPENGL           0
-	#define SGFE_HAS_MULTIPLE_SCREENS 0
+	#define SGFE_HAS_OPENGL              0
+	#define SGFE_HAS_MULTIPLE_SCREENS    0
+	#define SGFE_VBLANK_RATE            60
 
 	#ifdef SGFE_IMPLEMENTATION
 	#include <gctypes.h>
@@ -362,31 +363,31 @@ typedef SGFE_ENUM(isize, SGFE_videoMode) {
 };
 
 /* TODO(EimaMei): document */
-/* TODO(EimaMei): document how if native mode is turned on SGFE_pixelFormatRGBA8 might return false. */
-typedef SGFE_ENUM(isize, SGFE_pixelFormat) {
+/* TODO(EimaMei): document how if native mode is turned on SGFE_bufferFormatRGBA8 might return false. */
+typedef SGFE_ENUM(isize, SGFE_bufferFormat) {
 	/* Each channel bit is set to 8-bits. This option is always supported for
 	 * non-native buffers, but might not be supported for native ones. By default
 	 * 'SGFE_window_initBuffer' picks this as the pixel format. */
-	SGFE_pixelFormatRGBA8,
+	SGFE_bufferFormatRGBA8,
 
 	#ifdef SGFE_3DS
 	/* BGR format where all channels are 8-bit. */
-	SGFE_pixelFormatBGR8,
+	SGFE_bufferFormatBGR8,
 	/* RGB format where red and blue channels are 5-bit, green color channel - 6-bit. */
-	SGFE_pixelFormatRGB565,
+	SGFE_bufferFormatRGB565,
 	/* RGBA format where the RGB channels are 5-bit, alpha channel - 1-bit. */
-	SGFE_pixelFormatRGB5_A1,
+	SGFE_bufferFormatRGB5_A1,
 	/* RGBA format where all channels are 4-bit. */
-	SGFE_pixelFormatRGBA4,
+	SGFE_bufferFormatRGBA4,
 
 	#elif SGFE_WII
 	/* TODO */
-	SGFE_pixelFormatYUV,
+	SGFE_bufferFormatYUV,
 
 	#endif
 
 	/* Amount of pixel formats for this backend. */
-	SGFE_pixelFormatCount,
+	SGFE_bufferFormatCount,
 };
 
 
@@ -607,10 +608,10 @@ typedef SGFE_ENUM(isize, SGFE_powerState) {
 
 /* TODO(EimaMei): new structure. */
 typedef struct SGFE_controller {
-	/* TODO */
-	isize index;
 	/* Denotes what type of controller it is. */
 	SGFE_controllerType type;
+	/* TODO */
+	isize array_index;
 
 	/* TODO */
 	SGFE_button buttons_held, buttons_down, buttons_up;
@@ -887,6 +888,15 @@ typedef struct SGFE_windowState {
 #endif
 
 
+struct SGFE_windowSource {
+	aptHookCookie apt_hook;
+
+	SwkbdState* keyboard;
+	char* swkbd_shared_mem;
+	Handle swkbd_shared_mem_handle;
+	SGFE_bool kb_null_terminated;
+};
+
 struct SGFE_contextBufferSource {
 	u32 size;
 
@@ -903,16 +913,6 @@ struct SGFE_contextGL {
 };
 #endif
 
-
-struct SGFE_windowSource {
-	aptHookCookie apt_hook;
-
-	SwkbdState* keyboard;
-	char* swkbd_shared_mem;
-	Handle swkbd_shared_mem_handle;
-	SGFE_bool kb_null_terminated;
-};
-
 #elif SGFE_WII
 
 #ifndef HW_RVL
@@ -922,24 +922,12 @@ struct SGFE_windowSource {
 #include <wiiuse/wpad.h>
 
 
-struct SGFE_contextBuffer {
-	SGFE_videoMode mode;
-	SGFE_screen screen;
-	SGFE_pixelFormat format;
-
-	isize current;
-	u8* buffers[2];
-
-	SGFE_bool is_buffer_allocated;
-	SGFE_bool is_double_buffered;
-	SGFE_bool is_native;
-
-	u8* buffers_native[2];
-	GXRModeObj* gx_video_mode;
-};
-
 struct SGFE_windowSource {
 	struct wiimote_t** wiimotes;
+};
+
+struct SGFE_contextBufferSource {
+	GXRModeObj* gx_video_mode;
 };
 
 #endif
@@ -947,7 +935,7 @@ struct SGFE_windowSource {
 struct SGFE_contextBuffer {
 	SGFE_screen screen;
 	SGFE_videoMode mode;
-	SGFE_pixelFormat format;
+	SGFE_bufferFormat format;
 
 	isize current;
 	u8* buffers[2];
@@ -1116,6 +1104,8 @@ SGFE_DEF void SGFE_windowSetContextEx(SGFE_window* win, SGFE_contextType type, v
 
 /* Returns the controller strucutr associated with the port. */
 SGFE_DEF SGFE_controller* SGFE_windowGetController(SGFE_window* win, isize port);
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_windowIsControllerConnected(SGFE_window* win, const SGFE_controller* controller);
 
 
 /* TODO */
@@ -1208,9 +1198,13 @@ SGFE_DEF SGFE_bool SGFE_controllerEnableMotion(SGFE_controller* controller,
 typedef struct SGFE_contextBuffer SGFE_contextBuffer;
 
 
+/* TODO(EimaMei): New function. */
+SGFE_DEF SGFE_bufferFormat SGFE_bufferGetOptimalFormat(void);
+
+
 /* */
 SGFE_DEF SGFE_bool SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
-	SGFE_videoMode mode, SGFE_pixelFormat format, SGFE_bool allocate_buffers);
+	SGFE_videoMode mode, SGFE_bufferFormat format, SGFE_bool allocate_buffers);
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_bufferSetPlatformSettings(SGFE_contextBuffer* b);
 
@@ -1244,7 +1238,7 @@ SGFE_DEF void SGFE_bufferSetFramesPerSecond(SGFE_contextBuffer* b, isize fps);
 SGFE_DEF u8* SGFE_bufferGetFramebuffer(SGFE_contextBuffer* b);
 
 /* TODO(EimaMei): New function. */
-SGFE_DEF SGFE_pixelFormat SGFE_bufferGetFormat(const SGFE_contextBuffer* b);
+SGFE_DEF SGFE_bufferFormat SGFE_bufferGetFormat(const SGFE_contextBuffer* b);
 /* TODO(EimaMei): New function. */
 SGFE_DEF SGFE_bool SGFE_bufferIsNative(const SGFE_contextBuffer* b);
 /* TODO(EimaMei): New function. */
@@ -1264,7 +1258,7 @@ SGFE_DEF SGFE_bool SGFE_bufferIsStereoscopic(SGFE_contextBuffer* b);
 
 
 /* TODO(EimaMei): New function. */
-SGFE_DEF SGFE_bool SGFE_bufferSetFormat(SGFE_contextBuffer* b, SGFE_pixelFormat format);
+SGFE_DEF SGFE_bool SGFE_bufferSetFormat(SGFE_contextBuffer* b, SGFE_bufferFormat format);
 /* TODO(EimaMei): New function. */
 SGFE_DEF void SGFE_bufferSetNative(SGFE_contextBuffer* b, SGFE_bool is_native);
 /* TODO(EimaMei): New function. */
@@ -1273,9 +1267,15 @@ SGFE_DEF void SGFE_bufferSetDoubleBuffered(SGFE_contextBuffer* b, SGFE_bool enab
 SGFE_DEF void SGFE_bufferFlipFramebuffers(SGFE_contextBuffer* b);
 
 
+/* TODO(EimaMei): New function. */
+SGFE_DEF isize SGFE_bufferFormatGetBytesPerPixel(SGFE_bufferFormat format);
+/* TODO(EimaMei): New function. */
+SGFE_DEF const char* SGFE_bufferFormatGetStr(SGFE_bufferFormat format);
+
+
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_windowCreateContextBuffer(SGFE_window* win, SGFE_videoMode mode,
-	SGFE_pixelFormat format, SGFE_bool is_native);
+	SGFE_bufferFormat format, SGFE_bool is_native);
 
 /* TODO */
 SGFE_DEF void SGFE_windowSwapBuffersBuffer(SGFE_window* win);
@@ -1523,6 +1523,8 @@ typedef SGFE_ENUM(u32, SGFE_textInputFlag) {
 
 #ifndef SGFE_CUSTOM_BACKEND
 typedef SGFE_ENUM(u32, SGFE_textInputPlatformFlag) {
+	SGFE_textInputPlatformFlagNone = 0,
+
 	#ifdef SGFE_3DS
 	SGFE_textInputPlatformFlagParental        = SGFE_BIT(0),
 	SGFE_textInputPlatformFlagDarkenTopScreen = SGFE_BIT(1),
@@ -1585,6 +1587,23 @@ SGFE_DEF SGFE_bool SGFE_windowTextInputIsActive(const SGFE_window* win);
 
 
 
+/* TODO(EimaMei): document */
+typedef SGFE_ENUM(isize, SGFE_videoSignal) {
+	SGFE_videoSignalUnknown,
+
+	SGFE_videoSignalNTSC,
+	SGFE_videoSignalPAL,
+	SGFE_videoSignalMPAL,
+	SGFE_videoSignalPAL60,
+	/* TODO */
+	SGFE_videoSignalDigital,
+};
+
+
+/* TODO(EimaMei): new function. */
+SGFE_DEF SGFE_videoSignal SGFE_videoGetSignal(void);
+
+
 /* Returns a video mode that's considered to be the most optimal for the system
  * by the library. Usually this returns a mode that has a standard resolution,
  * refresh rate and technique for drawing scanlines that works across all models. */
@@ -1593,45 +1612,9 @@ SGFE_DEF SGFE_videoMode SGFE_videoModeOptimal(void);
 SGFE_DEF void SGFE_videoModeResolution(SGFE_videoMode mode,
 	isize* out_width, isize* out_height);
 
-/* TODO(EimaMei): New function. */
-SGFE_DEF SGFE_videoMode SGFE_pixelFormatOptimal(void);
-/* TODO(EimaMei): New function. */
-SGFE_DEF isize SGFE_pixelFormatBytesPerPixel(SGFE_pixelFormat format);
-
 
 /* TODO(EimaMei): New function. */
 SGFE_DEF const char* SGFE_videoModeStr(SGFE_videoMode mode);
-/* TODO(EimaMei): New function. */
-SGFE_DEF const char* SGFE_pixelFormatStr(SGFE_pixelFormat format);
-
-
-
-/**
- * Converts system ticks into UNIX time with nanosecond precision.
- *
- * Time representation range:
- * min: 1677-09-21 00:12:44.145224192 UTC+0
- * max: 2262-04-11 23:47:16.854775807 UTC+0
- *
- * \returns The converted time
- */
-SGFE_DEF i64 SGFE_platformGetTimeFromTicks(u64 ticks);
-
-/**
- * Returns the amount of ticks/the current time-stamp counter.
- *
- * This function is equivalent to RDTSC on x86. It is is specifically useful for
- * durations as the returned time is monotonic.
- *
- * \returns The amount of ticks/The time-stamp counter.
- */
-SGFE_DEF u64 SGFE_platformGetTicks(void);
-/**
- * Returns the system's clock speed in Hz.
- *
- * \returns The system's clock speed in Hz.
- */
-SGFE_DEF u64 SGFE_platformGetClockSpeed(void);
 
 
 
@@ -1652,24 +1635,6 @@ typedef SGFE_ENUM(isize, SGFE_systemModel) {
 	SGFE_systemModelCount,
 };
 #endif
-
-/* TODO(EimaMei): document */
-typedef SGFE_ENUM(isize, SGFE_videoCompositeMode) {
-	SGFE_videoCompositeModeUnknown,
-	SGFE_videoCompositeModeIsDigital,
-
-	SGFE_videoCompositeModeNTSC,
-	SGFE_videoCompositeModePAL,
-	SGFE_videoCompositeModeMPAL,
-};
-
-/* TODO(EimaMei): new function. */
-SGFE_DEF SGFE_systemModel SGFE_platformGetModel(void);
-
-/* TODO(EimaMei): new function. */
-SGFE_DEF SGFE_videoCompositeMode SGFE_platformGetCompositeFormat(void);
-
-
 
 /* TODO(EimaMei): document */
 typedef SGFE_ENUM(isize, SGFE_systemRegion) {
@@ -1715,11 +1680,44 @@ typedef SGFE_ENUM(isize, SGFE_systemLanguage) {
 	SGFE_systemLanguageNotInTheList,
 };
 
-/* TODO(EimaMei): new function. */
-SGFE_DEF SGFE_systemRegion SGFE_platformGetRegion(void);
 
 /* TODO(EimaMei): new function. */
-SGFE_DEF SGFE_systemLanguage SGFE_platformGetLanguage(void);
+SGFE_DEF SGFE_systemModel SGFE_systemGetModel(void);
+
+/* TODO(EimaMei): new function. */
+SGFE_DEF SGFE_systemRegion SGFE_systemGetRegion(void);
+
+/* TODO(EimaMei): new function. */
+SGFE_DEF SGFE_systemLanguage SGFE_systemGetLanguage(void);
+
+
+
+/**
+ * Converts system ticks into UNIX time with nanosecond precision.
+ *
+ * Time representation range:
+ * min: 1677-09-21 00:12:44.145224192 UTC+0
+ * max: 2262-04-11 23:47:16.854775807 UTC+0
+ *
+ * \returns The converted time
+ */
+SGFE_DEF i64 SGFE_platformGetTimeFromTicks(u64 ticks);
+
+/**
+ * Returns the amount of ticks/the current time-stamp counter.
+ *
+ * This function is equivalent to RDTSC on x86. It is is specifically useful for
+ * durations as the returned time is monotonic.
+ *
+ * \returns The amount of ticks/The time-stamp counter.
+ */
+SGFE_DEF u64 SGFE_platformGetTicks(void);
+/**
+ * Returns the system's clock speed in Hz.
+ *
+ * \returns The system's clock speed in Hz.
+ */
+SGFE_DEF u64 SGFE_platformGetClockSpeed(void);
 
 
 /* TODO(EimaMei): new function. */
@@ -1735,9 +1733,9 @@ SGFE_DEF SGFE_bool SGFE_platformHasSoftwareKeybord(void);
 #ifdef SGFE_3DS
 
 /* TODO */
-SGFE_button SGFE_platformButtonFromAPI(u32 mask);
+SGFE_DEF SGFE_button SGFE_platformButtonFromAPI(u32 mask);
 /* TODO */
-u32 SGFE_platformButtonToAPI(SGFE_button button);
+SGFE_DEF u32 SGFE_platformButtonToAPI(SGFE_button button);
 
 
 /* TODO(EimaMei): new function. */
@@ -1748,6 +1746,14 @@ SGFE_DEF float SGFE_platformGet3DSlider(void);
 /* TODO(EimaMei): new function */
 SGFE_DEF SGFE_bool SGFE_platformRotateScreenGL(GLuint shader_program, const char* mat4_uniform_name);
 #endif
+
+#elif SGFE_WII
+
+/* TODO */
+SGFE_DEF SGFE_button SGFE_platformButtonFromWiiRemote(u32 mask);
+/* TODO */
+SGFE_DEF u32 SGFE_platformButtonFromToRemote(SGFE_button button);
+
 
 #endif
 
@@ -1984,10 +1990,10 @@ const char* SGFE_POINTER_NAME_LUT[SGFE_pointerTypeCount];
 const char* SGFE_MOTION_NAME_LUT[SGFE_motionTypeCount];
 
 const isize SGFE_VIDEO_RESOLUTION_LUT[SGFE_videoModeCount][2];
-const isize SGFE_FORMAT_BYTES_PER_PIXEL_LUT[SGFE_pixelFormatCount];
+const isize SGFE_FORMAT_BYTES_PER_PIXEL_LUT[SGFE_bufferFormatCount];
 
 const char* SGFE_VIDEO_MODE_NAME_LUT[SGFE_videoModeCount];
-const char* SGFE_PIXEL_FORMAT_NAME_LUT[SGFE_pixelFormatCount];
+const char* SGFE_PIXEL_FORMAT_NAME_LUT[SGFE_bufferFormatCount];
 
 
 
@@ -2019,6 +2025,7 @@ SGFE_DEF SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* control
 
 SGFE_DEF u8* SGFE__fetchSwapBuffer(SGFE_contextBuffer* b);
 
+void SGFE__controllerSetConnection(SGFE_window* win, SGFE_controller* controller, SGFE_bool should_connect);
 void SGFE__controllerAddToList(SGFE_controllerList* list, SGFE_controller* controller);
 void SGFE__controllerRemoveFromList(SGFE_controllerList* list, SGFE_controller* controller);
 
@@ -2099,6 +2106,18 @@ void* SGFE__debugProcSrcUserParam;
 #define SGFE_debugSendGL(ctx) (SGFE_debugSendGL)(ctx, __FILE__, __LINE__, __func__)
 
 
+void SGFE__controllerSetConnection(SGFE_window* win, SGFE_controller* controller, SGFE_bool should_connect) {
+	SGFE_ASSERT(SGFE_windowIsControllerConnected(win, controller) == !should_connect);
+
+	if (should_connect) {
+		SGFE__controllerRemoveFromList(&win->disconnected_controllers, controller);
+		SGFE__controllerAddToList(&win->state.controllers, controller);
+	}
+	else if (!should_connect) {
+		SGFE__controllerRemoveFromList(&win->state.controllers, controller);
+		SGFE__controllerAddToList(&win->disconnected_controllers, controller);
+	}
+}
 
 void SGFE__controllerAddToList(SGFE_controllerList* list, SGFE_controller* controller) {
 	SGFE_ASSERT(list->count >= 0 && list->count < SGFE_MAX_CONTROLLERS);
@@ -2250,11 +2269,11 @@ void SGFE__processCallbackAndEventQueue_Motion(SGFE_window* win, SGFE_controller
 isize SGFE_sizeofWindow(void) { return sizeof(SGFE_window); }
 isize SGFE_sizeofWindowSrc(void) { return sizeof(SGFE_windowSource); }
 
-void* SGFE_windowGetUserPtr(SGFE_window* win) { SGFE_ASSERT(win != NULL); return win->user_ptr; }
-void SGFE_windowSetUserPtr(SGFE_window* win, void* ptr) { SGFE_ASSERT(win != NULL); win->user_ptr = ptr; }
+void* SGFE_windowGetUserPtr(SGFE_window* win) { SGFE_ASSERT_NOT_NULL(win); return win->user_ptr; }
+void SGFE_windowSetUserPtr(SGFE_window* win, void* ptr) { SGFE_ASSERT_NOT_NULL(win); win->user_ptr = ptr; }
 
 SGFE_windowSource* SGFE_windowGetSource(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	return &win->src;
 }
 
@@ -2292,7 +2311,7 @@ SGFE_window* SGFE_windowMake(SGFE_videoMode mode, SGFE_windowFlag flags) {
 
 SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlag flags,
 		SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 
 	win->is_allocated = SGFE_FALSE;
 	win->is_queueing_events = SGFE_FALSE;
@@ -2311,7 +2330,6 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlag flags,
 	SGFE_MEMSET(&win->callbacks, 0, sizeof(win->callbacks));
 
 	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
-		win->controllers[i].index = i;
 		SGFE__controllerAddToList(&win->disconnected_controllers, &win->controllers[i]);
 	}
 
@@ -2326,10 +2344,10 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlag flags,
 		case 0: break;
 		case SGFE_windowFlagBuffer: {
 			#ifndef SGFE_BUFFER_NO_CONVERSION
-			SGFE_pixelFormat format = SGFE_pixelFormatRGBA8;
+			SGFE_bufferFormat format = SGFE_bufferFormatRGBA8;
 			SGFE_bool is_native = SGFE_FALSE;
 			#else
-			SGFE_pixelFormat format = SGFE_pixelFormatOptimal();
+			SGFE_bufferFormat format = SGFE_bufferFormatOptimal();
 			SGFE_bool is_native = SGFE_TRUE;
 			#endif
 
@@ -2372,8 +2390,7 @@ void SGFE_windowClose(SGFE_window* win) {
 	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
 		SGFE_controller* controller = SGFE_windowGetController(win, i);
 		if (win == NULL) { continue; }
-
-		SGFE__controllerAddToList(&win->disconnected_controllers, controller);
+		SGFE__controllerSetConnection(win, controller, SGFE_FALSE);
 	}
 
 	#ifndef SGFE__BACKEND_FREE_WINDOW_IN_CLOSE
@@ -2384,7 +2401,7 @@ void SGFE_windowClose(SGFE_window* win) {
 }
 
 void SGFE_windowFreeContext(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 
 	for (SGFE_screen screen = SGFE_screenPrimary; screen < SGFE_screenCount; screen += 1) {
 		switch (win->flags & (SGFE_windowFlagBuffer | SGFE_windowFlagOpenGL)) {
@@ -2408,31 +2425,31 @@ void SGFE_windowFreeContext(SGFE_window* win) {
 
 
 SGFE_windowFlag SGFE_windowGetFlags(const SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	return win->flags;
 }
 
 
 SGFE_bool SGFE_windowGetIsQueuingEvents(const SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	return win->is_queueing_events;
 
 }
 
 void SGFE_windowSetQueueEvents(SGFE_window* win, SGFE_bool is_queuing_events) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	win->is_queueing_events = SGFE_BOOL(is_queuing_events);
 }
 
 SGFE_bool SGFE_windowGetEventEnabled(const SGFE_window* win, SGFE_eventType type) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_ASSERT(type > 0 && type < SGFE_eventCount);
 
 	return win->enabled_events[type];
 }
 
 void SGFE_windowSetEventEnabled(SGFE_window* win, SGFE_eventType type, SGFE_bool is_enabled) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_ASSERT(type > 0 && type < SGFE_eventCount);
 
 	win->enabled_events[type] = SGFE_BOOL(is_enabled);
@@ -2470,7 +2487,7 @@ void SGFE_windowSetEventEnabledDefault(SGFE_window* win) {
 }
 
 SGFE_bool SGFE_windowCheckEvent(SGFE_window* win, const SGFE_event** out_event) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_ASSERT(out_event != NULL);
 
 	if (win->has_polled_events == SGFE_FALSE) {
@@ -2485,7 +2502,7 @@ SGFE_bool SGFE_windowCheckEvent(SGFE_window* win, const SGFE_event** out_event) 
 }
 
 SGFE_bool SGFE_windowCheckQueuedEvent(SGFE_window* win, const SGFE_event** out_event) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_ASSERT(out_event != NULL);
 
 	const SGFE_event* event = SGFE_windowEventPop(win);
@@ -2495,7 +2512,7 @@ SGFE_bool SGFE_windowCheckQueuedEvent(SGFE_window* win, const SGFE_event** out_e
 }
 
 SGFE_bool SGFE_windowEventPush(SGFE_window* win, const SGFE_event* event) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_ASSERT(win->event_len >= 0);
 
 	if (win->event_len >= SGFE_COUNTOF(win->events)) {
@@ -2513,7 +2530,7 @@ SGFE_bool SGFE_windowEventPush(SGFE_window* win, const SGFE_event* event) {
 }
 
 const SGFE_event* SGFE_windowEventPop(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_ASSERT(win->event_len >= 0 && win->event_len <= SGFE_COUNTOF(win->events));
 
 	if (win->event_len <= 0) {
@@ -2528,7 +2545,7 @@ const SGFE_event* SGFE_windowEventPop(SGFE_window* win) {
 }
 
 void SGFE_windowEventQueueFlush(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	win->event_len = 0;
 }
 
@@ -2554,7 +2571,7 @@ SGFE_contextType SGFE_windowGetContextType(SGFE_window* win) {
 }
 
 SGFE_contextType SGFE_windowGetContextTypeEx(SGFE_window* win, SGFE_screen screen) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_ASSERT(screen >= 0 && screen < SGFE_screenCount);
 	return win->current_type[screen];
 }
@@ -2564,7 +2581,7 @@ void* SGFE_windowGetContext(SGFE_window* win) {
 }
 
 void* SGFE_windowGetContextEx(SGFE_window* win, SGFE_screen screen) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_ASSERT(screen >= 0 && screen < SGFE_screenCount);
 
 	return win->current[screen];
@@ -2577,7 +2594,7 @@ void SGFE_windowSetContext(SGFE_window* win, SGFE_contextType type, void* ctx) {
 
 void SGFE_windowSetContextEx(SGFE_window* win, SGFE_contextType type, void* ctx,
 		SGFE_screen screen) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_ASSERT(type > 0 && type < SGFE_contextTypeCount);
 
 	switch (type) {
@@ -2595,12 +2612,12 @@ void SGFE_windowSetContextEx(SGFE_window* win, SGFE_contextType type, void* ctx,
 
 
 SGFE_bool SGFE_windowShouldClose(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	return win->state.should_quit;
 }
 
 void SGFE_windowSetShouldClose(SGFE_window* win, SGFE_bool should_close) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 
 	win->state.should_quit = SGFE_BOOL(should_close);
 	if (should_close) {
@@ -2610,13 +2627,13 @@ void SGFE_windowSetShouldClose(SGFE_window* win, SGFE_bool should_close) {
 
 
 SGFE_bool SGFE_windowIsVisible(const SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	return win->state.is_visible;
 }
 
 
 SGFE_bool SGFE_windowInitTerminalOutput(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 
 	if (SGFE_windowGetContextType(win) != SGFE_contextTypeBuffer) {
 		SGFE_bool res = SGFE_windowCreateContextBuffer(
@@ -2693,8 +2710,8 @@ void SGFE_windowAssertFmt(SGFE_window* win, SGFE_bool is_asserted, const char* c
 #endif
 
 SGFE_bool SGFE_windowCreateContextBuffer(SGFE_window* win, SGFE_videoMode mode,
-		SGFE_pixelFormat format, SGFE_bool is_native) {
-	SGFE_ASSERT(win != NULL);
+		SGFE_bufferFormat format, SGFE_bool is_native) {
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_windowFreeContext(win);
 
 	for (SGFE_screen screen = SGFE_screenPrimary; screen < SGFE_screenCount; screen += 1) {
@@ -2738,7 +2755,7 @@ void SGFE_windowSetContextBuffer(SGFE_window* win, SGFE_contextBuffer* ctx) {
 
 void SGFE_windowSetContextExBuffer(SGFE_window* win, SGFE_contextBuffer* b,
 		SGFE_screen screen) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_ASSERT(b == NULL || b->screen == screen);
 
 	win->current[screen] = b;
@@ -2746,10 +2763,10 @@ void SGFE_windowSetContextExBuffer(SGFE_window* win, SGFE_contextBuffer* b,
 }
 
 SGFE_bool SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
-		SGFE_videoMode mode, SGFE_pixelFormat format, SGFE_bool allocate_buffers) {
+		SGFE_videoMode mode, SGFE_bufferFormat format, SGFE_bool allocate_buffers) {
 	SGFE_ASSERT(out_buffer != NULL);
 	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
-	SGFE_ASSERT(format >= 0 && format < SGFE_pixelFormatCount);
+	SGFE_ASSERT(format >= 0 && format < SGFE_bufferFormatCount);
 
 	SGFE_contextBuffer* b = out_buffer;
 	b->screen = SGFE_screenPrimary;
@@ -2800,11 +2817,11 @@ void SGFE_bufferSetFramesPerSecond(SGFE_contextBuffer* b, isize fps) {
 }
 
 
-SGFE_bool SGFE_bufferSetFormat(SGFE_contextBuffer* b, SGFE_pixelFormat format) {
+SGFE_bool SGFE_bufferSetFormat(SGFE_contextBuffer* b, SGFE_bufferFormat format) {
 	if (b == NULL) { return SGFE_FALSE; }
 
 	/* TODO(EimaMei): Have a way to save the original bpp for performance reasons. */
-	if (SGFE_pixelFormatBytesPerPixel(b->format) < SGFE_pixelFormatBytesPerPixel(format)) {
+	if (SGFE_bufferFormatGetBytesPerPixel(b->format) < SGFE_bufferFormatGetBytesPerPixel(format)) {
 		SGFE_bufferFreeContext(b);
 		b->format = format;
 		return SGFE_bufferCreateContext(b);
@@ -2838,7 +2855,7 @@ u8* SGFE_bufferGetFramebuffer(SGFE_contextBuffer* b) {
 }
 
 
-SGFE_pixelFormat SGFE_bufferGetFormat(const SGFE_contextBuffer* b) {
+SGFE_bufferFormat SGFE_bufferGetFormat(const SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
 	return b->format;
 }
@@ -2887,8 +2904,8 @@ SGFE_bool SGFE_bufferIsStereoscopic(SGFE_contextBuffer* b) {
 
 
 SGFE_controller* SGFE_windowGetController(SGFE_window* win, isize port) {
-	SGFE_ASSERT(win != NULL);
-	SGFE_ASSERT(port >= 0 && port < SGFE_MAX_CONTROLLERS);
+	SGFE_ASSERT_NOT_NULL(win);
+	SGFE_ASSERT_FMT(port >= 0 && port < SGFE_MAX_CONTROLLERS, "port = %i;", port);
 
 	const SGFE_controllerList* list = &win->state.controllers;
 	if (port >= list->count) { return NULL; }
@@ -2899,6 +2916,41 @@ SGFE_controller* SGFE_windowGetController(SGFE_window* win, isize port) {
 	}
 
 	return res;
+}
+
+SGFE_bool SGFE_windowIsControllerConnected(SGFE_window* win, const SGFE_controller* controller) {
+	SGFE_ASSERT_NOT_NULL(win);
+	SGFE_ASSERT_NOT_NULL(controller);
+
+	const SGFE_controllerList* list = &win->state.controllers;
+
+	SGFE_controller* res = list->first;
+	for (isize i = 0; i < list->count; i += 1) {
+		if (res == controller) { return SGFE_TRUE; }
+		res = res->next;
+	}
+
+	/* NOTE(EimaMei): There's a slim chance that the given controller is invalid
+	 * because A) it doesn't come from SGFE directly OR B) the backend forgot to
+	 * set it as disconnected. Regardless, this code should catch both cases during
+	 * debug. */
+#ifndef NDEBUG
+	list = &win->disconnected_controllers;
+
+	res = list->first;
+	for (isize i = 0; i < list->count; i += 1) {
+		/* NOTE(EimaMei): Controller *is* in the disconnected list, meaning everything
+		 * is OK. */
+		if (res == controller) { return SGFE_FALSE; }
+		res = res->next;
+	}
+
+	/* NOTE(EimaMei): Something 100% went wrong. */
+	/* TODO(EimaMei): Replace this with a panic message about the comment above. */
+	SGFE_ASSERT(0);
+#endif
+
+	return SGFE_FALSE;
 }
 
 
@@ -3218,7 +3270,7 @@ void SGFE_glHintsSetGlobal(const SGFE_contextHintsGL* hints) {
 
 
 SGFE_bool SGFE_windowCreateContextGL(SGFE_window* win, SGFE_videoMode mode) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_windowFreeContext(win);
 
 	SGFE_contextHintsGL* hints = SGFE_glHintsGetGlobal();
@@ -3254,7 +3306,7 @@ SGFE_contextGL* SGFE_windowGetContextExGL(SGFE_window* win, SGFE_screen screen) 
 }
 
 void SGFE_windowSetContextGL(SGFE_window* win, SGFE_contextGL* ctx) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_windowSetContextExGL(win, ctx, SGFE_windowGetCurrentScreen(win));
 }
 
@@ -3291,14 +3343,14 @@ void SGFE_videoModeResolution(SGFE_videoMode mode, isize* out_width, isize* out_
 	if (out_height) { *out_height = SGFE_VIDEO_RESOLUTION_LUT[mode][1]; }
 }
 
-isize SGFE_pixelFormatBytesPerPixel(SGFE_pixelFormat format) {
-	SGFE_ASSERT(format >= 0 && format < SGFE_pixelFormatCount);
+isize SGFE_bufferFormatGetBytesPerPixel(SGFE_bufferFormat format) {
+	SGFE_ASSERT(format >= 0 && format < SGFE_bufferFormatCount);
 	return SGFE_FORMAT_BYTES_PER_PIXEL_LUT[format];
 }
 
 
-const char* SGFE_pixelFormatStr(SGFE_pixelFormat format) {
-	SGFE_ASSERT(format >= 0 && format < SGFE_pixelFormatCount);
+const char* SGFE_bufferFormatGetStr(SGFE_bufferFormat format) {
+	SGFE_ASSERT(format >= 0 && format < SGFE_bufferFormatCount);
 	return SGFE_PIXEL_FORMAT_NAME_LUT[format];
 }
 
@@ -3629,7 +3681,7 @@ SGFE_bool (SGFE_debugSendGL)(void* ctx_ptr, const char* filename, isize line, co
 
 
 
-
+#ifndef SGFE_CUSTOM_BACKEND
 #ifdef SGFE_3DS
 
 const SGFE_button SGFE_BUTTON_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
@@ -3686,7 +3738,7 @@ const isize SGFE_VIDEO_RESOLUTION_LUT[SGFE_videoModeCount][2] = {
 	{400, 240}, {800, 240}, {800, 240},
 };
 
-const isize SGFE_FORMAT_BYTES_PER_PIXEL_LUT[SGFE_pixelFormatCount] = {
+const isize SGFE_FORMAT_BYTES_PER_PIXEL_LUT[SGFE_bufferFormatCount] = {
 	4, 3, 2, 2, 2
 };
 
@@ -3790,7 +3842,7 @@ void SGFE__bufferOnVblankCallback(void* buffer_ptr) {
 
 /* NOTE(EimaMei): Taken from libctru gfx.c */
 void SGFE__gspPresentFramebuffer(SGFE_contextBuffer* b, u8* buffer) {
-	u32 stride = GSP_SCREEN_WIDTH * (u32)SGFE_pixelFormatBytesPerPixel(b->format);
+	u32 stride = GSP_SCREEN_WIDTH * (u32)SGFE_bufferFormatGetBytesPerPixel(b->format);
 	u32 pixel_format = (u32)b->format | (1 << 8);
 
 	u8* fb_b = buffer;
@@ -3850,12 +3902,12 @@ SGFE_bool SGFE__setBatteryState(SGFE_controller* controller) {
 
 
 SGFE_screen SGFE_windowGetCurrentScreen_platform(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	return (win->flags & SGFE_windowFlagTopScreen) ? SGFE_screenTop : SGFE_screenBottom;
 }
 
 SGFE_bool SGFE_windowIsScreenEnabled_platform(SGFE_window* win, SGFE_screen screen) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	return SGFE_BOOL(win->flags & SGFE_BIT(29 + screen));
 }
 
@@ -3886,7 +3938,7 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 	aptHook(&win->src.apt_hook, SGFE__aptHookCallback, win);
 
 	SGFE_controller* controller = &win->controllers[0];
-	controller->index = 0;
+	controller->array_index = 0;
 	controller->type = SGFE_controllerTypeStandard;
 	controller->enabled_pointers[SGFE_pointerTouchscreen] = SGFE_TRUE;
 
@@ -3906,10 +3958,7 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 	}
 
 	SGFE__setBatteryState(controller);
-
-
-	SGFE__controllerRemoveFromList(&win->disconnected_controllers, controller);
-	SGFE__controllerAddToList(&win->state.controllers, controller);
+	SGFE__controllerSetConnection(win, controller, SGFE_TRUE);
 
 	return SGFE_TRUE;
 }
@@ -3929,7 +3978,7 @@ void SGFE_windowClose_platform(SGFE_window* win) {
 
 
 void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlag flags) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	if (flags & SGFE_windowFlagTerminal) {
 		SGFE_bool res = SGFE_windowInitTerminalOutput(win);
 		if (res) { flags &= ~(SGFE_windowFlag)SGFE_windowFlagTerminal; }
@@ -3940,7 +3989,7 @@ void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlag flags) {
 
 
 const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 
 	SGFE_bool continue_running = aptMainLoop();
 	if (SGFE_windowGetEventEnabled(win, SGFE_eventQuit)) {
@@ -4149,7 +4198,7 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 
 
 void SGFE_windowSetVisible(SGFE_window* win, SGFE_bool is_visible) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_ASSERT_BOOL(is_visible);
 
 	win->state.is_visible = is_visible;
@@ -4160,12 +4209,12 @@ void SGFE_windowSetVisible(SGFE_window* win, SGFE_bool is_visible) {
 
 
 SGFE_button SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
-	SGFE_ASSERT(type > 0 && type <= SGFE_controllerTypeCount);
+	SGFE_ASSERT_FMT(type > 0 && type <= SGFE_controllerTypeCount, "type = %i;", type);
 	return SGFE_platformButtonFromAPI(mask);
 }
 
 u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_button button) {
-	SGFE_ASSERT((button & ~SGFE_buttonGetMask(type)) == 0);
+	SGFE_ASSERT_FMT((button & ~SGFE_buttonGetMask(type)) == 0, "button = %i; ", button);
 	return SGFE_platformButtonToAPI(button);
 }
 
@@ -4224,7 +4273,7 @@ SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
 
 	isize width, height;
 	SGFE_bufferGetResolution(b, &width, &height);
-	b->src.size = (u32)(width * height * SGFE_pixelFormatBytesPerPixel(b->format));
+	b->src.size = (u32)(width * height * SGFE_bufferFormatGetBytesPerPixel(b->format));
 	b->current = 0;
 
 	SGFE__gspPresentFramebuffer(b, (b->is_native) ? b->buffers[0] : b->buffers_native[0]);
@@ -4246,7 +4295,7 @@ SGFE_bool SGFE_bufferAllocFramebuffers(SGFE_contextBuffer* b) {
 	isize width, height;
 	SGFE_bufferGetResolution(b, &width, &height);
 
-	isize size = width * height * SGFE_pixelFormatBytesPerPixel(b->format);
+	isize size = width * height * SGFE_bufferFormatGetBytesPerPixel(b->format);
 
 	if (b->is_native) {
 		u8* buffers = linearAlloc((size_t)(2 * size));
@@ -4314,7 +4363,7 @@ u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b) {
 	}
 	u8* dst = b->buffers_native[b->current];
 
-	isize bpp = SGFE_pixelFormatBytesPerPixel(b->mode);
+	isize bpp = SGFE_bufferFormatGetBytesPerPixel(b->mode);
 	isize width, height;
 	SGFE_bufferGetResolution(b, &width, &height);
 
@@ -4645,7 +4694,7 @@ void SGFE_glSetSwapInterval(SGFE_contextGL* gl, isize swap_interval) {
 
 
 void SGFE_windowSwapBuffersGL(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 
 	GLASSCtx top = (SGFE_windowGetContextTypeEx(win, SGFE_screenTop) == SGFE_contextTypeGL)
 		? SGFE_windowGetContextExGL(win, SGFE_screenTop)->ctx
@@ -4659,7 +4708,7 @@ void SGFE_windowSwapBuffersGL(SGFE_window* win) {
 
 
 void SGFE_windowSetContextExGL(SGFE_window* win, SGFE_contextGL* gl, SGFE_screen screen) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 	SGFE_ASSERT(screen >= 0 && screen < SGFE_screenCount);
 
 	win->current[screen] = gl;
@@ -4815,8 +4864,8 @@ SGFE_videoMode SGFE_videoModeOptimal(void) {
 	return SGFE_videoMode2D;
 }
 
-SGFE_videoMode SGFE_pixelFormatOptimal(void) {
-	return SGFE_pixelFormatBGR8;
+SGFE_videoMode SGFE_bufferFormatOptimal(void) {
+	return SGFE_bufferFormatBGR8;
 }
 
 
@@ -4850,8 +4899,8 @@ SGFE_systemModel SGFE_platformGetModel(void) {
 	return (model <= SGFE_systemModelN2DSXL) ? (model - 1) : SGFE_systemModelUnknown;
 }
 
-SGFE_videoCompositeMode SGFE_platformGetCompositeFormat(void) {
-	return SGFE_videoCompositeModeIsDigital;
+SGFE_videoSignal SGFE_platformGetVideoSignal(void) {
+	return SGFE_videoSignalDigital;
 }
 
 
@@ -4908,7 +4957,7 @@ SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
 
 	SGFE_bufferSetNative(b, SGFE_TRUE);
-	SGFE_bufferSetFormat(b, SGFE_pixelFormatRGB565);
+	SGFE_bufferSetFormat(b, SGFE_bufferFormatRGB565);
 	SGFE_bufferSetDoubleBuffered(b, SGFE_FALSE);
 
 	if (!console_initialized) {
@@ -5088,477 +5137,10 @@ SGFE_debugType SGFE_debugSystemGenerateType_platform(void* ctx_ptr, isize code) 
 
 #ifdef SGFE_WII
 
-i32 SGFE__WII_EXIT_STATE;
-
-extern void *memalign (size_t, size_t);
-extern int usleep (__useconds_t __useconds);
-
-SGFE_button SGFE_buttonFromAPI_WiiRemote(u32 mask);
-SGFE_button SGFE_buttonFromAPI_Nunchuk(u32 mask);
-
-void SGFE__callbackWiiReset(u32 irq, void* ctx);
-void SGFE__callbackWiiPower(void);
-void SGFE__callbackWiiRemotePower(i32 channel);
-
-void SGFE__wiiControllerOnConnect(SGFE_controller* controller, isize port, SGFE_bool is_connected);
-void SGFE__wiiControllerAxis(SGFE_window* win, SGFE_controller* controller, SGFE_axisType type, WPADData* data);
-void SGFE__wiiControllerSensor(SGFE_window* win, SGFE_controller* controller, WPADData* data);
-void SGFE__wiiControllerMotion_wiimote(SGFE_window* win, SGFE_controller* controller);
-void SGFE__wiiControllerMotion_nunchuk(SGFE_window* win, SGFE_controller* controller);
-
-void SGFE__wiiCheckGXMode(SGFE_contextBuffer* b);
-
-
-
-SGFE_button SGFE_buttonFromAPI_WiiRemote(u32 mask) {
-	return ((mask & (u32)~0x1F) >> 2) | (mask & 0x1F);
-}
-
-SGFE_button SGFE_buttonFromAPI_Nunchuk(u32 mask) {
-	return ((mask & ~0xFFFFu) >> 5) | SGFE_buttonFromAPI_WiiRemote(mask & 0xFFFF);
-}
-
-void SGFE__callbackWiiReset(u32 irq, void* ctx) { SGFE__WII_EXIT_STATE = SYS_RETURNTOMENU; SGFE_UNUSED(irq); SGFE_UNUSED(ctx); }
-void SGFE__callbackWiiPower(void) { SGFE__WII_EXIT_STATE = SYS_POWEROFF_STANDBY; }
-void SGFE__callbackWiiRemotePower(i32 channel) { SGFE__WII_EXIT_STATE = SYS_POWEROFF_STANDBY; SGFE_UNUSED(channel); }
-
-void SGFE__wiiControllerOnConnect(SGFE_controller* controller, isize port, SGFE_bool is_connected) {
-	controller->port = port;
-	controller->connected = is_connected;
-
-	if (is_connected) {
-		WPADData* data = WPAD_Data(port);
-		isize connect_retries = 0;
-
-		data->exp.type = 0xFF;
-		while (data->exp.type == 0xFF && connect_retries < 1000) {
-			WPAD_ReadPending(port, NULL);
-			connect_retries += 1;
-			usleep(1000);
-		}
-
-		switch (data->exp.type) {
-			case WPAD_EXP_NONE: controller->type = SGFE_controllerTypeWiiRemote; break;
-			case WPAD_EXP_NUNCHUK: {
-				controller->type = SGFE_controllerTypeNunchuk;
-				controller->axes[SGFE_axisLeftX].deadzone = 0.2f;
-				controller->axes[SGFE_axisLeftY].deadzone = 0.2f;
-			} break;
-			default: controller->type = SGFE_controllerTypeUnknown;
-		}
-	}
-	else {
-		SGFE_MEMSET(controller->enabled_motions, 0, sizeof(controller->enabled_motions));
-		SGFE_MEMSET(controller->enabled_pointers, 0, sizeof(controller->enabled_pointers));
-	}
-}
-
-void SGFE__wiiControllerAxis(SGFE_window* win, SGFE_controller* controller, SGFE_axisType type, WPADData* data) {
-	float pos;
-	float min, max;
-
-	switch (controller->type) {
-		case SGFE_controllerTypeNunchuk: {
-			struct joystick_t* js = &data->exp.nunchuk.js;
-			if (type == SGFE_axisLeftX) {
-				pos = js->pos.x;
-				max = js->max.x;
-				min = js->min.x;
-			}
-			else {
-				pos = js->pos.y;
-				max = js->max.y;
-				min = js->min.y;
-			}
-		} break;
-	}
-
-	/* NOTE(EimaMei): Normalizing the axis to be from -1 to 1. */
-	SGFE_axis* axis = &controller->axes[type];
-	axis->value = ((pos - min) / (max - min)) * 2.0f - 1.0f;
-
-	SGFE_windowAxisCallback(win, controller, type);
-	if (win->queue_events) {
-		SGFE_event event;
-		event.type = SGFE_eventAxis;
-		event.axis.controller = controller;
-		event.axis.which = type;
-		event.axis.value = axis->value;
-		event.axis.deadzone = axis->deadzone;
-		SGFE_windowEventPush(win, &event);
-	}
-}
-
-void SGFE__wiiControllerSensor(SGFE_window* win, SGFE_controller* controller, WPADData* data) {
-	/* NOTE(EimaMei): For some reason the authors of wiiuse decided not to include these in the header. Why? */
-	enum {
-		IR_STATE_DEAD = 0,
-		IR_STATE_GOOD,
-		IR_STATE_SINGLE,
-		IR_STATE_LOST,
-	};
-	ir_t* ir = &data->ir;
-	if (!controller->enabled_pointers[SGFE_pointerInfrared] || ir->state == IR_STATE_LOST || ir->state == IR_STATE_DEAD) {
-		return ;
-	}
-	controller->pointers[SGFE_pointerInfrared][0] = (i32)ir->ax;
-	controller->pointers[SGFE_pointerInfrared][1] = (i32)ir->ay;
-	SGFE_windowPointerCallback(win, controller, SGFE_pointerInfrared);
-
-	if (win->queue_events) {
-		SGFE_event event;
-		event.type = SGFE_eventPointer;
-		event.pointer.controller = controller;
-		event.pointer.which = SGFE_pointerInfrared;
-		event.pointer.x = controller->pointers[SGFE_pointerInfrared][0];
-		event.pointer.y = controller->pointers[SGFE_pointerInfrared][1];
-		SGFE_windowEventPush(win, &event);
-	}
-}
-
-void SGFE__wiiControllerMotion_wiimote(SGFE_window* win, SGFE_controller* controller) {
-	if (!controller->enabled_motions[SGFE_motionAccelerometer]) {
-		return;
-	}
-
-	struct wiimote_t* wiimote = win->src.wiimotes[controller->port];
-	float* motion = (float*)&controller->motions[SGFE_motionAccelerometer];
-	motion[0] = (float)(wiimote->accel.x - wiimote->accel_calib.cal_zero.x) / wiimote->accel_calib.cal_g.x * SGFE_STANDARD_GRAVITY;
-	motion[1] = (float)(wiimote->accel.z - wiimote->accel_calib.cal_zero.z) / wiimote->accel_calib.cal_g.z * SGFE_STANDARD_GRAVITY;
-	motion[2] = (float)(wiimote->accel.y - wiimote->accel_calib.cal_zero.y) / wiimote->accel_calib.cal_g.y * SGFE_STANDARD_GRAVITY;
-
-	SGFE_windowMotionCallback(win, controller, SGFE_motionAccelerometer);
-	if (win->queue_events) {
-		SGFE_event event;
-		event.type = SGFE_eventMotion;
-		event.motion.controller = controller;
-		event.motion.which = SGFE_motionAccelerometer;
-		event.motion.x = motion[0];
-		event.motion.y = motion[1];
-		event.motion.z = motion[2];
-		SGFE_windowEventPush(win, &event);
-	}
-}
-
-void SGFE__wiiControllerMotion_nunchuk(SGFE_window* win, SGFE_controller* controller) {
-	if (!controller->enabled_motions[SGFE_motionNunchukAccelerometer]) {
-		return;
-	}
-
-	const nunchuk_t* nunchuk = &win->src.wiimotes[controller->port]->exp.nunchuk;
-	float* motion = (float*)&controller->motions[SGFE_motionNunchukAccelerometer];
-	motion[0] = (float)(nunchuk->accel.x - nunchuk->accel_calib.cal_zero.x) / nunchuk->accel_calib.cal_g.x * 9.80665f;
-	motion[1] = (float)(nunchuk->accel.z - nunchuk->accel_calib.cal_zero.z) / nunchuk->accel_calib.cal_g.z * 9.80665f;
-	motion[2] = (float)(nunchuk->accel.y - nunchuk->accel_calib.cal_zero.y) / nunchuk->accel_calib.cal_g.y * 9.80665f;
-
-	SGFE_windowMotionCallback(win, controller, SGFE_motionNunchukAccelerometer);
-	if (win->queue_events) {
-		SGFE_event event;
-		event.type = SGFE_eventMotion;
-		event.motion.controller = controller;
-		event.motion.which = SGFE_motionNunchukAccelerometer;
-		event.motion.x = motion[0];
-		event.motion.y = motion[1];
-		event.motion.z = motion[2];
-		SGFE_windowEventPush(win, &event);
-	}
-}
-
-void SGFE__wiiCheckGXMode(SGFE_contextBuffer* b) {
-	if (b->gx_video_mode != NULL) { return; }
-
-	switch (b->mode) {
-		case SGFE_videoModeNTSC_240i: b->gx_video_mode = &TVNtsc240Int;   break;
-		case SGFE_videoModeNTSC_480i: b->gx_video_mode = &TVNtsc480IntDf; break;
-		case SGFE_videoModeNTSC_480p: b->gx_video_mode = &TVNtsc480Prog;  break;
-
-		case SGFE_videoModePAL_264i: b->gx_video_mode = &TVPal264Int;        break;
-		case SGFE_videoModePAL_576i: b->gx_video_mode = &TVPal576IntDfScale; break;
-		case SGFE_videoModePAL_576p: b->gx_video_mode = &TVPal576ProgScale;  break;
-
-		case SGFE_videoModeMPAL_240i: b->gx_video_mode = &TVMpal240Int;    break;
-		case SGFE_videoModeMPAL_480i: b->gx_video_mode = &TVMpal480IntDf;  break;
-		case SGFE_videoModeMPAL_480p: b->gx_video_mode = &TVMpal480Prog;   break;
-
-		case SGFE_videoModePAL60hz_240i: b->gx_video_mode = &TVEurgb60Hz240Int;   break;
-		case SGFE_videoModePAL60hz_480i: b->gx_video_mode = &TVEurgb60Hz480IntDf; break;
-		case SGFE_videoModePAL60hz_480p: b->gx_video_mode = &TVEurgb60Hz480Prog;  break;
-	}
-}
-
-
-
-
-const SGFE_button SGFE_BUTTON_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
-	SGFE_buttonMask_WiiRemote,
-	SGFE_buttonMask_Nunchuk,
-	0
-};
-
-const isize SGFE_BUTTON_COUNT_LUT[SGFE_controllerTypeCount] = {
-	SGFE_buttonCount_WiiRemote,
-	SGFE_buttonCount_Nunchuk,
-	0
-};
-const isize SGFE_AXIS_RANGE_LUT[SGFE_controllerTypeCount][2] = {
-	{0, -1},
-	{SGFE_axisLeftX, SGFE_axisLeftY},
-	{0, -1}
-};
-const isize SGFE_POINTER_RANGE_LUT[SGFE_controllerTypeCount][2] = {
-	{SGFE_pointerInfrared, SGFE_pointerInfrared},
-	{SGFE_pointerInfrared, SGFE_pointerInfrared},
-	{0, -1}
-};
-const isize SGFE_MOTION_RANGE_LUT[SGFE_controllerTypeCount][2] = {
-	{SGFE_motionAccelerometer, SGFE_motionAccelerometer},
-	{SGFE_motionAccelerometer, SGFE_motionNunchukAccelerometer},
-	{0, -1}
-};
-
-const char* SGFE_CONTROLLER_NAME_LUT[SGFE_controllerTypeCount] = {
-	"Wii Remote", "Nunchuk", "Unknown"
-};
-const char* SGFE_BUTTON_NAMES_NUNCHUK_LUT[SGFE_buttonCount_Nunchuk] = {
-	"2", "1", "B", "A", "Minus", "Home", "Left", "Right", "Down", "Up", "Plus",
-	"Z", "C"
-};
-const char* SGFE_AXIS_NAME_LUT[SGFE_axisTypeCount] = {
-	"Nunchuk X", "Nunchuk Y"
-};
-const char* SGFE_POINTER_NAME_LUT[SGFE_pointerTypeCount] = {
-	"IR Sensor"
-};
-const char* SGFE_MOTION_NAME_LUT[SGFE_motionTypeCount] = {
-	"Accelerometer", "Gyroscope", "Nunchuk accelerometer"
-};
-
-const isize SGFE_VIDEO_RESOLUTION_LUT[SGFE_videoModeCount][2] = {
-	{320, 240}, {720, 480}, {720, 480},
-	{320, 264}, {720, 528}, {720, 576},
-	{320, 240}, {720, 480}, {720, 480},
-	{320, 240}, {720, 480}, {720, 480},
-};
-
-const isize SGFE_FORMAT_BYTES_PER_PIXEL_LUT[SGFE_pixelFormatCount] = {
-	4, 2
-};
-
-const char* SGFE_VIDEO_MODE_NAME_LUT[SGFE_videoModeCount] = {
-	"SGFE_videoModeNTSC_240i",
-	"SGFE_videoModeNTSC_480i",
-	"SGFE_videoModeNTSC_480p",
-
-	"SGFE_videoModePAL_264i",
-	"SGFE_videoModePAL_528p",
-	"SGFE_videoModePAL_576i",
-
-	"SGFE_videoModeMPAL_240i",
-	"SGFE_videoModeMPAL_480i",
-	"SGFE_videoModeMPAL_480p",
-
-	"SGFE_videoModePAL60hz_240i",
-	"SGFE_videoModePAL60hz_480i",
-	"SGFE_videoModePAL60hz_480p",
-};
-
-const char* SGFE_PIXEL_FORMAT_NAME_LUT[SGFE_pixelFormatCount] = {
-	"SGFE_pixelFormatRGBA8", "SGFE_pixelFormatYUV"
-};
-
-
-
-
-SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
-	VIDEO_Init();
-
-	PAD_Init();
-	WPAD_Init();
-
-	#ifndef SGFE_WII_NO_WAIT_FOR_CONNECTION
-	SGFE_bool wpad_is_active = SGFE_FALSE;
-	#endif
-
-	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
-		WPADData* data = WPAD_Data(i);
-		isize connect_retries = 0;
-
-		#ifndef SGFE_WII_NO_WAIT_FOR_CONNECTION
-			if (!wpad_is_active) { data->err = 1984; }
-
-			i32 status;
-			do {
-				status = WPAD_Probe(i, NULL);
-				connect_retries += 1;
-				usleep(1000);
-			} while (connect_retries < 5000 && (data->err == 1984 || status == WPAD_ERR_NOT_READY));
-
-			wpad_is_active = SGFE_TRUE;
-			connect_retries = 0;
-		#else
-			isize status = WPAD_Probe(i, NULL);
-		#endif
-
-		SGFE_controller* controller = &win->controllers[i];
-		if (status != 0) {
-			controller->connected = SGFE_FALSE;
-			continue;
-		}
-
-		SGFE__wiiControllerOnConnect(controller, i, SGFE_TRUE);
-	}
-
-	/* TODO(EimaMei): document why this works. */
-	win->src.wiimotes = wiiuse_init(-1, NULL);
-
-	SYS_SetResetCallback(SGFE__callbackWiiReset);
-	SYS_SetPowerCallback(SGFE__callbackWiiPower);
-	WPAD_SetPowerButtonCallback(SGFE__callbackWiiRemotePower);
-
-	return SGFE_TRUE;
-}
-
-void SGFE_windowClose_platform(SGFE_window* win) {
-	WPAD_Shutdown();
-
-	if ((win->flags & SGFE_WINDOW_ALLOC)) {
-		SGFE_FREE(win);
-	}
-
-	if (SGFE__WII_EXIT_STATE != 0) {
-		SYS_ResetSystem(SGFE__WII_EXIT_STATE, 0, 0);
-	}
-}
-
-
-void SGFE_windowPollEvents(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
-
-	if (win->polled_events) {
-		win->event_len = 0;
-	}
-
-	if (SGFE__WII_EXIT_STATE != 0) {
-		SGFE_windowQuitCallback(win);
-		SGFE_windowSetShouldClose(win, SGFE_TRUE);
-
-		if (win->queue_events) {
-			SGFE_event event;
-			event.type = SGFE_eventQuit;
-			SGFE_windowEventPush(win, &event);
-		}
-		return;
-	}
-
-	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
-		SGFE_controller* controller = &win->controllers[i];
-		i32 res = WPAD_ReadPending(i, NULL);
-
-		if (res < WPAD_ERR_NONE) {
-			if (controller->connected) {
-				SGFE__wiiControllerOnConnect(controller, i, SGFE_FALSE);
-				SGFE_windowControllerCallback(win, controller, SGFE_FALSE);
-
-				if (win->queue_events) {
-					SGFE_event event;
-					event.type = SGFE_eventControllerDisconnected;
-					event.controller.controller = controller;
-					SGFE_windowEventPush(win, &event);
-				}
-			}
-			continue;
-		}
-
-		WPADData* state = WPAD_Data(i);
-		SGFE_controllerType old_controller_type = controller->type;
-
-		if (!controller->connected) {
-			SGFE__wiiControllerOnConnect(controller, i, SGFE_TRUE);
-			SGFE_windowControllerCallback(win, controller, SGFE_TRUE);
-
-			if (win->queue_events) {
-				SGFE_event event;
-				event.type = SGFE_eventControllerConnected;
-				event.controller.controller = controller;
-				SGFE_windowEventPush(win, &event);
-			}
-		}
-		else if (controller->type != state->exp.type) {
-			SGFE__wiiControllerOnConnect(controller, i, SGFE_TRUE);
-		}
-
-		switch (controller->type) {
-			case SGFE_controllerTypeWiiRemote: {
-				controller->buttons_up   = SGFE_buttonFromAPI_WiiRemote(state->btns_u & 0xFFFF);
-				if (old_controller_type == SGFE_controllerTypeNunchuk) {
-					controller->buttons_up |= (controller->buttons_held & (SGFE_C | SGFE_Z));
-				}
-
-				controller->buttons_held = SGFE_buttonFromAPI_WiiRemote(state->btns_h & 0xFFFF);
-				controller->buttons_down = SGFE_buttonFromAPI_WiiRemote(state->btns_d & 0xFFFF);
-
-				SGFE__wiiControllerSensor(win, controller, state);
-				SGFE__wiiControllerMotion_wiimote(win, controller);
-			} break;
-
-			case SGFE_controllerTypeNunchuk: {
-				controller->buttons_held = SGFE_buttonFromAPI_Nunchuk(state->btns_h);
-				controller->buttons_down = SGFE_buttonFromAPI_Nunchuk(state->btns_d),
-				controller->buttons_up   = SGFE_buttonFromAPI_Nunchuk(state->btns_u);
-
-				nunchuk_t* nunchuk = &state->exp.nunchuk;
-				if (nunchuk->js.pos.x != nunchuk->js.center.x) {
-					SGFE__wiiControllerAxis(win, controller, SGFE_axisLeftX, state);
-				}
-				if (nunchuk->js.pos.y != nunchuk->js.center.y) {
-					SGFE__wiiControllerAxis(win, controller, SGFE_axisLeftY, state);
-				}
-
-				SGFE__wiiControllerSensor(win, controller, state);
-				SGFE__wiiControllerMotion_wiimote(win, controller);
-				SGFE__wiiControllerMotion_nunchuk(win, controller);
-			} break;
-
-			default: {
-				continue;
-			}
-		}
-
-		if (controller->buttons_held != 0) {
-			SGFE_windowButtonCallback(win, controller, controller->buttons_held, SGFE_TRUE);
-
-			if (win->queue_events) {
-				SGFE_event event;
-				event.type = SGFE_eventButtonDown;
-				event.button.controller = controller;
-				event.button.buttons = controller->buttons_held;
-				event.button.buttons_down = controller->buttons_down;
-				event.button.raw_buttons = state->btns_h;
-				event.button.raw_buttons_down = state->btns_d;
-				SGFE_windowEventPush(win, &event);
-			}
-		}
-
-		if (controller->buttons_up != 0) {
-			SGFE_windowButtonCallback(win, controller, controller->buttons_up, SGFE_FALSE);
-
-			if (win->queue_events) {
-				SGFE_event event;
-				event.type = SGFE_eventButtonUp;
-				event.button.controller = controller;
-				event.button.buttons = controller->buttons_up;
-				event.button.buttons_down = 0;
-				event.button.raw_buttons = state->btns_u;
-				event.button.raw_buttons_down = 0;
-				SGFE_windowEventPush(win, &event);
-			}
-		}
-	}
-}
 
 
 void SGFE_windowSwapBuffers(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 
 	switch (SGFE_contextGetType(win->current)) {
 		case SGFE_contextTypeBuffer: {
@@ -5574,10 +5156,10 @@ void SGFE_windowMakeCurrent(SGFE_window* win, SGFE_context* ctx) {
 
 
 SGFE_bool SGFE_platformInitTerminalOutput(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
+	SGFE_ASSERT_NOT_NULL(win);
 
 	if (win->current == NULL) {
-		SGFE_bool res = SGFE_windowCreateContextBuffer(win, SGFE_videoModeOptimal(), SGFE_pixelFormatYUV, SGFE_TRUE);
+		SGFE_bool res = SGFE_windowCreateContextBuffer(win, SGFE_videoModeOptimal(), SGFE_bufferFormatYUV, SGFE_TRUE);
 
 		if (res == SGFE_FALSE) {
 			return SGFE_FALSE;
@@ -5586,7 +5168,7 @@ SGFE_bool SGFE_platformInitTerminalOutput(SGFE_window* win) {
 
 	SGFE_contextBuffer* b = SGFE_windowGetCurrentBuffer(win);
 	SGFE_bufferSetNative(b, SGFE_TRUE);
-	SGFE_bufferSetFormat(b, SGFE_pixelFormatYUV);
+	SGFE_bufferSetFormat(b, SGFE_bufferFormatYUV);
 	SGFE_bufferSetDoubleBuffered(b, SGFE_FALSE);
 
 	console_init(
@@ -5600,16 +5182,6 @@ SGFE_bool SGFE_platformInitTerminalOutput(SGFE_window* win) {
 
 
 
-SGFE_button SGFE_controllerGetButtonMaskFromAPI(const SGFE_controller* controller,
-		u32 mask) {
-	#error "damn"
-	SGFE_ASSERT(controller != NULL);
-	switch (controller->type) {
-		case SGFE_controllerTypeWiiRemote: return SGFE_buttonFromAPI_WiiRemote(mask);
-		case SGFE_controllerTypeNunchuk: return SGFE_buttonFromAPI_Nunchuk(mask);
-	}
-	return 0;
-}
 
 
 const char* SGFE_controllerGetNameButton(const SGFE_controller* controller,
@@ -5627,210 +5199,8 @@ const char* SGFE_controllerGetNameButton(const SGFE_controller* controller,
 }
 
 
-void SGFE_controllerEnablePointer(SGFE_controller* controller, SGFE_pointerType pointer,
-		SGFE_bool enable) {
-	switch (pointer) {
-		case SGFE_pointerInfrared: {
-			if (enable) {
-				enable = (WPAD_SetDataFormat(controller->port, WPAD_FMT_BTNS_ACC_IR)) == 0;
-			}
-			else {
-				WPAD_SetDataFormat(
-					controller->port,
-					(controller->enabled_motions[SGFE_motionAccelerometer])
-						? WPAD_FMT_BTNS_ACC
-						: WPAD_FMT_BTNS
-				);
-			}
-		} break;
-
-		/*case SGFE_motionGyroscope: {
-			if (enable) HIDUSER_EnableGyroscope();
-			else        HIDUSER_DisableGyroscope();
-		} break;*/
-	}
-}
-
-void SGFE_controllerEnableMotion(SGFE_controller* controller, SGFE_motionType motion,
-		SGFE_bool enable) {
-	switch (motion) {
-		case SGFE_motionAccelerometer: {
-			if (enable) {
-				if (!controller->enabled_pointers[SGFE_pointerInfrared]) {
-					enable = (WPAD_SetDataFormat(controller->port, WPAD_FMT_BTNS_ACC)) == 0;
-				}
-			}
-			else {
-				WPAD_SetDataFormat(
-					controller->port,
-					(controller->enabled_pointers[SGFE_pointerInfrared])
-						? WPAD_FMT_BTNS_ACC_IR
-						: WPAD_FMT_BTNS
-				);
-			}
-		} break;
-
-		/*case SGFE_motionGyroscope: {
-			if (enable) HIDUSER_EnableGyroscope();
-			else        HIDUSER_DisableGyroscope();
-		} break;*/
-	}
-}
-
-
-
-void SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
-		SGFE_videoMode mode, SGFE_pixelFormat format) {
-	SGFE_ASSERT(out_buffer != NULL);
-	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
-	SGFE_ASSERT(format >= 0 && format < SGFE_pixelFormatCount);
-
-	SGFE_contextBuffer* b = out_buffer;
-	b->screen = SGFE_screenPrimary;
-	b->mode = mode;
-	b->format = format;
-
-	b->current = 0;
-	SGFE_MEMSET(b->buffers, 0, sizeof(b->buffers));
-
-	b->is_buffer_allocated = SGFE_FALSE;
-	b->is_double_buffered = SGFE_FALSE;
-	b->is_native = SGFE_FALSE;
-
-	SGFE_MEMSET(b->buffers_native, 0, sizeof(b->buffers_native));
-
-	b->gx_video_mode = NULL;
-}
-
-
-SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
-
-	if (b->buffers[0] == NULL) {
-		SGFE_bool res = SGFE_bufferAllocFramebuffers(b);
-		if (!res) {
-			SGFE_sendDebugInfo(SGFE_debugTypeError, SGFE_errorOutOfMemory, SGFE_DEBUG_CTX(NULL, 0), "Ran out of memory when allocating framebuffers.");
-			return SGFE_FALSE;
-		}
-	}
-
-	SGFE__wiiCheckGXMode(b);
-	VIDEO_Configure(b->gx_video_mode);
-
-	u8* fb = SGFE_bufferGetFramebuffer(b);
-	VIDEO_SetNextFramebuffer(fb);
-	VIDEO_ClearFrameBuffer(b->gx_video_mode, fb, COLOR_BLACK);
-	VIDEO_SetBlack(SGFE_FALSE);
-	VIDEO_Flush();
-
-	VIDEO_WaitVSync();
-	if(b->gx_video_mode->viTVMode & VI_NON_INTERLACE) VIDEO_WaitVSync();
-
-	return SGFE_TRUE;
-}
-
-void SGFE_bufferFreeContext(SGFE_contextBuffer* b) {
-	SGFE_bufferFreeFramebuffers(b);
-	b->buffers[0] = NULL;
-	b->buffers[1] = NULL;
-}
-
-
-SGFE_bool SGFE_bufferAllocFramebuffers(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
-
-	if (b->buffers[0] != NULL) { SGFE_bufferFreeFramebuffers(b); }
-	SGFE__wiiCheckGXMode(b);
-
-	for (size_t i = 0; i < 2; i += 1) {
-		b->buffers[i] = memalign(VIDEO_GetFrameBufferSize(b->gx_video_mode), 32);
-		if (b->buffers[i] == NULL) { return SGFE_FALSE; }
-
-		b->buffers[i] = MEM_K0_TO_K1(b->buffers[i]);
-	}
-	b->is_buffer_allocated = SGFE_TRUE;
-
-	return SGFE_TRUE;
-}
-
-SGFE_bool SGFE_bufferFreeFramebuffers(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
-
-	free(b->buffers[0]);
-	free(b->buffers[1]);
-
-	return SGFE_TRUE;
-}
-
-
-void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* out_height) {
-	SGFE_ASSERT(b != NULL);
-	SGFE_videoModeResolution(b->mode, out_width, out_height);
-}
-
-
-
-void SGFE_windowFreeContext(SGFE_window* win) {
-	SGFE_ASSERT(win != NULL);
-
-	SGFE_context* ctx = SGFE_windowGetContext(win);
-	switch (ctx->type) {
-		case SGFE_contextTypeBuffer: {
-			SGFE_bufferFreeContext(SGFE_contextGetBuffer(ctx));
-		} break;
-
-		#ifdef SGFE_OPENGL
-		case SGFE_contextTypeOpenGL: {
-			SGFE_bufferFreeContext(SGFE_contextGetOpenGL(ctx));
-		} break;
-		#endif
-	}
-}
-
-
-
-SGFE_videoMode SGFE_videoModeOptimal(void) {
-	i32 tvmode = CONF_GetVideo();
-
-	if (CONF_GetProgressiveScan() > 0 && VIDEO_HaveComponentCable()) {
-		switch (tvmode) {
-			case CONF_VIDEO_NTSC:
-				return SGFE_videoModeNTSC_480p;
-
-			case CONF_VIDEO_PAL:
-				return (CONF_GetEuRGB60() > 0)
-					? SGFE_videoModePAL60hz_480p
-					: SGFE_videoModePAL_576p;
-
-			case CONF_VIDEO_MPAL:
-				return SGFE_videoModeMPAL_480p;
-
-			default:
-				return SGFE_videoModeNTSC_480p;
-		}
-	}
-	else {
-		switch (tvmode) {
-			case CONF_VIDEO_NTSC:
-				return SGFE_videoModeNTSC_480i;
-
-			case CONF_VIDEO_PAL:
-				return (CONF_GetEuRGB60() > 0)
-					? SGFE_videoModePAL60hz_480i
-					: SGFE_videoModePAL_576i;
-
-			case CONF_VIDEO_MPAL:
-				return SGFE_videoModePAL60hz_480i;
-
-			default:
-				return SGFE_videoModeNTSC_480i;
-		}
-	}
-}
-
-SGFE_videoMode SGFE_pixelFormatOptimal(void) { return SGFE_pixelFormatYUV; }
-
-#endif
+#endif /* ifdef SGFE_WII */
+#endif /* ifndef SGFE_CUSTOM_BACKEND */
 
 #endif /* SGFE_IMPLEMENTATION */
 

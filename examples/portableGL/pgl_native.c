@@ -37,7 +37,7 @@ void uniform_color_fs(float* fs_input, Shader_Builtins* builtins, void* uniforms
 int main() {
 	SGFE_window* win = SGFE_windowMakeContextless(SGFE_windowFlagNone);
 	SGFE_bool is_initialized = SGFE_windowCreateContextBuffer(
-		win, SGFE_videoModeOptimal(), SGFE_pixelFormatRGBA8, SGFE_TRUE
+		win, SGFE_videoModeOptimal(), SGFE_bufferFormatRGBA8, SGFE_TRUE
 	);
 	if (!is_initialized) { return 1; }
 

@@ -63,14 +63,14 @@ typedef SGFE_ENUM(isize, SGFE_videoMode) {
 	SGFE_videoModeCount
 };
 
-typedef SGFE_ENUM(isize, SGFE_pixelFormat) {
-	SGFE_pixelFormatRGBA8,
+typedef SGFE_ENUM(isize, SGFE_bufferFormat) {
+	SGFE_bufferFormatRGBA8,
 
 	#ifdef SGFE_CUSTOM_BACKEND
 	/* ... */
 	#endif
 
-	SGFE_pixelFormatCount,
+	SGFE_bufferFormatCount,
 };
 
 
@@ -135,7 +135,11 @@ typedef SGFE_ENUM(isize, SGFE_systemModel) {
 
 
 typedef SGFE_ENUM(u32, SGFE_textInputPlatformFlag) {
+	SGFE_textInputPlatformFlagNone = 0,
+
+	#ifdef SGFE_CUSTOM_BACKEND
 	/* ... */
+	#endif
 };
 
 #endif /* SGFE_CUSTOM_BACKEND */
@@ -144,9 +148,12 @@ typedef SGFE_ENUM(u32, SGFE_textInputPlatformFlag) {
 
 #ifdef SGFE_CUSTOM_BACKEND
 
+struct SGFE_windowSource {
+	/* ... */
+};
+
 struct SGFE_contextBufferSource {
 	/* ... */
-	u8 blank;
 };
 
 #ifdef SGFE_OPENGL
@@ -155,14 +162,19 @@ struct SGFE_contextGL {
 };
 #endif
 
-struct SGFE_windowSource {
-	/* ... */
-};
-
 #endif /* SGFE_CUSTOM_BACKEND */
 
 
 #include <SGFE.h>
+
+#ifdef SGFE_CUSTOM_BACKEND
+
+/* === PLATFORM FUNCTIONS FUNCTIONS === */
+/* SGFE_DEF isize SGFE_platformGetSmthExamle(void); */
+
+#endif
+
+
 
 
 #ifdef SGFE_IMPLEMENTATION
@@ -208,7 +220,7 @@ const isize SGFE_VIDEO_RESOLUTION_LUT[SGFE_videoModeCount][2] = {
 	/* {..., ...} */
 };
 
-const isize SGFE_FORMAT_BYTES_PER_PIXEL_LUT[SGFE_pixelFormatCount] = {
+const isize SGFE_FORMAT_BYTES_PER_PIXEL_LUT[SGFE_bufferFormatCount] = {
 	4, /* ... */
 };
 
@@ -216,8 +228,8 @@ const char* SGFE_VIDEO_MODE_NAME_LUT[SGFE_videoModeCount] = {
 	/* "..." */
 };
 
-const char* SGFE_PIXEL_FORMAT_NAME_LUT[SGFE_pixelFormatCount] = {
-	"SGFE_pixelFormatRGBA8", /* "..." */
+const char* SGFE_PIXEL_FORMAT_NAME_LUT[SGFE_bufferFormatCount] = {
+	"SGFE_bufferFormatRGBA8", /* "..." */
 };
 
 
@@ -244,6 +256,30 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 	/* NOTE(EimaMei): 'SGFE_windowMake' already asserts that the window cannot be
 	 * NULL.*/
 	#warning "Warning to notify that this function hasn't been implemented yet."
+
+	/* NOTE(EimaMei): By default 'SGFE_windowMake' disconnects all controllers
+	 * and adds them to the "disconnected list.
+	 *
+	 * When handling the connection of a controller you should call the internal
+	 * 'SGFE__controllerSetConnection()' function, which handles the internal
+	 * double-linking logic for you. Specifying a true boolean adds the controller
+	 * to the "connected controllers" linked-list and removes the controller from
+	 * the "disconnected controllers" linked-list. Likewise specifying false does
+	 * the opposite thing (add to "disconnected", remove from "connected" lists).
+	 *
+	 * If you need to have low-level control for the logic mentioned in the above
+	 * you can utilize 'SGFE__controllerRemoveFromList' and 'SGFE__controllerAddToList'.
+	 *
+	 * It's important to note that you shouldn't invoke these functions when it's
+	 * unapplicable. This include using these functions when:
+	 *	1. 'SGFE_TRUE' is specified but every controller is already connected.
+	 *	2. 'SGFE_FALSE' is specified but every controller is already disconnected.
+	 *  3. 'SGFE_TRUE' is specified but the given controller is already connected.
+	 *  4. 'SGFE_FALSE' is specified but the given controller is already disconnected.
+	 *
+	 * 'SGFE__controllerSetConnection()' has assertions for all four invalid states,
+	 * while the two other internal functions only check for the first two states.
+	 "*/
 }
 
 
@@ -284,58 +320,92 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 		}
 	}
 
-	/* ... */
+	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
+		SGFE_controller* controller = &win->controllers[i];
 
-	if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonDown)) {
-		/* controller->buttons_held = ...; */
-		/* controller->buttons_down = ...; */
-
-		/* SGFE__processCallbackAndEventQueue_ButtonDown(win, controller); */
-	}
-
-	if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonUp)) {
-		/* controller->buttons_up = ... ; */
-
-		/* SGFE__processCallbackAndEventQueue_ButtonUp(win, controller); */
-	}
-
-	if (SGFE_windowGetEventEnabled(win, SGFE_eventAxis)) {
-		/* ... */
-		if (1) {
-			/* SGFE__processCallbackAndEventQueue_Axis(win, controller, axis_ptr); */
-		}
-	}
-
-	if (SGFE_windowGetEventEnabled(win, SGFE_eventPointer)) {
-		if (0 /* controller->enabled_pointers[pointer_type] */ ) {
-			if (1) {
-				/* SGFE__processCallbackAndEventQueue_Pointer(win, controller, pointer_ptr); */
-			}
-		}
-	}
-
-	if (SGFE_windowGetEventEnabled(win, SGFE_eventMotion)) {
-		if (0 /* controller->enabled_pointers[motion_type] */ ) {
-			if (1) {
-				/* SGFE__processCallbackAndEventQueue_Pointer(win, controller, motion_ptr); */
-			}
-		}
-	}
-
-	if (SGFE_windowGetEventEnabled(win, SGFE_eventControllerBattery)) {
-		#if 0
-		if (is_battery_updated) {
-			SGFE_windowControllerBatteryCallback(win, controller, controller->power_state, controller->battery_procent);
+		if (SGFE_windowGetEventEnabled(win, SGFE_eventControllerDisconnected)) {
+			/* ... */
+			SGFE_windowControllerCallback(win, controller, SGFE_FALSE);
 			if (win->is_queueing_events) {
 				SGFE_event event;
-				event.type = SGFE_eventControllerBattery;
-				event.battery.controller = controller;
-				event.battery.state = controller->power_state;
-				event.battery.battery_procent = controller->battery_procent;
+				event.type = SGFE_eventControllerDisconnected;
+				event.controller.controller = controller;
 				SGFE_windowEventPush(win, &event);
 			}
 		}
-		#endif
+		else if (SGFE_windowGetEventEnabled(win, SGFE_eventControllerConnected)) {
+			/* ... */
+			SGFE_windowControllerCallback(win, controller, SGFE_TRUE);
+			if (win->is_queueing_events) {
+				SGFE_event event;
+				event.type = SGFE_eventControllerConnected;
+				event.controller.controller = controller;
+				SGFE_windowEventPush(win, &event);
+			}
+		}
+
+		switch (controller->type) {
+			/*case SGFE_controllerTypeStandard: */
+			case 0: {
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonDown)) {
+					/* controller->buttons_held = ...; */
+					/* controller->buttons_down = ...; */
+
+					/* SGFE__processCallbackAndEventQueue_ButtonDown(win, controller); */
+				}
+
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonUp)) {
+					/* controller->buttons_up = ... ; */
+
+					/* SGFE__processCallbackAndEventQueue_ButtonUp(win, controller); */
+				}
+
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventAxis)) {
+					/* ... */
+					if (1) {
+						/* SGFE__processCallbackAndEventQueue_Axis(win, controller, axis_ptr); */
+					}
+				}
+
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventPointer)) {
+					if (0 /* controller->enabled_pointers[pointer_type] */ ) {
+						if (1) {
+							/* SGFE__processCallbackAndEventQueue_Pointer(win, controller, pointer_ptr); */
+						}
+					}
+				}
+
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventMotion)) {
+					if (0 /* controller->enabled_pointers[motion_type] */ ) {
+						if (1) {
+							/* SGFE__processCallbackAndEventQueue_Motion(win, controller, motion_ptr); */
+						}
+					}
+				}
+
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventControllerBattery)) {
+					#if 0
+					if (is_battery_updated) {
+						SGFE_windowControllerBatteryCallback(win, controller, controller->power_state, controller->battery_procent);
+						if (win->is_queueing_events) {
+							SGFE_event event;
+							event.type = SGFE_eventControllerBattery;
+							event.battery.controller = controller;
+							event.battery.state = controller->power_state;
+							event.battery.battery_procent = controller->battery_procent;
+							SGFE_windowEventPush(win, &event);
+						}
+					}
+					#endif
+				}
+			} break;
+
+			#if 0
+			case SGFE_controllerTypeDifferent: {
+
+			} break;
+			#endif
+		}
 	}
 
 
@@ -345,7 +415,7 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 		/* win->state.text_len = ...; */
 
 		#if 0
-		if (win->state.has_text_input)
+		if (win->state.has_text_input) {
 			SGFE_windowTextInputCallback(win, win->state.text, win->state.text_len);
 			if (win->is_queueing_events) {
 				SGFE_event event;
@@ -382,17 +452,31 @@ void SGFE_windowSetVisible(SGFE_window* win, SGFE_bool is_visible) {
 
 
 SGFE_button SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
-	SGFE_ASSERT(type > 0 && type <= SGFE_controllerTypeCount);
+	SGFE_ASSERT_FMT(type > 0 && type <= SGFE_controllerTypeCount, "type = %i;", type);
 	#warning "Warning to notify that this function hasn't been implemented yet."
+	#if 0
+	switch (type) {
+		case 0: return SGFE_platformButtonFromType0(mask);
+		case 1: return SGFE_platformButtonFromType1(mask);
+		default: return 0;
+	}
+	#endif
 }
 
 u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_button button) {
-	SGFE_ASSERT((button & ~SGFE_buttonGetMask(type)) == 0);
+	SGFE_ASSERT_FMT((button & ~SGFE_buttonGetMask(type)) == 0, "button = %i; ", button);
 	#warning "Warning to notify that this function hasn't been implemented yet."
+	#if 0
+	switch (type) {
+		case 0: return SGFE_platformButtonToType0(mask);
+		case 1: return SGFE_platformButtonToType1(mask);
+		default: return 0;
+	}
+	#endif
 }
 
 
-const char* SGFE_controllerGetNameButton_platform(SGFE_controllerType,
+const char* SGFE_controllerGetNameButton_platform(SGFE_controllerType type,
 		SGFE_buttonType button) {
 	/* NOTE(EimaMei): 'SGFE_controllerGetNameButton' already asserts that the
 	 * controller type is valid and that the button is valid for the controller
@@ -407,6 +491,10 @@ SGFE_bool SGFE_controllerEnablePointer_platform(SGFE_controller* controller,
 	 * controller cannot be NULL, that motion is valid for the controller and that
 	 * the boolean is either a one or zero. */
 	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* NOTE(EimaMei): The function should return 'SGFE_TRUE' if the backend was
+	 * succesful in enabling/disabling the pointer. For example, failing to enable
+	 * something should return 'SGFE_FALSE', but succesfully disabling something
+	 * should return 'SGFE_TRUE'. */
 }
 
 SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
@@ -415,33 +503,80 @@ SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
 	 * controller cannot be NULL, that motion is valid for the controller and that
 	 * the boolean is either a one or zero. */
 	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* NOTE(EimaMei): The function should return 'SGFE_TRUE' if the backend was
+	 * succesful in enabling/disabling the motion. For example, failing to enable
+	 * something should return 'SGFE_FALSE', but succesfully disabling something
+	 * should return 'SGFE_TRUE'. */
 }
 
+
+
+SGFE_bufferFormat SGFE_bufferGetOptimalFormat(void) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+
+SGFE_bool SGFE_bufferSetPlatformSettings(SGFE_contextBuffer* out_buffer) {
+	SGFE_ASSERT_NOT_NULL(out_buffer);
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
 
 
 SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
 	#warning "Warning to notify that this function hasn't been implemented yet."
+	SGFE_debugSendAPI(b, SGFE_debugTypeInfo, SGFE_infoCreateContextBuffer);
 }
 
 void SGFE_bufferFreeContext(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
 	#warning "Warning to notify that this function hasn't been implemented yet."
+	b->buffers[0] = NULL;
+	b->buffers[1] = NULL;
+	SGFE_debugSendAPI(b, SGFE_debugTypeInfo, SGFE_infoFreeContextBuffer);
 }
 
 
 SGFE_bool SGFE_bufferAllocFramebuffers(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
-	SGFE_ASSERT(b != NULL);
 	SGFE_bufferFreeFramebuffers(b);
 
-	#warning "Warning to notify that this function hasn't been implemented yet."
+	isize width, height;
+	SGFE_bufferGetResolution(b, &width, &height);
+
+	isize size = width * height * SGFE_bufferFormatGetBytesPerPixel(b->format);
 
 	if (b->is_native) {
-		/* ... */
+		#if 0
+		u8* buffers = /* systemAllocFunction */((size_t)(2 * size));
+		if (buffers == NULL) {
+			SGFE_debugSendAPI(b, SGFE_debugTypeError, SGFE_errorOutOfMemory);
+			return SGFE_FALSE;
+		}
+
+		b->buffers[0] = &buffers[0 * size];
+		b->buffers[1] = &buffers[1 * size];
+		#endif
 	}
 	else {
-		/* ... */
+		#if 0
+		u8* buffers = SGFE_ALLOC((size_t)(2 * size));
+		if (buffers == NULL) {
+			SGFE_debugSendAPI(b, SGFE_debugTypeError, SGFE_errorOutOfMemory);
+			return SGFE_FALSE;
+		}
+
+		u8* native_buffers = /* systemAllocFunction */((size_t)(2 * size));
+		if (native_buffers == NULL) {
+			SGFE_debugSendAPI(b, SGFE_debugTypeError, SGFE_errorOutOfMemory);
+			return SGFE_FALSE;
+		}
+
+		b->buffers[0] = &buffers[0 * size];
+		b->buffers[1] = &buffers[1 * size];
+
+		b->buffers_native[0] = &native_buffers[0 * size];
+		b->buffers_native[1] = &native_buffers[1 * size];
+		#endif
 	}
 
 	b->is_buffer_allocated = SGFE_TRUE;
@@ -452,7 +587,22 @@ SGFE_bool SGFE_bufferFreeFramebuffers(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
 	if (b->buffers[0] == NULL || !b->is_buffer_allocated) { return SGFE_FALSE; }
 
-	#warning "Warning to notify that this function hasn't been implemented yet."
+	#if 0
+	if (b->is_native) {
+		/* systemFreeFunction */(b->buffers[0]);
+		b->buffers[0] = NULL;
+		b->buffers[1] = NULL;
+	}
+	else {
+		SGFE_FREE(b->buffers[0]);
+		b->buffers[0] = NULL;
+		b->buffers[1] = NULL;
+
+		/* systemFreeFunction */(b->buffers_native[0]);
+		b->buffers_native[0] = NULL;
+		b->buffers_native[1] = NULL;
+	}
+	#endif
 
 	b->is_buffer_allocated = SGFE_FALSE;
 	return SGFE_TRUE;
@@ -466,7 +616,7 @@ u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b) {
 	}
 	u8* dst = b->buffers_native[b->current];
 
-	isize bpp = SGFE_pixelFormatBytesPerPixel(b->mode);
+	isize bpp = SGFE_bufferFormatGetBytesPerPixel(b->mode);
 	isize width, height;
 	SGFE_bufferGetResolution(b, &width, &height);
 
@@ -591,16 +741,51 @@ void SGFE_windowTextInputEnd(SGFE_window* win) {
 }
 
 
+SGFE_videoSignal SGFE_videoGetSignal(void) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	#if 0
+	/* If there are no available composite formats, return SGFE_videoSignalDigital. */
+	return SGFE_videoSignalDigital;
+	#endif
+}
 
 
 SGFE_videoMode SGFE_videoModeOptimal(void) {
 	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
-SGFE_videoMode SGFE_pixelFormatOptimal(void) {
+
+SGFE_systemModel SGFE_systemGetModel(void) {
 	#warning "Warning to notify that this function hasn't been implemented yet."
+	#if 0
+	/* If there are no available models, return ModelNone. */
+	return SGFE_systemModelNone;
+	#endif
 }
 
+SGFE_systemRegion SGFE_systemGetRegion(void) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	#if 0
+	/* If platform returned an error or if there's no information, return SGFE_systemRegionUnknown.
+	 *
+	 * If a region is detected but is not in the list, return 'SGFE_systemRegionNotInTheList'.
+	 *
+	 * Make an issue in the SGFE repository for the region to be added. */
+	return SGFE_systemRegionUnknown;
+	#endif
+}
+
+SGFE_systemLanguage SGFE_systemGetLanguage(void) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	#if 0
+	/* If platform returned an error or if there's no information, return SGFE_systemLanguageUnknown.
+	 *
+	 * If a language is detected but is not in the list, return 'SGFE_systemLanguageNotInTheList'.
+	 *
+	 * Make an issue in the SGFE repository for the language to be added. */
+	return SGFE_systemLanguageUnknown;
+	#endif
+}
 
 
 /* === PLATFORM FUNCTIONS === */
@@ -629,48 +814,6 @@ u64 SGFE_platformGetClockSpeed(void) {
 }
 
 
-SGFE_systemModel SGFE_platformGetModel(void) {
-	#warning "Warning to notify that this function hasn't been implemented yet."
-	#if 0
-	/* If there are no available models, return ModelNone. */
-	return SGFE_systemModelNone;
-	#endif
-}
-
-SGFE_videoCompositeMode SGFE_platformGetCompositeFormat(void) {
-	#warning "Warning to notify that this function hasn't been implemented yet."
-	#if 0
-	/* If there are no available composite formats, return SGFE_videoCompositeModeIsDigital. */
-	return SGFE_videoCompositeModeIsDigital;
-	#endif
-}
-
-
-SGFE_systemRegion SGFE_platformGetRegion(void) {
-	#warning "Warning to notify that this function hasn't been implemented yet."
-	#if 0
-	/* If platform returned an error or if there's no information, return SGFE_systemRegionUnknown.
-	 *
-	 * If a region is detected but is not in the list, return 'SGFE_systemRegionNotInTheList'.
-	 *
-	 * Make an issue in the SGFE repository for the region to be added. */
-	return SGFE_systemRegionUnknown;
-	#endif
-}
-
-SGFE_systemLanguage SGFE_platformGetLanguage(void) {
-	#warning "Warning to notify that this function hasn't been implemented yet."
-	#if 0
-	/* If platform returned an error or if there's no information, return SGFE_systemLanguageUnknown.
-	 *
-	 * If a language is detected but is not in the list, return 'SGFE_systemLanguageNotInTheList'.
-	 *
-	 * Make an issue in the SGFE repository for the language to be added. */
-	return SGFE_systemLanguageUnknown;
-	#endif
-}
-
-
 void SGFE_platformWaitForVBlank(void) {
 	#warning "Warning to notify that this function hasn't been implemented yet."
 }
@@ -686,11 +829,6 @@ SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 	/* ... */
 	return SGFE_TRUE;
 	#endif
-}
-
-SGFE_bool SGFE_bufferSetPlatformSettings(SGFE_contextBuffer* out_buffer) {
-	SGFE_ASSERT_NOT_NULL(out_buffer);
-	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
 #endif

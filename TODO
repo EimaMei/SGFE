@@ -41,8 +41,7 @@ Let the example be an introduction to SGFE's API design.
 - Guide on building for each platform.
 - port over examples from RGFW
 - create READMEs for each example? for each one mention on which platforms the example works
-- ptr != NULL -> ASSERT_NOT_NULL
-- example where SGFE_platformGetModel, SGFE_platformGetCompositeFormat, SGFE_platformGetRegion
+- example where SGFE_platformGetModel, SGFE_platformGetVideoSignal, SGFE_platformGetRegion
 and SGFE_platformGetLanguage are used.
 - rework README.Md
 

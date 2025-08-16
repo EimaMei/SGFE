@@ -9,7 +9,7 @@
 int main(void) {
 	/* If you create a window buffer and __'SGFE_BUFFER_NO_CONVERSION' IS NOT defined__,
 	 * SGFE by default will create framebuffers that _are not_ native and use the
-	 * 'SGFE_pixelFormatRGBA8' format.
+	 * 'SGFE_bufferFormatRGBA8' format.
 	 * 
 	 * If different parameters are desired, you have to use a combination of
 	 * 'SGFE_windowMakeContextless()' (or 'SGFE_windowMake()' without 'SGFE_windowFlagBuffer')
