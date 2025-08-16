@@ -633,7 +633,7 @@ void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* ou
 
 	#if 0
 	/* Depending on the platform: */
-	SGFE_videoModeResolution(b->mode, out_width, out_height);
+	SGFE_videoGetResolution(b->mode, out_width, out_height);
 	/* or */
 
 	if (out_width)  {  *out_width = /* ... */; }
@@ -745,8 +745,28 @@ void SGFE_windowTextInputEnd(SGFE_window* win) {
 SGFE_videoSignal SGFE_videoGetSignal(void) {
 	#warning "Warning to notify that this function hasn't been implemented yet."
 	#if 0
-	/* If there are no available composite formats, return SGFE_videoSignalDigital. */
-	return SGFE_videoSignalDigital;
+	/* If the system does not report a signal, return SGFE_videoSignalNone.
+	 * If the system does report one but an error occured or it isn't in the list,
+	 * return SGFE_videoSignalUnknown. */
+	return SGFE_videoSignalNone;
+	#endif
+}
+
+SGFE_videoCable SGFE_videoGetCable(void) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	#if 0
+	/* If the system does not report a cable, return SGFE_videoCableNone.
+	 * If the system does report one but an error occured or it isn't in the list,
+	 * return SGFE_videoCableUnknown. */
+	return SGFE_videoCableNone;
+	#endif
+}
+
+SGFE_bool SGFE_videoIsProgressive(void) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	#if 0
+	/* Must return either true or false. */
+	return SGFE_TRUE;
 	#endif
 }
 
@@ -759,7 +779,9 @@ SGFE_videoMode SGFE_videoGetOptimalMode(void) {
 SGFE_systemModel SGFE_systemGetModel(void) {
 	#warning "Warning to notify that this function hasn't been implemented yet."
 	#if 0
-	/* If there are no available models, return ModelNone. */
+	/* If the system does not report a model, return SGFE_systemModelNone.
+	 * If the system does report one but an error occured or it isn't in the list,
+	 * return SGFE_systemModelUnknown. */
 	return SGFE_systemModelNone;
 	#endif
 }
@@ -767,11 +789,9 @@ SGFE_systemModel SGFE_systemGetModel(void) {
 SGFE_systemRegion SGFE_systemGetRegion(void) {
 	#warning "Warning to notify that this function hasn't been implemented yet."
 	#if 0
-	/* If platform returned an error or if there's no information, return SGFE_systemRegionUnknown.
-	 *
-	 * If a region is detected but is not in the list, return 'SGFE_systemRegionNotInTheList'.
-	 *
-	 * Make an issue in the SGFE repository for the region to be added. */
+	/* If the system does not report a region, return SGFE_systemRegionNone.
+	 * If the system does report one but an error occured or it isn't in the list,
+	 * return SGFE_systemRegionUnknown. */
 	return SGFE_systemRegionUnknown;
 	#endif
 }
@@ -779,11 +799,9 @@ SGFE_systemRegion SGFE_systemGetRegion(void) {
 SGFE_systemLanguage SGFE_systemGetLanguage(void) {
 	#warning "Warning to notify that this function hasn't been implemented yet."
 	#if 0
-	/* If platform returned an error or if there's no information, return SGFE_systemLanguageUnknown.
-	 *
-	 * If a language is detected but is not in the list, return 'SGFE_systemLanguageNotInTheList'.
-	 *
-	 * Make an issue in the SGFE repository for the language to be added. */
+	/* If the system does not report a language, return SGFE_systemLanguageNone.
+	 * If the system does report one but an error occured or it isn't in the list,
+	 * return SGFE_systemLanguageUnknown. */
 	return SGFE_systemLanguageUnknown;
 	#endif
 }

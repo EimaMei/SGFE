@@ -3,7 +3,6 @@ Features:
 - Add a sizeof and getters/setters for each opaque struct type.
 - Add a "end poll" event and function. On 3ds pay mind that software keyboard should be taken account of.
 - (Wii) GameCube controller support.
-- Get cable function.
 - Make "setNative" alloc non-native buffers if false is specified and buffers are null.
 - (Wii) add keyboard support. Add TextInput support for it.
 - (Wii) add mouse support.

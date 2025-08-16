@@ -1589,39 +1589,54 @@ SGFE_DEF SGFE_bool SGFE_windowTextInputIsActive(const SGFE_window* win);
 
 /* TODO(EimaMei): document */
 typedef SGFE_ENUM(isize, SGFE_videoSignal) {
-	SGFE_videoSignalUnknown,
+	SGFE_videoSignalNone,
 
 	SGFE_videoSignalNTSC,
 	SGFE_videoSignalPAL,
-	SGFE_videoSignalMPAL,
 	SGFE_videoSignalPAL60,
-	/* TODO */
-	SGFE_videoSignalDigital,
+	SGFE_videoSignalMPAL,
+
+	SGFE_videoSignalUnknown
+};
+
+/* TODO(EimaMei): document */
+typedef SGFE_ENUM(isize, SGFE_videoCable) {
+	SGFE_videoCableNone,
+
+	SGFE_videoCableComposite,
+	SGFE_videoCableComponent,
+
+	SGFE_videoCableUnknown,
 };
 
 
 /* TODO(EimaMei): new function. */
 SGFE_DEF SGFE_videoSignal SGFE_videoGetSignal(void);
 
+/* TODO(EimaMei): new function. */
+SGFE_DEF SGFE_videoCable SGFE_videoGetCable(void);
+
+/* TODO(EimaMei): new function. */
+SGFE_DEF SGFE_bool SGFE_videoIsProgressive(void);
 
 /* Returns a video mode that's considered to be the most optimal for the system
  * by the library. Usually this returns a mode that has a standard resolution,
  * refresh rate and technique for drawing scanlines that works across all models. */
 SGFE_DEF SGFE_videoMode SGFE_videoGetOptimalMode(void);
+
 /* TODO(EimaMei): New function. */
-SGFE_DEF void SGFE_videoModeResolution(SGFE_videoMode mode,
-	isize* out_width, isize* out_height);
+SGFE_DEF void SGFE_videoGetResolution(SGFE_videoMode mode, isize* out_width, isize* out_height);
 
 
 /* TODO(EimaMei): New function. */
-SGFE_DEF const char* SGFE_videoModeStr(SGFE_videoMode mode);
+SGFE_DEF const char* SGFE_videoGetNameMode(SGFE_videoMode mode);
 
 
 
 #ifndef SGFE_CUSTOM_BACKEND
 /* TODO(EimaMei): document */
 typedef SGFE_ENUM(isize, SGFE_systemModel) {
-	SGFE_systemModelUnknown,
+	SGFE_systemModelNone,
 
 	#if SGFE_3DS
 	SGFE_systemModel3DS,
@@ -1632,13 +1647,13 @@ typedef SGFE_ENUM(isize, SGFE_systemModel) {
 	SGFE_systemModelN2DSXL,
 	#endif
 
-	SGFE_systemModelCount,
+	SGFE_systemModelUnknown,
 };
 #endif
 
 /* TODO(EimaMei): document */
 typedef SGFE_ENUM(isize, SGFE_systemRegion) {
-	SGFE_systemRegionUnknown,
+	SGFE_systemRegionNone,
 
 	SGFE_systemRegionUS,
 	SGFE_systemRegionEurope,
@@ -1656,12 +1671,12 @@ typedef SGFE_ENUM(isize, SGFE_systemRegion) {
 	SGFE_systemRegionSouthAfrica,
 	SGFE_systemRegionAfrica,
 
-	SGFE_systemRegionNotInTheList,
+	SGFE_systemRegionUnknown,
 };
 
 /* TODO(EimaMei): document */
 typedef SGFE_ENUM(isize, SGFE_systemLanguage) {
-	SGFE_systemLanguageUnknown,
+	SGFE_systemLanguageNone,
 
 	SGFE_systemLanguageEnglish,
 	SGFE_systemLanguageFrench,
@@ -1677,7 +1692,7 @@ typedef SGFE_ENUM(isize, SGFE_systemLanguage) {
 	SGFE_systemLanguageTaiwanese,
 	SGFE_systemLanguageChinese,
 
-	SGFE_systemLanguageNotInTheList,
+	SGFE_systemLanguageUnknown,
 };
 
 
@@ -3337,7 +3352,7 @@ SGFE_bool SGFE_windowTextInputIsActive(const SGFE_window* win) {
 
 
 
-void SGFE_videoModeResolution(SGFE_videoMode mode, isize* out_width, isize* out_height) {
+void SGFE_videoGetResolution(SGFE_videoMode mode, isize* out_width, isize* out_height) {
 	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
 	if (out_width)  {  *out_width = SGFE_VIDEO_RESOLUTION_LUT[mode][0]; }
 	if (out_height) { *out_height = SGFE_VIDEO_RESOLUTION_LUT[mode][1]; }
@@ -3354,7 +3369,7 @@ const char* SGFE_bufferFormatGetStr(SGFE_bufferFormat format) {
 	return SGFE_PIXEL_FORMAT_NAME_LUT[format];
 }
 
-const char* SGFE_videoModeStr(SGFE_videoMode mode) {
+const char* SGFE_videoGetNameMode(SGFE_videoMode mode) {
 	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
 	return SGFE_VIDEO_MODE_NAME_LUT[mode];
 }
@@ -4407,7 +4422,7 @@ void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* ou
 
 	if (SGFE_bufferIsNative(b)) {
 		if (b->screen == SGFE_screenTop) {
-			SGFE_videoModeResolution(b->mode, out_height, out_width);
+			SGFE_videoGetResolution(b->mode, out_height, out_width);
 		}
 		else {
 			if (out_width)  {  *out_width = 240; }
@@ -4416,7 +4431,7 @@ void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* ou
 	}
 	else {
 		if (b->screen == SGFE_screenTop) {
-			SGFE_videoModeResolution(b->mode, out_width, out_height);
+			SGFE_videoGetResolution(b->mode, out_width, out_height);
 		}
 		else {
 			if (out_width)  {  *out_width = 320; }
@@ -4641,7 +4656,7 @@ SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_con
 
 	isize width, height;
 	if (hints->screen == SGFE_screenTop) {
-		SGFE_videoModeResolution(hints->is_stereo ? SGFE_videoMode3D : mode, &width, &height);
+		SGFE_videoGetResolution(hints->is_stereo ? SGFE_videoMode3D : mode, &width, &height);
 	}
 	else {
 		width  = 320;
@@ -4864,22 +4879,23 @@ void SGFE_windowTextInputEnd(SGFE_window* win) {
 }
 
 
-SGFE_videoSignal SGFE_videoGetSignal(void) {
-	return SGFE_videoSignalDigital;
-}
 
-SGFE_videoMode SGFE_videoGetOptimalMode(void) {
-	return SGFE_videoMode2D;
-}
+SGFE_videoSignal SGFE_videoGetSignal(void) { return SGFE_videoSignalUnknown; }
+
+SGFE_videoCable SGFE_videoGetCable(void) { return SGFE_videoCableUnknown; }
+
+SGFE_bool SGFE_videoIsProgressive(void) { return SGFE_TRUE; }
+
+SGFE_videoMode SGFE_videoGetOptimalMode(void) { return SGFE_videoMode2D; }
 
 
 
 SGFE_systemModel SGFE_systemGetModel(void) {
 	u8 model;
 	Result res = CFGU_GetSystemModel(&model);
-	if (res != 0) { return SGFE_systemModelUnknown; }
+	if (res != 0) { return SGFE_systemModelNone; }
 
-	return (model <= SGFE_systemModelN2DSXL) ? (model - 1) : SGFE_systemModelUnknown;
+	return (model <= CFG_MODEL_N2DSXL) ? (model + 1) : SGFE_systemModelUnknown;
 }
 
 SGFE_systemRegion SGFE_systemGetRegion(void) {
@@ -4895,7 +4911,7 @@ SGFE_systemRegion SGFE_systemGetRegion(void) {
 		case CFG_REGION_CHN: return SGFE_systemRegionChina;
 		case CFG_REGION_KOR: return SGFE_systemRegionKorea;
 		case CFG_REGION_TWN: return SGFE_systemRegionTaiwan;
-		default: return SGFE_systemRegionNotInTheList;
+		default: return SGFE_systemRegionUnknown;
 	}
 }
 
@@ -4918,7 +4934,7 @@ SGFE_systemLanguage SGFE_systemGetLanguage(void) {
 		case CFG_LANGUAGE_RU: return SGFE_systemLanguageRussian;
 		case CFG_LANGUAGE_TW: return SGFE_systemLanguageTaiwanese;
 		case CFG_LANGUAGE_DEFAULT:
-		default: return SGFE_systemLanguageNotInTheList;
+		default: return SGFE_systemLanguageUnknown;
 	}
 }
 

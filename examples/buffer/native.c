@@ -49,10 +49,10 @@ int main(void) {
 	 * rotated by 90 degrees clockwise, meaning SGFE_bufferGetResolution() would
 	 * return 200x240 under native mode.
 	 *
-	 * SGFE_videoModeResolution() is guaranteed to always return the resolution
+	 * SGFE_videoGetResolution() is guaranteed to always return the resolution
 	 * in the standardized format (WIDTHxHEIGHT). */
 	isize width, height;
-	SGFE_videoModeResolution(SGFE_bufferGetVideoMode(s.ctx), &width, &height);
+	SGFE_videoGetResolution(SGFE_bufferGetVideoMode(s.ctx), &width, &height);
 
 	/* NOTE(EimaMei): For stereoscopic images we have to divide the width in half
 	 * since we don't want Lonic (from the left eye image) moving into the right one,
