@@ -31,7 +31,7 @@ int main(void) {
 	hints->major = 1;
 	hints->minor = 0;
 
-	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowFlagOpenGL);
+	SGFE_window* win = SGFE_windowMake(SGFE_videoGetOptimalMode(), SGFE_windowFlagOpenGL);
 	if (win == NULL) { return 1; }
 
 	/* === OpenGL init === */

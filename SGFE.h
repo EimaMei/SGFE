@@ -1607,7 +1607,7 @@ SGFE_DEF SGFE_videoSignal SGFE_videoGetSignal(void);
 /* Returns a video mode that's considered to be the most optimal for the system
  * by the library. Usually this returns a mode that has a standard resolution,
  * refresh rate and technique for drawing scanlines that works across all models. */
-SGFE_DEF SGFE_videoMode SGFE_videoModeOptimal(void);
+SGFE_DEF SGFE_videoMode SGFE_videoGetOptimalMode(void);
 /* TODO(EimaMei): New function. */
 SGFE_DEF void SGFE_videoModeResolution(SGFE_videoMode mode,
 	isize* out_width, isize* out_height);
@@ -2637,7 +2637,7 @@ SGFE_bool SGFE_windowInitTerminalOutput(SGFE_window* win) {
 
 	if (SGFE_windowGetContextType(win) != SGFE_contextTypeBuffer) {
 		SGFE_bool res = SGFE_windowCreateContextBuffer(
-			win, SGFE_videoModeOptimal(), SGFE_TRUE, SGFE_TRUE
+			win, SGFE_videoGetOptimalMode(), SGFE_TRUE, SGFE_TRUE
 		);
 		if (res == SGFE_FALSE) { return SGFE_FALSE; }
 	}
@@ -4253,6 +4253,11 @@ SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
 
 
 
+SGFE_bufferFormat SGFE_bufferGetOptimalFormat(void) {
+	return SGFE_bufferFormatBGR8;
+}
+
+
 SGFE_bool SGFE_bufferSetPlatformSettings(SGFE_contextBuffer* b) {
 	SGFE_ASSERT_NOT_NULL(b);
 
@@ -4266,7 +4271,7 @@ SGFE_bool SGFE_bufferSetPlatformSettings(SGFE_contextBuffer* b) {
 SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
 	SGFE_ASSERT(b != NULL);
 	SGFE_ASSERT_MSG(
-		SGFE_platformGetModel() != SGFE_systemModel2DS || b->mode != SGFE_videoModeWide,
+		SGFE_systemGetModel() != SGFE_systemModel2DS || b->mode != SGFE_videoModeWide,
 		"Regular Nintendo 2DS consoles (excluding XLs) _do not_ support wide mode. "
 		"Update your code to take this into account."
 	);
@@ -4475,7 +4480,7 @@ SGFE_bool SGFE_glCreateContext(SGFE_contextGL* gl, SGFE_videoMode mode, SGFE_con
 	SGFE_ASSERT(gl != NULL);
 	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
 	SGFE_ASSERT_MSG(
-		SGFE_platformGetModel() != SGFE_systemModel2DS || mode != SGFE_videoModeWide,
+		SGFE_systemGetModel() != SGFE_systemModel2DS || mode != SGFE_videoModeWide,
 		"Regular Nintendo 2DS consoles (excluding XLs) _do not_ support wide mode. "
 		"Update your code to take this into account."
 	);
@@ -4859,13 +4864,62 @@ void SGFE_windowTextInputEnd(SGFE_window* win) {
 }
 
 
+SGFE_videoSignal SGFE_videoGetSignal(void) {
+	return SGFE_videoSignalDigital;
+}
 
-SGFE_videoMode SGFE_videoModeOptimal(void) {
+SGFE_videoMode SGFE_videoGetOptimalMode(void) {
 	return SGFE_videoMode2D;
 }
 
-SGFE_videoMode SGFE_bufferFormatOptimal(void) {
-	return SGFE_bufferFormatBGR8;
+
+
+SGFE_systemModel SGFE_systemGetModel(void) {
+	u8 model;
+	Result res = CFGU_GetSystemModel(&model);
+	if (res != 0) { return SGFE_systemModelUnknown; }
+
+	return (model <= SGFE_systemModelN2DSXL) ? (model - 1) : SGFE_systemModelUnknown;
+}
+
+SGFE_systemRegion SGFE_systemGetRegion(void) {
+	u8 region;
+	Result res = CFGU_SecureInfoGetRegion(&region);
+	if (res != 0) { return SGFE_systemRegionUnknown; }
+
+	switch ((CFG_Region)region) {
+		case CFG_REGION_JPN: return SGFE_systemRegionJapan;
+		case CFG_REGION_USA: return SGFE_systemRegionUS;
+		case CFG_REGION_EUR: return SGFE_systemRegionEurope;
+		case CFG_REGION_AUS: return SGFE_systemRegionAustralia;
+		case CFG_REGION_CHN: return SGFE_systemRegionChina;
+		case CFG_REGION_KOR: return SGFE_systemRegionKorea;
+		case CFG_REGION_TWN: return SGFE_systemRegionTaiwan;
+		default: return SGFE_systemRegionNotInTheList;
+	}
+}
+
+SGFE_systemLanguage SGFE_systemGetLanguage(void) {
+	u8 region;
+	Result res = CFGU_GetSystemLanguage(&region);
+	if (res != 0) { return SGFE_systemLanguageUnknown; }
+
+	switch ((CFG_Language)region) {
+		case CFG_LANGUAGE_JP: return SGFE_systemLanguageJapanese;
+		case CFG_LANGUAGE_EN: return SGFE_systemLanguageEnglish;
+		case CFG_LANGUAGE_FR: return SGFE_systemLanguageFrench;
+		case CFG_LANGUAGE_DE: return SGFE_systemLanguageGerman;
+		case CFG_LANGUAGE_IT: return SGFE_systemLanguageItalian;
+		case CFG_LANGUAGE_ES: return SGFE_systemLanguageSpanish;
+		case CFG_LANGUAGE_ZH: return SGFE_systemLanguageChinese;
+		case CFG_LANGUAGE_KO: return SGFE_systemLanguageKorean;
+		case CFG_LANGUAGE_NL: return SGFE_systemLanguageDutch;
+		case CFG_LANGUAGE_PT: return SGFE_systemLanguagePortuguese;
+		case CFG_LANGUAGE_RU: return SGFE_systemLanguageRussian;
+		case CFG_LANGUAGE_TW: return SGFE_systemLanguageTaiwanese;
+		case CFG_LANGUAGE_DEFAULT:
+		default: return SGFE_systemLanguageNotInTheList;
+	}
 }
 
 
@@ -4888,60 +4942,6 @@ u64 SGFE_platformGetTicks(void) {
 u64 SGFE_platformGetClockSpeed(void) {
 	osTimeRef_s ref = osGetTimeRef();
 	return (u64)ref.sysclock_hz;
-}
-
-
-SGFE_systemModel SGFE_platformGetModel(void) {
-	u8 model;
-	Result res = CFGU_GetSystemModel(&model);
-	if (res != 0) { return SGFE_systemModelUnknown; }
-
-	return (model <= SGFE_systemModelN2DSXL) ? (model - 1) : SGFE_systemModelUnknown;
-}
-
-SGFE_videoSignal SGFE_platformGetVideoSignal(void) {
-	return SGFE_videoSignalDigital;
-}
-
-
-SGFE_systemRegion SGFE_platformGetRegion(void) {
-	u8 region;
-	Result res = CFGU_SecureInfoGetRegion(&region);
-	if (res != 0) { return SGFE_systemRegionUnknown; }
-
-	switch ((CFG_Region)region) {
-		case CFG_REGION_JPN: return SGFE_systemRegionJapan;
-		case CFG_REGION_USA: return SGFE_systemRegionUS;
-		case CFG_REGION_EUR: return SGFE_systemRegionEurope;
-		case CFG_REGION_AUS: return SGFE_systemRegionAustralia;
-		case CFG_REGION_CHN: return SGFE_systemRegionChina;
-		case CFG_REGION_KOR: return SGFE_systemRegionKorea;
-		case CFG_REGION_TWN: return SGFE_systemRegionTaiwan;
-		default: return SGFE_systemRegionNotInTheList;
-	}
-}
-
-SGFE_systemLanguage SGFE_platformGetLanguage(void) {
-	u8 region;
-	Result res = CFGU_GetSystemLanguage(&region);
-	if (res != 0) { return SGFE_systemLanguageUnknown; }
-
-	switch ((CFG_Language)region) {
-		case CFG_LANGUAGE_JP: return SGFE_systemLanguageJapanese;
-		case CFG_LANGUAGE_EN: return SGFE_systemLanguageEnglish;
-		case CFG_LANGUAGE_FR: return SGFE_systemLanguageFrench;
-		case CFG_LANGUAGE_DE: return SGFE_systemLanguageGerman;
-		case CFG_LANGUAGE_IT: return SGFE_systemLanguageItalian;
-		case CFG_LANGUAGE_ES: return SGFE_systemLanguageSpanish;
-		case CFG_LANGUAGE_ZH: return SGFE_systemLanguageChinese;
-		case CFG_LANGUAGE_KO: return SGFE_systemLanguageKorean;
-		case CFG_LANGUAGE_NL: return SGFE_systemLanguageDutch;
-		case CFG_LANGUAGE_PT: return SGFE_systemLanguagePortuguese;
-		case CFG_LANGUAGE_RU: return SGFE_systemLanguageRussian;
-		case CFG_LANGUAGE_TW: return SGFE_systemLanguageTaiwanese;
-		case CFG_LANGUAGE_DEFAULT:
-		default: return SGFE_systemLanguageNotInTheList;
-	}
 }
 
 
@@ -5159,7 +5159,7 @@ SGFE_bool SGFE_platformInitTerminalOutput(SGFE_window* win) {
 	SGFE_ASSERT_NOT_NULL(win);
 
 	if (win->current == NULL) {
-		SGFE_bool res = SGFE_windowCreateContextBuffer(win, SGFE_videoModeOptimal(), SGFE_bufferFormatYUV, SGFE_TRUE);
+		SGFE_bool res = SGFE_windowCreateContextBuffer(win, SGFE_videoGetOptimalMode(), SGFE_bufferFormatYUV, SGFE_TRUE);
 
 		if (res == SGFE_FALSE) {
 			return SGFE_FALSE;

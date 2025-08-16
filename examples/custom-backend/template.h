@@ -741,6 +741,7 @@ void SGFE_windowTextInputEnd(SGFE_window* win) {
 }
 
 
+
 SGFE_videoSignal SGFE_videoGetSignal(void) {
 	#warning "Warning to notify that this function hasn't been implemented yet."
 	#if 0
@@ -749,10 +750,10 @@ SGFE_videoSignal SGFE_videoGetSignal(void) {
 	#endif
 }
 
-
-SGFE_videoMode SGFE_videoModeOptimal(void) {
+SGFE_videoMode SGFE_videoGetOptimalMode(void) {
 	#warning "Warning to notify that this function hasn't been implemented yet."
 }
+
 
 
 SGFE_systemModel SGFE_systemGetModel(void) {
@@ -786,6 +787,7 @@ SGFE_systemLanguage SGFE_systemGetLanguage(void) {
 	return SGFE_systemLanguageUnknown;
 	#endif
 }
+
 
 
 /* === PLATFORM FUNCTIONS === */

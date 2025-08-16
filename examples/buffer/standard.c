@@ -14,7 +14,7 @@ int main(void) {
 	 * If different parameters are desired, you have to use a combination of
 	 * 'SGFE_windowMakeContextless()' (or 'SGFE_windowMake()' without 'SGFE_windowFlagBuffer')
 	 *  and 'SGFE_windowCreateContextBuffer()'. */
-	SGFE_window* win = SGFE_windowMake(SGFE_videoModeOptimal(), SGFE_windowFlagBuffer);
+	SGFE_window* win = SGFE_windowMake(SGFE_videoGetOptimalMode(), SGFE_windowFlagBuffer);
 	if (win == NULL) { return 1; }
 
 	CPU_Surface s = surface_make(SGFE_windowGetContextBuffer(win), CPU_colorMake(255, 255, 255, 255));

@@ -21,7 +21,7 @@
 
 int main(void) {
 	#ifndef SGFE_3DS
-	SGFE_videoMode mode = SGFE_videoModeOptimal();
+	SGFE_videoMode mode = SGFE_videoGetOptimalMode();
 	#else
 	/* cpu_renderer.h implements basic stereoscopic rendering for the 3DS. */
 	SGFE_videoMode mode = SGFE_videoMode3D;
