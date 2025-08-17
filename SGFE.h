@@ -70,7 +70,7 @@ extern "C" {
 
 #ifndef SGFE_ALLOC
 	#include <stdlib.h>
-	#define SGFE_ALLOC(size) malloc(size)
+	#define SGFE_ALLOC(size) malloc((usize)(size))
 	#define SGFE_FREE(ptr) free(ptr)
 #endif
 
@@ -390,12 +390,14 @@ typedef SGFE_ENUM(isize, SGFE_bufferFormat) {
 
 	#elif SGFE_WII
 	/* TODO */
-	SGFE_bufferFormatYUV,
+	SGFE_bufferFormatYCbCr,
 
 	#endif
 
 	/* Amount of pixel formats for this backend. */
 	SGFE_bufferFormatCount,
+	/* The last buffer format in the enumerator list. Used for assertions. */
+	SGFE_bufferFormatLast = SGFE_bufferFormatCount - 1,
 };
 
 
@@ -430,7 +432,7 @@ typedef SGFE_ENUM(isize, SGFE_controllerType) {
 
 	/* Amount of controller types for this backend. */
 	SGFE_controllerTypeCount,
-	/* The last controller type in the enumerator list Used for assertions. */
+	/* The last controller type in the enumerator list. Used for assertions. */
 	SGFE_controllerTypeLast = SGFE_controllerTypeCount - 1,
 };
 
@@ -620,11 +622,15 @@ typedef SGFE_ENUM(isize, SGFE_powerState) {
 typedef struct SGFE_controller {
 	/* Denotes what type of controller it is. */
 	SGFE_controllerType type;
-	/* TODO */
+	/* The controller's array index into state->controllers. */
 	isize array_index;
 
-	/* TODO */
-	SGFE_button buttons_held, buttons_down, buttons_up;
+	/* Buttons that have been pressed down for multiple frames. */
+	SGFE_button buttons_held;
+	/* Buttons that were pressed down this exact frame. */
+	SGFE_button buttons_down;
+	/* Buttons that are currently released up this exact frame. */
+	SGFE_button buttons_up;
 
 	/* Current axes states. */
 	SGFE_axis axes[SGFE_axisTypeCount];
@@ -638,12 +644,14 @@ typedef struct SGFE_controller {
 	/* Boolean states of enabled motions. */
 	SGFE_bool enabled_motions[SGFE_motionTypeCount];
 
-	/* TODO */
+	/* Current power/battery state of the controller. */
 	SGFE_powerState power_state;
-	/* TODO */
+	/* Current battery procent of the controller. Returns 0 on controllers that 
+	 * do not have a battery. */
 	isize battery_procent;
 
-	/* TODO */
+	/* Private data. Pointers to the previous and next controllers in the same
+	 * linked-list as this controller. */
 	struct SGFE_controller* prev, *next;
 } SGFE_controller;
 
@@ -2363,7 +2371,7 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlag flags,
 			SGFE_bufferFormat format = SGFE_bufferFormatRGBA8;
 			SGFE_bool is_native = SGFE_FALSE;
 			#else
-			SGFE_bufferFormat format = SGFE_bufferFormatOptimal();
+			SGFE_bufferFormat format = SGFE_bufferGetOptimalFormat();
 			SGFE_bool is_native = SGFE_TRUE;
 			#endif
 
@@ -2567,7 +2575,7 @@ void SGFE_windowEventQueueFlush(SGFE_window* win) {
 
 void SGFE_windowSwapBuffers(SGFE_window* win) {
 	SGFE_ASSERT_MSG(
-		SGFE_windowGetContextType(win) == SGFE_contextTypeNone || 
+		SGFE_windowGetContextType(win) == SGFE_contextTypeNone ||
 		SGFE_windowIsVisible(win),
 		"Swapping buffers when the screen is not visible. Possibly user-bug?"
 	);
@@ -2790,7 +2798,7 @@ SGFE_bool SGFE_bufferMakeWithDefaultSettings(SGFE_contextBuffer* out_buffer,
 		SGFE_videoMode mode, SGFE_bufferFormat format, SGFE_bool allocate_buffers) {
 	SGFE_ASSERT(out_buffer != NULL);
 	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
-	SGFE_ASSERT(format >= 0 && format < SGFE_bufferFormatCount);
+	SGFE_ASSERT_RANGE(format, 0, SGFE_bufferFormatLast);
 
 	SGFE_contextBuffer* b = out_buffer;
 	b->screen = SGFE_screenPrimary;
@@ -3375,13 +3383,13 @@ void SGFE_videoGetResolution(SGFE_videoMode mode, isize* out_width, isize* out_h
 }
 
 isize SGFE_bufferFormatGetBytesPerPixel(SGFE_bufferFormat format) {
-	SGFE_ASSERT(format >= 0 && format < SGFE_bufferFormatCount);
+	SGFE_ASSERT_RANGE(format, 0, SGFE_bufferFormatLast);
 	return SGFE_FORMAT_BYTES_PER_PIXEL_LUT[format];
 }
 
 
 const char* SGFE_bufferFormatGetStr(SGFE_bufferFormat format) {
-	SGFE_ASSERT(format >= 0 && format < SGFE_bufferFormatCount);
+	SGFE_ASSERT_RANGE(format, 0, SGFE_bufferFormatLast);
 	return SGFE_PIXEL_FORMAT_NAME_LUT[format];
 }
 
@@ -4407,7 +4415,7 @@ u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b) {
 	}
 	u8* dst = b->buffers_native[b->current];
 
-	isize bpp = SGFE_bufferFormatGetBytesPerPixel(b->mode);
+	isize bpp = SGFE_bufferFormatGetBytesPerPixel(b->format);
 	isize width, height;
 	SGFE_bufferGetResolution(b, &width, &height);
 
@@ -5026,7 +5034,7 @@ SGFE_bool SGFE_platformInitTerminalOutputEx(SGFE_contextBuffer* b, isize x, isiz
 	currentConsole->frameBuffer = (u16*)(void*)SGFE_bufferGetFramebuffer(b);
 
 	/* NOTE(EimaMei): A size of a character in libctru is 8x8 and, for whatever
-	 * reason, console/window width and height require the size in characters, not 
+	 * reason, console/window width and height require the size in characters, not
 	 * in pixels. This means that the maximum size for a 400x240 screen is 50x30.
 	 *
 	 * Also, X and Y coordinates are not implemented? */

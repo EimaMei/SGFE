@@ -1,4 +1,5 @@
 #define PORTABLEGL_IMPLEMENTATION
+#define PGL_MAX_VERTICES 5000
 #include "portablegl.h"
 
 #define SGFE_INT_DEFINED
@@ -34,7 +35,8 @@ int main(void) {
 	SGFE_bufferGetResolution(ctx, &width, &height);
 
 	glContext context;
-	init_glContext(&context, (u32**)&buffer, width, height, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+	SGFE_bool res = init_glContext(&context, (u32**)&buffer, width, height, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+	if (res == SGFE_FALSE) { return 1; }
 
 	float points[] = {
 		-0.5f, -0.5f, 0.0f,

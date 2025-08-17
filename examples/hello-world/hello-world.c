@@ -51,8 +51,18 @@ int main(void) {
 		 * the data. For an example of this, check out: examples/window-state. */
         const SGFE_windowState* state = SGFE_windowPollEvents(win);
 
+		/* You can access input by requesting the 1st connected (or player 1's)
+		 * controller. If the requested player's controller does not exist, the
+		 * function will return NULL.  */
+		SGFE_controller* controller = SGFE_windowGetController(win, 0);
+		if (controller && controller->buttons_down != 0) {
+			SGFE_windowSetShouldClose(win, SGFE_TRUE);
+		}
+
 		/* A very small sample of how you could use the window state structure.
-		 * Identical to calling 'SGFE_windowShouldClose()'. */
+		 * Identical to calling 'SGFE_windowShouldClose()'.
+	 	 *
+		 * The message will get printed if any button is pressed down. */
 		if (state->should_quit) {
 			printf("Exiting this world! Ciao!\n");
 		}

@@ -82,6 +82,7 @@ typedef SGFE_ENUM(isize, SGFE_controllerType) {
 	#endif
 
 	SGFE_controllerTypeCount,
+	SGFE_controllerTypeLast = SGFE_controllerTypeCount - 1
 };
 
 typedef SGFE_ENUM(isize, SGFE_buttonType) {
@@ -616,7 +617,7 @@ u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b) {
 	}
 	u8* dst = b->buffers_native[b->current];
 
-	isize bpp = SGFE_bufferFormatGetBytesPerPixel(b->mode);
+	isize bpp = SGFE_bufferFormatGetBytesPerPixel(b->format);
 	isize width, height;
 	SGFE_bufferGetResolution(b, &width, &height);
 

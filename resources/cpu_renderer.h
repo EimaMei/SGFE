@@ -25,7 +25,7 @@ static inline CPU_Rect* CPU_DirtyRectGetRect(CPU_DirtyRect* r) { return &r->r; }
 #else 
 
 typedef CPU_Rect CPU_DirtyRect;
-static inline CPU_Rect* CPU_DirtyRectGetRect(CPU_DirtyRect* r) { return &r; }
+static inline CPU_Rect* CPU_DirtyRectGetRect(CPU_DirtyRect* r) { return r; }
 
 #endif
 
@@ -149,11 +149,11 @@ CPU_DirtyRect* surface_get_last_dirty_rect(CPU_Surface* surface) {
 	return &surface->dirty_rects[current][surface->dirty_rect_count[current] - 1];
 }
 
-void surface_rect(CPU_Surface* surface, CPU_Rect r, CPU_Color clear_color) {
+void surface_rect(CPU_Surface* surface, CPU_Rect r, CPU_Color color) {
 	surface_add_dirty_rect(surface, r);
 
 	if (SGFE_bufferIsNative(surface->ctx)) {
-		surface_rect_platform(surface, r, clear_color);
+		surface_rect_platform(surface, r, color);
 		return ;
 	}
 
@@ -162,7 +162,7 @@ void surface_rect(CPU_Surface* surface, CPU_Rect r, CPU_Color clear_color) {
 		for (isize x = r.x; x < r.x + r.w; x += 1) {
 			SGFE_MEMCPY(
 				&buffer[4 * (y * surface->width + x)],
-				&clear_color,
+				&color,
 				4
 			);
 		}
@@ -342,6 +342,34 @@ void surface_clear_dirty_rect_platform(CPU_Surface* surface, CPU_DirtyRect* dirt
 			);
 		}
 	}
+}
+
+#elif SGFE_WII
+
+static inline CPU_Color CPU_colorToNative(CPU_Color clr) {
+	CPU_Color res;
+	res.r = clr.b;
+	res.g = clr.g;
+	res.b = clr.r;
+	res.a = 0xFF;
+
+	return res;
+}
+
+void surface_bitmap_platform(CPU_Surface* surface, CPU_Rect r, u8* bitmap) {
+
+}
+
+void surface_rect_platform(CPU_Surface* surface, CPU_Rect r, CPU_Color color) {
+	
+}
+
+void surface_add_dirty_rect_platform(CPU_Surface* surface, CPU_Rect r) {
+
+}
+
+void surface_clear_dirty_rect_platform(CPU_Surface* surface, CPU_DirtyRect* dirty_rect) {
+
 }
 
 #endif
