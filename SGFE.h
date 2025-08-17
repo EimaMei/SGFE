@@ -96,16 +96,24 @@ extern "C" {
 	#endif
 #endif
 
+#ifndef SGFE_PRI_isize
+	#define SGFE_PRI_isize "zi"
+#endif
+
 #ifndef SGFE_ASSERT_NOT_NULL
 	#define SGFE_ASSERT_NOT_NULL(ptr) SGFE_ASSERT_FMT(ptr != NULL, "Pointer cannot be NULL. " #ptr " = %p;", ptr)
 #endif
 
 #ifndef SGFE_ASSERT_NOT_NEG
-	#define SGFE_ASSERT_NOT_NEG(x) SGFE_ASSERT_FMT(x >= 0, "Integer cannot be negative. " #x " = %zi;", x)
+	#define SGFE_ASSERT_NOT_NEG(x) SGFE_ASSERT_FMT(x >= 0, "Integer cannot be negative. "#x" = %"SGFE_PRI_isize";", x)
 #endif
 
 #ifndef SGFE_ASSERT_BOOL
-	#define SGFE_ASSERT_BOOL(x) SGFE_ASSERT_FMT(x == SGFE_FALSE || x == SGFE_TRUE, "Boolean must equal to SGFE_FALSE or SGFE_TRUE. " #x " = %zi;", x)
+	#define SGFE_ASSERT_BOOL(x) SGFE_ASSERT_FMT(x == SGFE_FALSE || x == SGFE_TRUE, "Boolean must equal to SGFE_FALSE or SGFE_TRUE. "#x" = %"SGFE_PRI_isize";", x)
+#endif
+
+#ifndef SGFE_ASSERT_RANGE
+	#define SGFE_ASSERT_RANGE(x, lower, upper) SGFE_ASSERT_FMT(x >= lower && x <= upper, "Integer must be in range. "#x" = %"SGFE_PRI_isize";", x)
 #endif
 
 
@@ -330,30 +338,30 @@ typedef SGFE_ENUM(isize, SGFE_videoMode) {
 	#elif SGFE_WII
 	/* 320x240 NTSC 60 hz Progressive */
 	SGFE_videoModeNTSC_240i,
-	/* 720x480 NTSC 60 hz Interlaced */
+	/* 640x480 NTSC 60 hz Interlaced */
 	SGFE_videoModeNTSC_480i,
-	/* 720x480 NTSC 60 hz Progressive */
+	/* 640x480 NTSC 60 hz Progressive */
 	SGFE_videoModeNTSC_480p,
 
 	/* 320x264 PAL 50 hz Interlaced */
 	SGFE_videoModePAL_264i,
-	/* 720x576 PAL 50 hz Interlaced */
+	/* 640x576 PAL 50 hz Interlaced */
 	SGFE_videoModePAL_576i,
-	/* 720x576 PAL 50 hz Progressive */
+	/* 640x576 PAL 50 hz Progressive */
 	SGFE_videoModePAL_576p,
 
 	/* 320x240 PAL-M 60 hz Progressive */
 	SGFE_videoModeMPAL_240i,
-	/* 720x480 PAL-M 60 hz Interlaced */
+	/* 640x480 PAL-M 60 hz Interlaced */
 	SGFE_videoModeMPAL_480i,
-	/* 720x480 PAL-M 60 hz Progressive */
+	/* 640x480 PAL-M 60 hz Progressive */
 	SGFE_videoModeMPAL_480p,
 
 	/* 320x240 PAL 60 hz Interlaced */
 	SGFE_videoModePAL60hz_240i,
-	/* 720x480 PAL 60 hz Interlaced */
+	/* 640x480 PAL 60 hz Interlaced */
 	SGFE_videoModePAL60hz_480i,
-	/* 720x480 PAL 60 hz Progressive */
+	/* 640x480 PAL 60 hz Progressive */
 	SGFE_videoModePAL60hz_480p,
 
 	#endif
@@ -422,6 +430,8 @@ typedef SGFE_ENUM(isize, SGFE_controllerType) {
 
 	/* Amount of controller types for this backend. */
 	SGFE_controllerTypeCount,
+	/* The last controller type in the enumerator list Used for assertions. */
+	SGFE_controllerTypeLast = SGFE_controllerTypeCount - 1,
 };
 
 /* TODO(EimaMei): document */
@@ -1109,7 +1119,7 @@ SGFE_DEF SGFE_bool SGFE_windowIsControllerConnected(SGFE_window* win, const SGFE
 
 
 /* TODO */
-SGFE_DEF SGFE_bool SGFE_windowShouldClose(SGFE_window* win);
+SGFE_DEF SGFE_bool SGFE_windowShouldClose(const SGFE_window* win);
 /* TODO */
 SGFE_DEF void SGFE_windowSetShouldClose(SGFE_window* win, SGFE_bool should_close);
 
@@ -1738,8 +1748,13 @@ SGFE_DEF u64 SGFE_platformGetClockSpeed(void);
 /* TODO(EimaMei): new function. */
 SGFE_DEF void SGFE_platformWaitForVBlank(void);
 
+
 /* TODO(EimaMei): new function. */
 SGFE_DEF SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b);
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_platformInitTerminalOutputEx(SGFE_contextBuffer* b, isize x,
+	isize y, isize width, isize height);
+
 
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_platformHasSoftwareKeybord(void);
@@ -2122,28 +2137,29 @@ void* SGFE__debugProcSrcUserParam;
 
 
 void SGFE__controllerSetConnection(SGFE_window* win, SGFE_controller* controller, SGFE_bool should_connect) {
-	SGFE_ASSERT(SGFE_windowIsControllerConnected(win, controller) == !should_connect);
+	SGFE_ASSERT_FMT(SGFE_windowIsControllerConnected(win, controller) != should_connect, "should_connect = %i;", should_connect);
 
 	if (should_connect) {
 		SGFE__controllerRemoveFromList(&win->disconnected_controllers, controller);
 		SGFE__controllerAddToList(&win->state.controllers, controller);
 	}
-	else if (!should_connect) {
+	else {
 		SGFE__controllerRemoveFromList(&win->state.controllers, controller);
 		SGFE__controllerAddToList(&win->disconnected_controllers, controller);
 	}
 }
 
 void SGFE__controllerAddToList(SGFE_controllerList* list, SGFE_controller* controller) {
-	SGFE_ASSERT(list->count >= 0 && list->count < SGFE_MAX_CONTROLLERS);
+	SGFE_ASSERT_NOT_NULL(list);
+	SGFE_ASSERT_NOT_NULL(controller);
+	SGFE_ASSERT_FMT(list->count >= 0 && list->count < SGFE_MAX_CONTROLLERS, "list->count = %i;", list->count);
+	SGFE_ASSERT_FMT(controller->prev == NULL && controller->next == NULL, "controller->array_index = %i;", controller->array_index);
+	SGFE_ASSERT(list->first != controller);
 
 	if (list->first == NULL) {
 		list->count = 1;
 		list->first = controller;
 		list->last = controller;
-
-		controller->prev = NULL;
-		controller->next = NULL;
 		return;
 	}
 	SGFE_controller* previous_last = list->last;
@@ -2162,23 +2178,21 @@ void SGFE__controllerRemoveFromList(SGFE_controllerList* list, SGFE_controller* 
 	if (list->count == 1) {
 		list->first = NULL;
 		list->last = NULL;
-		list->count = 0;
-		return;
 	} else if (list->first == controller) {
 		list->first = controller->next;
-		list->count -= 1;
-		return;
+		list->first->prev = NULL;
 	} else if (list->last == controller) {
 		controller->prev->next = NULL;
 		list->last = controller->prev;
-		list->count -= 1;
-		return;
+	} else {
+		controller->prev->next = controller->next;
+		controller->next->prev = controller->prev;
 	}
 
-	controller->prev->next = controller->next;
-	controller->next->prev = controller->prev;
+	controller->prev = NULL;
+	controller->next = NULL;
 
-	list->count += 1;
+	list->count -= 1;
 }
 
 
@@ -2328,21 +2342,8 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlag flags,
 		SGFE_window* win) {
 	SGFE_ASSERT_NOT_NULL(win);
 
-	win->is_allocated = SGFE_FALSE;
-	win->is_queueing_events = SGFE_FALSE;
-	win->has_polled_events = SGFE_FALSE;
-	win->event_len = 0;
+	SGFE_MEMSET(win, 0, sizeof(*win));
 	win->flags = flags;
-	win->user_ptr = NULL;
-	win->state.should_quit = SGFE_FALSE;
-
-	SGFE_MEMSET(win->current_type, 0, sizeof(win->current_type));
-	SGFE_MEMSET(win->current, 0, sizeof(win->current));
-	SGFE_MEMSET(win->ctx, 0, sizeof(win->ctx));
-	SGFE_MEMSET(win->controllers, 0, sizeof(win->controllers));
-	SGFE_MEMSET(&win->disconnected_controllers, 0, sizeof(win->disconnected_controllers));
-	SGFE_MEMSET(&win->state, 0, sizeof(win->state));
-	SGFE_MEMSET(&win->callbacks, 0, sizeof(win->callbacks));
 
 	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
 		SGFE__controllerAddToList(&win->disconnected_controllers, &win->controllers[i]);
@@ -2566,7 +2567,11 @@ void SGFE_windowEventQueueFlush(SGFE_window* win) {
 
 
 void SGFE_windowSwapBuffers(SGFE_window* win) {
-	SGFE_ASSERT_MSG(SGFE_windowIsVisible(win), "Swapping buffers when the screen is not visible. Possibly user-bug?");
+	SGFE_ASSERT_MSG(
+		SGFE_windowGetContextType(win) == SGFE_contextTypeNone || 
+		SGFE_windowIsVisible(win),
+		"Swapping buffers when the screen is not visible. Possibly user-bug?"
+	);
 
 	switch (SGFE_windowGetContextType(win)) {
 		case SGFE_contextTypeBuffer: {
@@ -2578,6 +2583,8 @@ void SGFE_windowSwapBuffers(SGFE_window* win) {
 			SGFE_windowSwapBuffersGL(win);
 		} break;
 		#endif
+
+		default: SGFE_platformWaitForVBlank();
 	}
 }
 
@@ -2626,7 +2633,7 @@ void SGFE_windowSetContextEx(SGFE_window* win, SGFE_contextType type, void* ctx,
 }
 
 
-SGFE_bool SGFE_windowShouldClose(SGFE_window* win) {
+SGFE_bool SGFE_windowShouldClose(const SGFE_window* win) {
 	SGFE_ASSERT_NOT_NULL(win);
 	return win->state.should_quit;
 }
@@ -2680,6 +2687,9 @@ void SGFE_windowAssert(SGFE_window* win, SGFE_bool is_asserted, const char* cond
 	}
 
 	SGFE_windowSetQueueEvents(win, SGFE_FALSE);
+	for (SGFE_eventType event = SGFE_eventQuit; event < SGFE_eventCount; event += 1) {
+		SGFE_windowSetEventEnabled(win, event, SGFE_FALSE);
+	}
 	SGFE_windowSetEventEnabled(win, SGFE_eventQuit, SGFE_TRUE);
 	SGFE_windowSetEventEnabled(win, SGFE_eventButtonDown, SGFE_TRUE);
 
@@ -2849,65 +2859,65 @@ SGFE_bool SGFE_bufferSetFormat(SGFE_contextBuffer* b, SGFE_bufferFormat format) 
 }
 
 void SGFE_bufferSetNative(SGFE_contextBuffer* b, SGFE_bool is_native) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	b->is_native = SGFE_BOOL(is_native);
 }
 
 void SGFE_bufferSetDoubleBuffered(SGFE_contextBuffer* b, SGFE_bool is_double_buffered) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	b->is_double_buffered = SGFE_BOOL(is_double_buffered);
 }
 
 void SGFE_bufferFlipFramebuffers(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	b->current ^= 1;
 }
 
 
 u8* SGFE_bufferGetFramebuffer(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	return b->buffers[b->current];
 }
 
 
 SGFE_bufferFormat SGFE_bufferGetFormat(const SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	return b->format;
 }
 
 SGFE_bool SGFE_bufferIsNative(const SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	return b->is_native;
 }
 
 SGFE_bool SGFE_bufferIsDoubleBuffered(const SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	return b->is_double_buffered;
 }
 
 isize SGFE_contextBufferGetCurrent(const SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	return b->current;
 }
 
 
 SGFE_screen SGFE_bufferGetScreen(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	return b->screen;
 }
 
 isize SGFE_bufferGetFramebufferCount(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	return b->is_double_buffered ? 2 : 1;
 }
 
 SGFE_videoMode SGFE_bufferGetVideoMode(const SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	return b->mode;
 }
 
 SGFE_bool SGFE_bufferIsStereoscopic(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	#ifndef SGFE_3DS
 	return SGFE_FALSE;
 	#else
@@ -2920,13 +2930,13 @@ SGFE_bool SGFE_bufferIsStereoscopic(SGFE_contextBuffer* b) {
 
 SGFE_controller* SGFE_windowGetController(SGFE_window* win, isize port) {
 	SGFE_ASSERT_NOT_NULL(win);
-	SGFE_ASSERT_FMT(port >= 0 && port < SGFE_MAX_CONTROLLERS, "port = %i;", port);
+	SGFE_ASSERT_RANGE(port, 0, SGFE_MAX_CONTROLLERS - 1);
 
 	const SGFE_controllerList* list = &win->state.controllers;
 	if (port >= list->count) { return NULL; }
 
 	SGFE_controller* res = list->first;
-	for (isize i = port + 1; i < list->count; i += 1) {
+	for (isize i = 0; i < port && res != NULL; i += 1) {
 		res = res->next;
 	}
 
@@ -2970,19 +2980,19 @@ SGFE_bool SGFE_windowIsControllerConnected(SGFE_window* win, const SGFE_controll
 
 
 SGFE_bool SGFE_isHeld(const SGFE_controller* controller, SGFE_button mask) {
-	SGFE_ASSERT(controller != NULL);
+	SGFE_ASSERT_NOT_NULL(controller);
 	SGFE_ASSERT((mask & ~SGFE_buttonGetMask(controller->type)) == 0);
 	return (controller->buttons_held & mask) == mask;
 }
 
 SGFE_bool SGFE_isDown(const SGFE_controller* controller, SGFE_button mask) {
-	SGFE_ASSERT(controller != NULL);
+	SGFE_ASSERT_NOT_NULL(controller);
 	SGFE_ASSERT((mask & ~SGFE_buttonGetMask(controller->type)) == 0);
 	return (controller->buttons_down & mask) == mask;
 }
 
 SGFE_bool SGFE_isUp(const SGFE_controller* controller, SGFE_button mask) {
-	SGFE_ASSERT(controller != NULL);
+	SGFE_ASSERT_NOT_NULL(controller);
 	SGFE_ASSERT((mask & ~SGFE_buttonGetMask(controller->type)) == 0);
 	return (controller->buttons_up & mask) == mask;
 }
@@ -2998,8 +3008,8 @@ SGFE_buttonType SGFE_buttonGetType(SGFE_button mask) {
 }
 
 SGFE_bool SGFE_iterateButtonMask(SGFE_button* buttons_mask, SGFE_buttonType* out_button) {
-	SGFE_ASSERT(buttons_mask != NULL);
-	SGFE_ASSERT(out_button != NULL);
+	SGFE_ASSERT_NOT_NULL(buttons_mask);
+	SGFE_ASSERT_NOT_NULL(out_button);
 	if (*buttons_mask == 0) { return SGFE_FALSE; }
 
 	SGFE_buttonType type = SGFE_buttonGetType(*buttons_mask);
@@ -3011,92 +3021,96 @@ SGFE_bool SGFE_iterateButtonMask(SGFE_button* buttons_mask, SGFE_buttonType* out
 
 
 SGFE_button SGFE_buttonGetMask(SGFE_controllerType type) {
-	SGFE_ASSERT(type >= 0 && type < SGFE_controllerTypeCount);
+	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
 	return SGFE_BUTTON_MASK_BITS_LUT[type];
 }
 
 
 const SGFE_axis* SGFE_controllerGetAxis(const SGFE_controller* controller,
-		SGFE_axisType which) {
-	SGFE_ASSERT(controller != NULL);
+		SGFE_axisType axis) {
+	SGFE_ASSERT_NOT_NULL(controller);
 	#ifndef NDEBUG
 	SGFE_axisType start, end;
 	SGFE_controllerGetRangeAxis(controller->type, &start, &end);
-	SGFE_ASSERT(start != -1 && end != -1);
-	SGFE_ASSERT(which >= start && which <= end);
+	SGFE_ASSERT_NOT_NEG(start);
+	SGFE_ASSERT_NOT_NEG(end);
+	SGFE_ASSERT_RANGE(axis, start, end);
 	#endif
 
-	return &controller->axes[which];
+	return &controller->axes[axis];
 }
 
 const SGFE_pointer* SGFE_controllerGetPointer(const SGFE_controller* controller,
-		SGFE_pointerType which) {
-	SGFE_ASSERT(controller != NULL);
+		SGFE_pointerType pointer) {
+	SGFE_ASSERT_NOT_NULL(controller);
 	#ifndef NDEBUG
 	SGFE_pointerType start, end;
 	SGFE_controllerGetRangePointer(controller->type, &start, &end);
-	SGFE_ASSERT(start != -1 && end != -1);
-	SGFE_ASSERT(which >= start && which <= end);
+	SGFE_ASSERT_NOT_NEG(start);
+	SGFE_ASSERT_NOT_NEG(end);
+	SGFE_ASSERT_RANGE(pointer, start, end);
 	#endif
 
-	return &controller->pointers[which];
+	return &controller->pointers[pointer];
 }
 
 const SGFE_motion* SGFE_controllerGetMotion(const SGFE_controller* controller,
-		SGFE_motionType which) {
-	SGFE_ASSERT(controller != NULL);
+		SGFE_motionType motion) {
+	SGFE_ASSERT_NOT_NULL(controller);
 	#ifndef NDEBUG
 	SGFE_motionType start, end;
 	SGFE_controllerGetRangeMotion(controller->type, &start, &end);
-	SGFE_ASSERT(start != -1 && end != -1);
-	SGFE_ASSERT(which >= start && which <= end);
+	SGFE_ASSERT_NOT_NEG(start);
+	SGFE_ASSERT_NOT_NEG(end);
+	SGFE_ASSERT_RANGE(motion, start, end);
 	#endif
 
-	return &controller->motions[which];
+	return &controller->motions[motion];
 }
 
 void SGFE_controllerGetRangeButton(SGFE_controllerType type,
 		SGFE_buttonType* out_first,SGFE_buttonType* out_last) {
-	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
+	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
 	if (out_first) { *out_first = SGFE_BUTTON_RANGE_LUT[type][0]; }
 	if (out_last)  { *out_last  = SGFE_BUTTON_RANGE_LUT[type][1]; }
 }
 
 void SGFE_controllerGetRangeAxis(SGFE_controllerType type,
 		SGFE_axisType* out_first, SGFE_axisType* out_last) {
-	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
+	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
 	if (out_first) { *out_first = SGFE_AXIS_RANGE_LUT[type][0]; }
 	if (out_last)  { *out_last  = SGFE_AXIS_RANGE_LUT[type][1]; }
 }
 
 void SGFE_controllerGetRangePointer(SGFE_controllerType type,
 		SGFE_pointerType* out_first, SGFE_pointerType* out_last) {
-	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
+	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
 	if (out_first) { *out_first = SGFE_POINTER_RANGE_LUT[type][0]; }
 	if (out_last)  { *out_last  = SGFE_POINTER_RANGE_LUT[type][1]; }
 }
 
 void SGFE_controllerGetRangeMotion(SGFE_controllerType type,
 		SGFE_motionType* out_first, SGFE_motionType* out_last) {
-	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
+	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
 	if (out_first) { *out_first = SGFE_MOTION_RANGE_LUT[type][0]; }
 	if (out_last)  { *out_last  = SGFE_MOTION_RANGE_LUT[type][1]; }
 }
 
 
 const char* SGFE_controllerGetName(SGFE_controllerType type) {
-	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
+	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
 	return SGFE_CONTROLLER_NAME_LUT[type];
 }
 
 const char* SGFE_controllerGetNameButton(SGFE_controllerType type,
 		SGFE_buttonType button) {
-	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
+	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
 	#ifndef NDEBUG
 	SGFE_buttonType start, end;
 	SGFE_controllerGetRangeButton(type, &start, &end);
-	SGFE_ASSERT(start != -1 && end != -1);
-	SGFE_ASSERT(button >= start && button <= end);
+	SGFE_ASSERT_NOT_NEG(start);
+	SGFE_ASSERT_NOT_NEG(end);
+	SGFE_ASSERT_RANGE(button, start, end);
 	#endif
 
 	return SGFE_controllerGetNameButton_platform(type, button);
@@ -3104,12 +3118,13 @@ const char* SGFE_controllerGetNameButton(SGFE_controllerType type,
 
 const char* SGFE_controllerGetNameAxis(SGFE_controllerType type,
 		SGFE_axisType axis) {
-	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
+	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
 	#ifndef NDEBUG
 	SGFE_axisType start, end;
 	SGFE_controllerGetRangeAxis(type, &start, &end);
-	SGFE_ASSERT(start != -1 && end != -1);
-	SGFE_ASSERT(axis >= start && axis <= end);
+	SGFE_ASSERT_NOT_NEG(start);
+	SGFE_ASSERT_NOT_NEG(end);
+	SGFE_ASSERT_RANGE(axis, start, end);
 	#endif
 
 	return SGFE_AXIS_NAME_LUT[axis];
@@ -3117,12 +3132,13 @@ const char* SGFE_controllerGetNameAxis(SGFE_controllerType type,
 
 const char* SGFE_controllerGetNamePointer(SGFE_controllerType type,
 		SGFE_pointerType pointer) {
-	SGFE_ASSERT_FMT(type >= 0 && type < SGFE_controllerTypeCount, "type = %i;", type);
+	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
 	#ifndef NDEBUG
 	SGFE_pointerType start, end;
 	SGFE_controllerGetRangePointer(type, &start, &end);
-	SGFE_ASSERT(start != -1 && end != -1);
-	SGFE_ASSERT(pointer >= start && pointer <= end);
+	SGFE_ASSERT_NOT_NEG(start);
+	SGFE_ASSERT_NOT_NEG(end);
+	SGFE_ASSERT_RANGE(pointer, start, end);
 	#endif
 
 	return SGFE_POINTER_NAME_LUT[pointer];
@@ -3130,12 +3146,13 @@ const char* SGFE_controllerGetNamePointer(SGFE_controllerType type,
 
 const char* SGFE_controllerGetNameMotion(SGFE_controllerType type,
 		SGFE_motionType motion) {
-	SGFE_ASSERT(type >= 0 && type < SGFE_controllerTypeCount);
+	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
 	#ifndef NDEBUG
 	SGFE_motionType start, end;
 	SGFE_controllerGetRangeMotion(type, &start, &end);
-	SGFE_ASSERT(start != -1 && end != -1);
-	SGFE_ASSERT(motion >= start && motion <= end);
+	SGFE_ASSERT_NOT_NEG(start);
+	SGFE_ASSERT_NOT_NEG(end);
+	SGFE_ASSERT_RANGE(motion, start, end);
 	#endif
 
 	return SGFE_MOTION_NAME_LUT[motion];
@@ -3372,6 +3389,14 @@ const char* SGFE_bufferFormatGetStr(SGFE_bufferFormat format) {
 const char* SGFE_videoGetNameMode(SGFE_videoMode mode) {
 	SGFE_ASSERT(mode >= 0 && mode < SGFE_videoModeCount);
 	return SGFE_VIDEO_MODE_NAME_LUT[mode];
+}
+
+
+
+SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
+	isize width, height;
+	SGFE_bufferGetResolution(b, &width, &height);
+	return SGFE_platformInitTerminalOutputEx(b, 0, 0, width, height);
 }
 
 
@@ -4284,7 +4309,7 @@ SGFE_bool SGFE_bufferSetPlatformSettings(SGFE_contextBuffer* b) {
 
 
 SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	SGFE_ASSERT_MSG(
 		SGFE_systemGetModel() != SGFE_systemModel2DS || b->mode != SGFE_videoModeWide,
 		"Regular Nintendo 2DS consoles (excluding XLs) _do not_ support wide mode. "
@@ -4309,7 +4334,7 @@ void SGFE_bufferFreeContext(SGFE_contextBuffer* b) {
 
 
 SGFE_bool SGFE_bufferAllocFramebuffers(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	SGFE_bufferFreeFramebuffers(b);
 
 	isize width, height;
@@ -4352,7 +4377,7 @@ SGFE_bool SGFE_bufferAllocFramebuffers(SGFE_contextBuffer* b) {
 }
 
 SGFE_bool SGFE_bufferFreeFramebuffers(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	if (b->buffers[0] == NULL || !b->is_buffer_allocated) { return SGFE_FALSE; }
 
 	if (b->is_native) {
@@ -4418,7 +4443,7 @@ u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b) {
 
 
 void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* out_height) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 
 	if (SGFE_bufferIsNative(b)) {
 		if (b->screen == SGFE_screenTop) {
@@ -4970,7 +4995,8 @@ SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 	 * and function. */
 	/* NOTE(EimaMei): Taken from libctru console.c */
 	static SGFE_bool console_initialized = SGFE_FALSE;
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
+	if (b->buffers[0] == NULL) { return SGFE_FALSE; }
 
 	SGFE_bufferSetNative(b, SGFE_TRUE);
 	SGFE_bufferSetFormat(b, SGFE_bufferFormatRGB565);
@@ -5155,64 +5181,6 @@ SGFE_debugType SGFE_debugSystemGenerateType_platform(void* ctx_ptr, isize code) 
 
 
 
-void SGFE_windowSwapBuffers(SGFE_window* win) {
-	SGFE_ASSERT_NOT_NULL(win);
-
-	switch (SGFE_contextGetType(win->current)) {
-		case SGFE_contextTypeBuffer: {
-			SGFE_contextBuffer* b = SGFE_contextGetBuffer(win->current);
-			VIDEO_WaitVSync();
-		} break;
-	}
-}
-
-void SGFE_windowMakeCurrent(SGFE_window* win, SGFE_context* ctx) {
-	win->current = ctx;
-}
-
-
-SGFE_bool SGFE_platformInitTerminalOutput(SGFE_window* win) {
-	SGFE_ASSERT_NOT_NULL(win);
-
-	if (win->current == NULL) {
-		SGFE_bool res = SGFE_windowCreateContextBuffer(win, SGFE_videoGetOptimalMode(), SGFE_bufferFormatYUV, SGFE_TRUE);
-
-		if (res == SGFE_FALSE) {
-			return SGFE_FALSE;
-		}
-	}
-
-	SGFE_contextBuffer* b = SGFE_windowGetCurrentBuffer(win);
-	SGFE_bufferSetNative(b, SGFE_TRUE);
-	SGFE_bufferSetFormat(b, SGFE_bufferFormatYUV);
-	SGFE_bufferSetDoubleBuffered(b, SGFE_FALSE);
-
-	console_init(
-		SGFE_bufferGetFramebuffer(b),
-		0, 0, b->gx_video_mode->fbWidth, b->gx_video_mode->xfbHeight,
-		b->gx_video_mode->fbWidth * VI_DISPLAY_PIX_SZ
-	);
-
-	return SGFE_TRUE;
-}
-
-
-
-
-
-const char* SGFE_controllerGetNameButton(const SGFE_controller* controller,
-		SGFE_buttonType button) {
-	SGFE_ASSERT(controller != NULL);
-	SGFE_ASSERT(button >= 0 && button < SGFE_controllerGetButtonCount(controller));
-
-	switch (controller->type) {
-		case SGFE_controllerTypeWiiRemote:
-		case SGFE_controllerTypeNunchuk:
-			return SGFE_BUTTON_NAMES_NUNCHUK_LUT[button];
-	}
-
-	return "N/A";
-}
 
 
 #endif /* ifdef SGFE_WII */

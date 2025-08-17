@@ -9,20 +9,9 @@ void controller_printInfo(SGFE_controller* controller);
 
 
 int main(void) {
-	/* In SGFE, the "window" is the structure in which the SGFE library stores everything
-	 * inside. It is essentially the global state of the application.*/
 	SGFE_window* win = SGFE_windowMakeContextless(SGFE_windowFlagNone);
 	if (win == NULL) { return 1; }
 
-	/* On consoles you usually don't have easy (or any) access to a real terminal.
-	 * To get around this SGFE enables you to turn the entire screen into a terminal
-	 * output screen.
-	 *
-	 * Any function that writes to stdout/stderr (e.g., printf) will have its output
-	 * directly blitted into the screen.
-	 *
-	 * You can also create a window with a terminal output by specifying
-	 * 'SGFE_windowFlagTerminal' when creating a window. */
 	SGFE_bool output_initialized = SGFE_windowInitTerminalOutput(win);
 	if (!output_initialized) { return 1; }
 
@@ -137,7 +126,7 @@ void controller_printInfo(SGFE_controller* controller) {
 	printf("\n\n");
 	isize first, last;
 
-	printf("Controller #%zi: %s\n", controller->index, SGFE_controllerGetName(controller->type));
+	printf("Controller #%zi: %s\n", controller->array_index, SGFE_controllerGetName(controller->type));
 
 	SGFE_controllerGetRangeAxis(controller->type, &first, &last);
 	for (SGFE_axisType j = first; j <= last; j += 1) {

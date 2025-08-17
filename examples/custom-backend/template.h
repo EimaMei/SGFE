@@ -522,13 +522,13 @@ SGFE_bool SGFE_bufferSetPlatformSettings(SGFE_contextBuffer* out_buffer) {
 
 
 SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	#warning "Warning to notify that this function hasn't been implemented yet."
 	SGFE_debugSendAPI(b, SGFE_debugTypeInfo, SGFE_infoCreateContextBuffer);
 }
 
 void SGFE_bufferFreeContext(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	#warning "Warning to notify that this function hasn't been implemented yet."
 	b->buffers[0] = NULL;
 	b->buffers[1] = NULL;
@@ -537,7 +537,7 @@ void SGFE_bufferFreeContext(SGFE_contextBuffer* b) {
 
 
 SGFE_bool SGFE_bufferAllocFramebuffers(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	SGFE_bufferFreeFramebuffers(b);
 
 	isize width, height;
@@ -584,7 +584,7 @@ SGFE_bool SGFE_bufferAllocFramebuffers(SGFE_contextBuffer* b) {
 }
 
 SGFE_bool SGFE_bufferFreeFramebuffers(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	if (b->buffers[0] == NULL || !b->is_buffer_allocated) { return SGFE_FALSE; }
 
 	#if 0
@@ -628,7 +628,7 @@ u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b) {
 
 
 void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* out_height) {
-	SGFE_ASSERT(b != NULL);
+	SGFE_ASSERT_NOT_NULL(b);
 	#warning "Warning to notify that this function hasn't been implemented yet."
 
 	#if 0
@@ -638,6 +638,26 @@ void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* ou
 
 	if (out_width)  {  *out_width = /* ... */; }
 	if (out_height) { *out_height = /* ... */; }
+	#endif
+}
+
+
+void SGFE_windowSwapBuffersBuffer(SGFE_window* win) {
+	SGFE_ASSERT(win != NULL);
+	#warning "Warning to notify that this function hasn't been implemented yet."
+
+	/* NOTE(EimaMei): 'SGFE__fetchSwapBuffer()' is an internal helper function
+	 * that has changes behavior depending on whenever or not 'SGFE_BUFFER_NO_CONVERSION'
+	 * is defined. If it is, the current frame buffer gets converted into a native
+	 * one (if it isn't already) and returns it. If the macro is not returned,
+	 * the current frame buffer is returned without any additional checking or
+	 * conversions. */
+	#if 0
+	SGFE_contextBuffer* b = SGFE_windowGetContextBuffer(win);
+
+	u8* buffer = SGFE__fetchSwapBuffer(b);
+	/* ... */
+	b->current ^= b->is_double_buffered;
 	#endif
 }
 
@@ -838,8 +858,14 @@ void SGFE_platformWaitForVBlank(void) {
 	#warning "Warning to notify that this function hasn't been implemented yet."
 }
 
-SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
-	SGFE_ASSERT(b != NULL);
+SGFE_bool SGFE_platformInitTerminalOutputEx(SGFE_contextBuffer* b, isize x, isize y,
+		isize width, isize height) {
+	SGFE_ASSERT_NOT_NULL(b);
+	SGFE_ASSERT_NOT_NEG(x);
+	SGFE_ASSERT_NOT_NEG(y);
+	SGFE_ASSERT_NOT_NEG(width);
+	SGFE_ASSERT_NOT_NEG(height);
+	if (b->buffers[0] == NULL) { return SGFE_FALSE; }
 	#warning "Warning to notify that this function hasn't been implemented yet."
 
 	#if 0
