@@ -12,6 +12,7 @@ Features:
 - Add rumble functionality.
 - SGFE_textInputSettingsAssert
 - SGFE_bufferAssert
+- C++ support.
 
 
 API-breaking changes:
@@ -19,8 +20,8 @@ API-breaking changes:
 
 
 Documentation:
-- event_queue
-- callbacks
+- event_queue | move the explanation from basic.c to it
+- callbacks | make it more in-depth
 - window-state
 - README.md guide on creating a console backend.
 - Document all macros.

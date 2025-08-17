@@ -2400,7 +2400,6 @@ SGFE_window* SGFE_windowMakePtrContextless(SGFE_windowFlag flags, SGFE_window* w
 
 void SGFE_windowClose(SGFE_window* win) {
 	SGFE_windowFreeContext(win);
-	SGFE_windowSetVisible(win, SGFE_FALSE);
 	SGFE_windowClose_platform(win);
 
 	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
@@ -2936,7 +2935,7 @@ SGFE_controller* SGFE_windowGetController(SGFE_window* win, isize port) {
 	if (port >= list->count) { return NULL; }
 
 	SGFE_controller* res = list->first;
-	for (isize i = 0; i < port && res != NULL; i += 1) {
+	for (isize i = 0; i < port; i += 1) {
 		res = res->next;
 	}
 
@@ -3395,7 +3394,7 @@ const char* SGFE_videoGetNameMode(SGFE_videoMode mode) {
 
 SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 	isize width, height;
-	SGFE_bufferGetResolution(b, &width, &height);
+	SGFE_videoGetResolution(b->mode, &width, &height);
 	return SGFE_platformInitTerminalOutputEx(b, 0, 0, width, height);
 }
 
@@ -4990,13 +4989,19 @@ void SGFE_platformWaitForVBlank(void) {
 	gspWaitForVBlank();
 }
 
-SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
+SGFE_bool SGFE_platformInitTerminalOutputEx(SGFE_contextBuffer* b, isize x, isize y,
+		isize width, isize height) {
+	SGFE_ASSERT_NOT_NULL(b);
+	SGFE_ASSERT_NOT_NEG(x);
+	SGFE_ASSERT_NOT_NEG(y);
+	SGFE_ASSERT_NOT_NEG(width);
+	SGFE_ASSERT_NOT_NEG(height);
+	if (b->buffers[0] == NULL) { return SGFE_FALSE; }
+
 	/* TODO(EimaMei): Remove this entire function and replace it with a helper library
 	 * and function. */
 	/* NOTE(EimaMei): Taken from libctru console.c */
 	static SGFE_bool console_initialized = SGFE_FALSE;
-	SGFE_ASSERT_NOT_NULL(b);
-	if (b->buffers[0] == NULL) { return SGFE_FALSE; }
 
 	SGFE_bufferSetNative(b, SGFE_TRUE);
 	SGFE_bufferSetFormat(b, SGFE_bufferFormatRGB565);
@@ -5020,12 +5025,15 @@ SGFE_bool SGFE_platformInitTerminalOutput(SGFE_contextBuffer* b) {
 	currentConsole->consoleInitialised = SGFE_TRUE;
 	currentConsole->frameBuffer = (u16*)(void*)SGFE_bufferGetFramebuffer(b);
 
-	/* NOTE(EimaMei): Taken from libctru console.c */
-	if (b->screen == SGFE_screenTop) {
-		SGFE_bool is_wide = (b->mode == SGFE_videoModeWide);
-		currentConsole->consoleWidth = is_wide ? 100 : 50;
-		currentConsole->windowWidth = is_wide ? 100 : 50;
-	}
+	/* NOTE(EimaMei): A size of a character in libctru is 8x8 and, for whatever
+	 * reason, console/window width and height require the size in characters, not 
+	 * in pixels. This means that the maximum size for a 400x240 screen is 50x30.
+	 *
+	 * Also, X and Y coordinates are not implemented? */
+	currentConsole->consoleWidth = width / 8;
+	currentConsole->windowWidth = currentConsole->consoleWidth;
+	currentConsole->consoleHeight = height / 8;
+	currentConsole->consoleHeight = currentConsole->consoleHeight;
 
 	/* TODO(EimaMei): Should be kept in the library. */
 	/*if ((win->flags & SGFE_windowFlagDualScreen) == SGFE_windowFlagDualScreen) {
