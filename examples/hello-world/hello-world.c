@@ -33,14 +33,14 @@ int main(void) {
 		 * 1. Event queue (equivalent to standard SDL) - by enabling the event queue
 		 * you're able to iterate through all of the events via a loop and handle
 		 * each one inside it. This is the most "desktop-like" design for SGFE.
-		 * For an example of this, check out: examples/event_queue.
+		 * For an example of this, check out: examples/events/event-queue.c.
 		 *
 		 * 2. Callbacks (equivalent to GLFW) - you can set callback functions that
 		 * immediately get called once the specific event is fully processed. The
 		 * benefit of this system is that this is the fastest way to receive events
 		 * as you don't have to go through an entire queue or wait until polling
 		 * is finished. Downside to this is that callbacks might not scale well
-		 * (especially for games). For an example of this, check out: examples/callbacks.
+		 * (especially for games). For an example of this, check out: examples/events/callbacks.c.
 		 *
 		 * 3. State - each frame 'SGFE_windowPollEvents()' updates the 'state'
 		 * structure that resides within the window and returns the pointer to it.
@@ -48,7 +48,7 @@ int main(void) {
 		 * events fired and their respective data. This is the simplest and most
 		 * console-friendly system out of the 3 since you're not wasting any additional
 		 * processing while also having major flexibility with how you'd interpret
-		 * the data. For an example of this, check out: examples/window-state. */
+		 * the data. For an example of this, check out: examples/events/window-state.c. */
         const SGFE_windowState* state = SGFE_windowPollEvents(win);
 
 		/* You can access input by requesting the 1st connected (or player 1's)

@@ -4,8 +4,11 @@
 
 size_t counter = 0;
 
+#define SGFE_WII_NO_WAIT_FOR_CONNECTION
+#define SGFE_MAX_KEYBOARDS 1
 #define SGFE_IMPLEMENTATION
-#include <SGFE.h>
+#include <SGFE-wii.h>
+#define SGFE_WII 1
 #include <resources/controls.h>
 
 SGFE_bool shutup = 0;
@@ -37,11 +40,6 @@ void callback_quit(SGFE_window* win) {
 }
 
 static
-void callback_videoMode(SGFE_window* win, SGFE_videoMode video_mode) {
-	printf("TODO\n");
-}
-
-static
 void callback_controller(SGFE_window* win, SGFE_controller* controller, SGFE_bool connected) {
 	printf("'%s' has been %s\n", SGFE_controllerGetName(controller->type), connected ? "connected" : "disconnected");
 }
@@ -56,8 +54,13 @@ void callback_battery(SGFE_window* win, SGFE_controller* controller, SGFE_powerS
 }
 
 static
-void callback_button(SGFE_window* win, SGFE_controller* controller, SGFE_buttonType button, SGFE_bool pressed) {
-	printf("key %s: %s\n", pressed ? "pressed" : "released", SGFE_controllerGetNameButton(controller->type, button));
+void callback_button(SGFE_window* win, SGFE_controller* controller, SGFE_buttonType button,
+		SGFE_bool is_repeated, SGFE_bool is_pressed) {
+	printf(
+		"button %s: %s (repeated: %i)\n", 
+		is_pressed ? "pressed" : "released", SGFE_controllerGetNameButton(controller->type, button),
+		is_repeated
+	);
 
 	if (SGFE_isHeld(controller, BUTTON_START)) {
 		SGFE_windowSetShouldClose(win, SGFE_TRUE);
@@ -95,6 +98,24 @@ void callback_motion(SGFE_window* win, SGFE_controller* controller, const SGFE_m
 	);
 }
 
+static
+void callback_keyboard(SGFE_window* win, SGFE_keyboard* keyboard, SGFE_bool connected) {
+	printf("Keyboard has been %s\n", connected ? "connected" : "disconnected");
+}
+
+static
+void callback_key(SGFE_window* win, SGFE_keyboard* keyboard, SGFE_key key,
+		SGFE_bool is_repeated, SGFE_bool is_pressed) {
+	printf(
+		"button %s: %i (repeated: %i)\n", 
+		is_pressed ? "pressed" : "released", key,
+		is_repeated
+	);
+
+	if (SGFE_isKeyDown(keyboard, SGFE_keyEsc)) {
+		SGFE_windowSetShouldClose(win, SGFE_TRUE);
+	}
+}
 
 int main(void) {
 	SGFE_setDebugCallback(callback_error, NULL);
@@ -110,6 +131,9 @@ int main(void) {
 	SGFE_windowSetAxisCallback(win, callback_axis);
 	SGFE_windowSetPointerCallback(win, callback_pointer);
 	SGFE_windowSetMotionCallback(win, callback_motion);
+
+	SGFE_windowSetKeyboardCallback(win, callback_keyboard);
+	SGFE_windowSetKeyCallback(win, callback_key);
 
 	while (!SGFE_windowShouldClose(win)) {
 		SGFE_windowPollEvents(win);

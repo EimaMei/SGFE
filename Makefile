@@ -135,7 +135,7 @@ else ifeq ($(PLATFORM),WII)
 	FLAGS = $(GNU_FLAGS) -D GEKKO -mrvl -mcpu=750 -meabi -mhard-float
 	INCLUDES = -I"resources/wii/include" $(GNU_INCLUDES) -I"$(CURDIR)" -I"$(DEVKITPRO)/libogc/include"
 
-	LIBS = -L"resources/wii/lib" -L$(DEVKITPRO)/libogc/lib/wii -lm -lwiiuse -lbte -logc
+	LIBS = -L"resources/wii/lib" -L$(DEVKITPRO)/libogc/lib/wii -lm -lwiiuse -lbte -logc -lwiikeyboard
 	EXE_OUT = .dol
 
 	export PATH := $(DEVKITPRO)/tools/bin:$(DEVKITPPC)/bin:$(DEVKITPRO)/portlibs/wii/bin:$(PATH)
@@ -172,7 +172,7 @@ endif
 clean:
 	rm -rf $(OUTPUT)/*
 
-$(EXE): $(SRC) SGFE.h Makefile examples/*
+$(EXE): $(SRC) SGFE.h SGFE-wii.h Makefile examples/*
 ifeq ($(PLATFORM),3DS)
 	$(CC) $(FLAGS) $(EXTRA_FLAGS) $(INCLUDES) $(SRC) $(LIBS) -o "$(OUTPUT)/$(NAME).elf"
 	smdhtool --create "$(NAME)" "$(DESCRIPTION)" "$(AUTHOR)" "$(ICON)" "$(OUTPUT)/$(NAME).smdh"

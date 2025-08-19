@@ -646,7 +646,7 @@ typedef struct SGFE_controller {
 
 	/* Current power/battery state of the controller. */
 	SGFE_powerState power_state;
-	/* Current battery procent of the controller. Returns 0 on controllers that 
+	/* Current battery procent of the controller. Returns 0 on controllers that
 	 * do not have a battery. */
 	isize battery_procent;
 
@@ -663,6 +663,195 @@ typedef struct SGFE_controllerList {
 } SGFE_controllerList;
 
 
+typedef SGFE_ENUM(isize, SGFE_key) {
+	SGFE_keyEsc           = '\033',
+	SGFE_keyBacktick      = '`',
+
+	SGFE_key1             = '1',
+	SGFE_key2             = '2',
+	SGFE_key3             = '3',
+	SGFE_key4             = '4',
+	SGFE_key5             = '5',
+	SGFE_key6             = '6',
+	SGFE_key7             = '7',
+	SGFE_key8             = '8',
+	SGFE_key9             = '9',
+	SGFE_key0             = '0',
+
+	SGFE_keyMinus         = '-',
+	SGFE_keyEquals        = '=',
+	SGFE_keyBackspace     = '\b',
+	SGFE_keyTab           = '\t',
+	SGFE_keySpace         = ' ',
+	SGFE_keyA             = 'a',
+	SGFE_keyB             = 'b',
+	SGFE_keyC             = 'c',
+	SGFE_keyD             = 'd',
+	SGFE_keyE             = 'e',
+	SGFE_keyF             = 'f',
+	SGFE_keyG             = 'g',
+	SGFE_keyH             = 'h',
+	SGFE_keyI             = 'i',
+	SGFE_keyJ             = 'j',
+	SGFE_keyK             = 'k',
+	SGFE_keyL             = 'l',
+	SGFE_keyM             = 'm',
+	SGFE_keyN             = 'n',
+	SGFE_keyO             = 'o',
+	SGFE_keyP             = 'p',
+	SGFE_keyQ             = 'q',
+	SGFE_keyR             = 'r',
+	SGFE_keyS             = 's',
+	SGFE_keyT             = 't',
+	SGFE_keyU             = 'u',
+	SGFE_keyV             = 'v',
+	SGFE_keyW             = 'w',
+	SGFE_keyX             = 'x',
+	SGFE_keyY             = 'y',
+	SGFE_keyZ             = 'z',
+	SGFE_keyPeriod        = '.',
+	SGFE_keyComma         = ',',
+	SGFE_keySlash         = '/',
+	SGFE_keyBracketOpen   = '[',
+	SGFE_keyBracketClose  = ']',
+	SGFE_keySemicolon     = ';',
+	SGFE_keyApostrophe    = '\'',
+	SGFE_keyBackslash     = '\\',
+	SGFE_keyReturn        = '\n',
+	SGFE_keyEnter         = SGFE_keyReturn,
+	SGFE_keyDelete        = 127,
+
+	SGFE_keyF1,
+	SGFE_keyF2,
+	SGFE_keyF3,
+	SGFE_keyF4,
+	SGFE_keyF5,
+	SGFE_keyF6,
+	SGFE_keyF7,
+	SGFE_keyF8,
+	SGFE_keyF9,
+	SGFE_keyF10,
+	SGFE_keyF11,
+	SGFE_keyF12,
+	SGFE_keyF13,
+	SGFE_keyF14,
+	SGFE_keyF15,
+	SGFE_keyF16,
+	SGFE_keyF17,
+	SGFE_keyF18,
+	SGFE_keyF19,
+	SGFE_keyF20,
+	SGFE_keyF21,
+	SGFE_keyF22,
+	SGFE_keyF23,
+	SGFE_keyF24,
+	SGFE_keyF25,
+
+	SGFE_keyCapsLock,
+	SGFE_keyShiftL,
+	SGFE_keyControlL,
+	SGFE_keyAltL,
+	SGFE_keySuperL,
+	SGFE_keyShiftR,
+	SGFE_keyControlR,
+	SGFE_keyAltR,
+	SGFE_keySuperR,
+
+	SGFE_keyUp,
+	SGFE_keyDown,
+	SGFE_keyLeft,
+	SGFE_keyRight,
+
+	SGFE_keyInsert,
+	SGFE_keyMenu,
+	SGFE_keyEnd,
+	SGFE_keyHome,
+	SGFE_keyPageUp,
+	SGFE_keyPageDown,
+
+	SGFE_keyNumLock,
+	SGFE_keyKpDivide,
+	SGFE_keyKpMultiply,
+	SGFE_keyKpPlus,
+	SGFE_keyKpMinus,
+	SGFE_keyKpEqual,
+	SGFE_keyKp1,
+	SGFE_keyKp2,
+	SGFE_keyKp3,
+	SGFE_keyKp4,
+	SGFE_keyKp5,
+	SGFE_keyKp6,
+	SGFE_keyKp7,
+	SGFE_keyKp8,
+	SGFE_keyKp9,
+	SGFE_keyKp0,
+	SGFE_keyKpPeriod,
+	SGFE_keyKpReturn,
+	SGFE_keyKpEnter = SGFE_keyKpReturn,
+
+	SGFE_keyScrollLock,
+	SGFE_keyPrintScreen,
+	SGFE_keyPause,
+	SGFE_keyWorld1,
+	SGFE_keyWorld2,
+
+	SGFE_keyLast,
+	SGFE_keyCount = 256
+};
+
+typedef SGFE_ENUM(u32, SGFE_keyModifier) {
+	SGFE_keyModifierShiftL     = SGFE_BIT(0),
+	SGFE_keyModifierShiftR     = SGFE_BIT(1),
+	SGFE_keyModifierCtrlL      = SGFE_BIT(2),
+	SGFE_keyModifierCtrlR      = SGFE_BIT(3),
+	SGFE_keyModifierAltL       = SGFE_BIT(4),
+	SGFE_keyModifierAltR       = SGFE_BIT(5),
+	SGFE_keyModifierSuperL     = SGFE_BIT(6),
+	SGFE_keyModifierSuperR     = SGFE_BIT(7),
+
+	SGFE_keyModifierNumsLock   = SGFE_BIT(8),
+	SGFE_keyModifierCapsLock   = SGFE_BIT(9),
+	SGFE_keyModifierScrollLock = SGFE_BIT(10),
+
+	SGFE_keyModifierShift = SGFE_keyModifierShiftL | SGFE_keyModifierShiftR,
+	SGFE_keyModifierCtrl  = SGFE_keyModifierCtrlL  | SGFE_keyModifierCtrlR,
+	SGFE_keyModifierAlt   = SGFE_keyModifierAltL   | SGFE_keyModifierAltR,
+	SGFE_keyModifierSuper = SGFE_keyModifierSuperL | SGFE_keyModifierSuperR,
+};
+
+typedef struct SGFE_keyState {
+	SGFE_bool is_down;
+	SGFE_bool was_down;
+} SGFE_keyState;
+
+typedef struct SGFE_keyboard {
+	/* The controller's array index into state->keyboard. */
+	isize array_index;
+
+	SGFE_keyState keystate[SGFE_keyCount];
+	SGFE_key API_to_SGFE_LUT[SGFE_keyCount];
+	u32 SGFE_to_API_LUT[SGFE_keyCount];
+	SGFE_keyModifier modifiers;
+
+	/* TODO */
+	u64 repeat_interval;
+
+	/* TODO */
+	SGFE_key first_press_key;
+	/* TODO */
+	u64 first_press_timestamp;
+
+	/* Private data. Pointers to the previous and next controllers in the same
+	 * linked-list as this keyboard. */
+	struct SGFE_keyboard* prev, *next;
+} SGFE_keyboard;
+
+typedef struct SGFE_keyboardList {
+	isize count;
+	SGFE_keyboard* first;
+	SGFE_keyboard* last;
+} SGFE_keyboardList;
+
 
 /* TODO */
 typedef SGFE_ENUM(isize, SGFE_contextType) {
@@ -672,6 +861,7 @@ typedef SGFE_ENUM(isize, SGFE_contextType) {
 
 	SGFE_contextTypeCount,
 };
+
 
 typedef SGFE_ENUM(isize, SGFE_eventType) {
 	/* No event. */
@@ -770,7 +960,7 @@ typedef struct SGFE_event_button {
 	SGFE_controller* controller;
 
 	SGFE_buttonType button;
-	SGFE_bool repeat;
+	SGFE_bool is_repeated;
 	u32 raw_button;
 } SGFE_event_button;
 
@@ -802,6 +992,23 @@ typedef struct SGFE_event_motion {
 	float x, y, z;
 } SGFE_event_motion;
 
+
+typedef struct SGFE_event_keyboard {
+	SGFE_eventType type;
+	u64 timestamp;
+	SGFE_keyboard* keyboard;
+} SGFE_event_keyboard;
+
+typedef struct SGFE_event_key {
+	SGFE_eventType type;
+	u64 timestamp;
+	SGFE_keyboard* keyboard;
+
+	SGFE_key key;
+	SGFE_bool is_repeated;
+	u32 raw_key;
+} SGFE_event_key;
+
 typedef struct SGFE_event_text {
 	SGFE_eventType type;
 	u64 timestamp;
@@ -809,6 +1016,7 @@ typedef struct SGFE_event_text {
 	u8* text;
 	isize text_len;
 } SGFE_event_text;
+
 
 typedef struct SGFE_event_user {
 	SGFE_eventType type;
@@ -822,13 +1030,19 @@ typedef struct SGFE_event_user {
 typedef union SGFE_event {
 	SGFE_eventType type;
 	SGFE_event_common common;
+
 	SGFE_event_controller controller;
 	SGFE_event_battery battery;
+
 	SGFE_event_button button;
 	SGFE_event_axis axis;
 	SGFE_event_pointer pointer;
 	SGFE_event_motion motion;
+
+	SGFE_event_keyboard keyboard;
+	SGFE_event_key key;
 	SGFE_event_text text;
+
 	SGFE_event_user user;
 } SGFE_event;
 
@@ -884,9 +1098,10 @@ typedef struct SGFE_windowState {
 	/* TODO */
 	SGFE_bool has_text_input;
 
-
 	/* TODO */
 	SGFE_controllerList controllers;
+	/* TODO */
+	SGFE_keyboardList keyboards;
 
 	/* TOOD */
 	isize text_len;
@@ -992,6 +1207,13 @@ struct SGFE_window {
 	/* TODO */
 	SGFE_controllerList disconnected_controllers;
 
+	#if SGFE_MAX_KEYBOARDS != 0
+	/* TODO */
+	SGFE_keyboard keyboards[SGFE_MAX_KEYBOARDS];
+	/* TODO */
+	SGFE_keyboardList disconnected_keyboards;
+	#endif
+
 	/* TODO */
 	SGFE_bool is_queueing_events, has_polled_events;
 	/* TODO */
@@ -1026,7 +1248,11 @@ struct SGFE_window {
 		void (*motion)(void);
 		void (*debug)(void);
 
+		void (*keyboard)(void);
+		void (*key)(void);
 		void (*text_input)(void);
+
+		void (*user)(void);
 	} callbacks;
 }; /*!< window structure for managing the window */
 
@@ -1120,12 +1346,6 @@ SGFE_DEF void SGFE_windowSetContext(SGFE_window* win, SGFE_contextType type, voi
 SGFE_DEF void SGFE_windowSetContextEx(SGFE_window* win, SGFE_contextType type, void* ctx, SGFE_screen screen);
 
 
-/* Returns the controller strucutr associated with the port. */
-SGFE_DEF SGFE_controller* SGFE_windowGetController(SGFE_window* win, isize port);
-/* TODO */
-SGFE_DEF SGFE_bool SGFE_windowIsControllerConnected(SGFE_window* win, const SGFE_controller* controller);
-
-
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_windowShouldClose(const SGFE_window* win);
 /* TODO */
@@ -1150,6 +1370,12 @@ SGFE_DEF void SGFE_windowAssertFmt(SGFE_window* win, SGFE_bool is_asserted,
 #endif
 
 
+
+/* TODO. */
+SGFE_DEF SGFE_controller* SGFE_controllerGet(SGFE_controllerList list, isize player_index);
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_controllerIsConnected(SGFE_controllerList list,
+	const SGFE_controller* controller);
 
 SGFE_DEF SGFE_bool SGFE_isHeld(const SGFE_controller* controller, SGFE_button mask);
 SGFE_DEF SGFE_bool SGFE_isDown(const SGFE_controller* controller, SGFE_button mask);
@@ -1209,6 +1435,28 @@ SGFE_DEF SGFE_bool SGFE_controllerEnablePointer(SGFE_controller* controller,
 /* TODO(EimaMei): NEW FUNCTION */
 SGFE_DEF SGFE_bool SGFE_controllerEnableMotion(SGFE_controller* controller,
 	SGFE_motionType motion, SGFE_bool enable);
+
+
+
+#if SGFE_MAX_CONTROLLERS != 0
+
+/* TODO. */
+SGFE_DEF SGFE_keyboard* SGFE_keyboardGet(SGFE_keyboardList list, isize player_index);
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_keyboardIsConnected(SGFE_keyboardList list,
+	const SGFE_keyboard* keyboard);
+
+
+SGFE_DEF SGFE_bool SGFE_isKeyHeld(const SGFE_keyboard* keyboard, SGFE_key key);
+SGFE_DEF SGFE_bool SGFE_isKeyDown(const SGFE_keyboard* keyboard, SGFE_key key);
+SGFE_DEF SGFE_bool SGFE_isKeyUp(const SGFE_keyboard* keyboard, SGFE_key key);
+
+/* TODO */
+SGFE_DEF SGFE_key SGFE_keyFromAPI(const SGFE_keyboard* keyboard, u32 api_keycode);
+/* TODO */
+SGFE_DEF u32 SGFE_keyToAPI(const SGFE_keyboard* keyboard, SGFE_key key);
+
+#endif
 
 
 
@@ -1707,8 +1955,8 @@ typedef SGFE_ENUM(isize, SGFE_systemLanguage) {
 
 	SGFE_systemLanguageJapanese,
 	SGFE_systemLanguageKorean,
-	SGFE_systemLanguageTaiwanese,
-	SGFE_systemLanguageChinese,
+	SGFE_systemLanguageTraditionalChinese,
+	SGFE_systemLanguageSimplifiedChinese,
 
 	SGFE_systemLanguageUnknown,
 };
@@ -1811,7 +2059,7 @@ typedef void (*SGFE_controllerProc)(SGFE_window* win, SGFE_controller* controlle
 typedef void (*SGFE_controllerBatteryProc)(SGFE_window* win, SGFE_controller* controller, SGFE_powerState state, isize battery_procent);
 
 /*! SGFE_buttonPressed, the window that got the event, the button that was pressed, the scroll value, if it was a press (else it's a release) */
-typedef void (*SGFE_buttonProc)(SGFE_window* win, SGFE_controller* controller, SGFE_buttonType button, SGFE_bool down);
+typedef void (*SGFE_buttonProc)(SGFE_window* win, SGFE_controller* controller, SGFE_buttonType button, SGFE_bool is_repeated, SGFE_bool is_down);
 /*! SGFE_axisMove, the window that got the event, the controller in question, the axis values and the axis count */
 typedef void (*SGFE_axisProc)(SGFE_window* win, SGFE_controller* controller, const SGFE_axis* axis);
 /* TODO(EimaMei): NEW FUNCTION. */
@@ -1819,6 +2067,10 @@ typedef void (*SGFE_pointerProc)(SGFE_window* win, SGFE_controller* controller, 
 /* TODO(EimaMei): NEW FUNCTION. */
 typedef void (*SGFE_motionProc)(SGFE_window* win, SGFE_controller* controller, const SGFE_motion* motion);
 
+/* TODO(EimaMei): NEW FUNCTION. */
+typedef void (*SGFE_keyboardProc)(SGFE_window* win, SGFE_keyboard* keyboard, SGFE_bool is_connected);
+/* TODO(EimaMei): NEW FUNCTION. */
+typedef void (*SGFE_keyProc)(SGFE_window* win, SGFE_keyboard* keyboard, SGFE_key key, SGFE_bool is_repeated, SGFE_bool is_down);
 /* TODO(EimaMei): NEW FUNCTION. */
 typedef void (*SGFE_textInputProc)(SGFE_window* win, u8* text, isize len);
 
@@ -1845,6 +2097,10 @@ SGFE_DEF SGFE_pointerProc SGFE_windowSetPointerCallback(SGFE_window* win, SGFE_p
 /* TODO(EimaMei): NEW FUNCTION. */
 SGFE_DEF SGFE_motionProc SGFE_windowSetMotionCallback(SGFE_window* win, SGFE_motionProc func);
 
+/* TODO(EimaMei): NEW FUNCTION. */
+SGFE_DEF SGFE_keyboardProc SGFE_windowSetKeyboardCallback(SGFE_window* win, SGFE_keyboardProc func);
+/* TODO(EimaMei): NEW FUNCTION. */
+SGFE_DEF SGFE_keyProc SGFE_windowSetKeyCallback(SGFE_window* win, SGFE_keyProc func);
 /* TODO(EimaMei): NEW FUNCTION. */
 SGFE_DEF SGFE_textInputProc SGFE_windowSetTextInputCallback(SGFE_window* win, SGFE_textInputProc func);
 
@@ -2063,15 +2319,20 @@ SGFE_DEF SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* control
 
 SGFE_DEF u8* SGFE__fetchSwapBuffer(SGFE_contextBuffer* b);
 
-void SGFE__controllerSetConnection(SGFE_window* win, SGFE_controller* controller, SGFE_bool should_connect);
-void SGFE__controllerAddToList(SGFE_controllerList* list, SGFE_controller* controller);
-void SGFE__controllerRemoveFromList(SGFE_controllerList* list, SGFE_controller* controller);
+SGFE_DEF void SGFE__controllerSetConnection(SGFE_window* win, SGFE_controller* controller, SGFE_bool should_connect);
+SGFE_DEF void SGFE__controllerAddToList(SGFE_controllerList* list, SGFE_controller* controller);
+SGFE_DEF void SGFE__controllerRemoveFromList(SGFE_controllerList* list, SGFE_controller* controller);
 
 SGFE_DEF void SGFE__processCallbackAndEventQueue_ButtonDown(SGFE_window* win, SGFE_controller* controller);
 SGFE_DEF void SGFE__processCallbackAndEventQueue_ButtonUp(SGFE_window* win, SGFE_controller* controller);
 SGFE_DEF void SGFE__processCallbackAndEventQueue_Axis(SGFE_window* win, SGFE_controller* controller, const SGFE_axis* axis);
 SGFE_DEF void SGFE__processCallbackAndEventQueue_Pointer(SGFE_window* win, SGFE_controller* controller, const SGFE_pointer* p);
-void SGFE__processCallbackAndEventQueue_Motion(SGFE_window* win, SGFE_controller* controller, const SGFE_motion* m);
+SGFE_DEF void SGFE__processCallbackAndEventQueue_Motion(SGFE_window* win, SGFE_controller* controller, const SGFE_motion* m);
+
+SGFE_DEF void SGFE__processCallbackAndEventQueue_KeyDown(SGFE_window* win, SGFE_keyboard* keyboard,
+		SGFE_key key);
+SGFE_DEF void SGFE__processCallbackAndEventQueue_KeyUp(SGFE_window* win, SGFE_keyboard* keyboard,
+		SGFE_key key);
 
 void (SGFE_debugSendAPI)(void* ctx_ptr, SGFE_debugType type, isize code, const char* filename, isize line, const char* function);
 void (SGFE_debugSendPlatformAPI)(void* ctx_ptr, SGFE_debugType type, isize code, const char* filename, isize line, const char* function);
@@ -2109,8 +2370,8 @@ void* SGFE__debugProcSrcUserParam;
 #define SGFE_windowControllerBatteryCallback(win, controller, state, battery_procent) \
 	SGFE_CALLBACK_TEMPLATE(SGFE_controllerBatteryProc, controller_battery, (win, controller, state, battery_procent))
 
-#define SGFE_windowButtonCallback(win, controller, button_s, pressed) \
-	SGFE_CALLBACK_TEMPLATE(SGFE_buttonProc, button, (win, controller, button_s, pressed))
+#define SGFE_windowButtonCallback(win, controller, button_s, is_repeated, is_down) \
+	SGFE_CALLBACK_TEMPLATE(SGFE_buttonProc, button, (win, controller, button_s, is_repeated, is_down))
 
 #define SGFE_windowAxisCallback(win, controller, type) \
 	SGFE_CALLBACK_TEMPLATE(SGFE_axisProc, axis, (win, controller, type))
@@ -2121,6 +2382,12 @@ void* SGFE__debugProcSrcUserParam;
 #define SGFE_windowMotionCallback(win, controller, type) \
 	SGFE_CALLBACK_TEMPLATE(SGFE_motionProc, motion, (win, controller, type))
 
+
+#define SGFE_windowKeyboardCallback(win, keyboard_s, is_connected) \
+	SGFE_CALLBACK_TEMPLATE(SGFE_keyboardProc, keyboard, (win, keyboard_s, is_connected))
+
+#define SGFE_windowKeyCallback(win, keyboard, key_s, is_repeated, is_pressed) \
+	SGFE_CALLBACK_TEMPLATE(SGFE_keyProc, key, (win, keyboard, key_s, is_repeated, is_pressed))
 
 #define SGFE_windowTextInputCallback(win, text, len) \
 	SGFE_CALLBACK_TEMPLATE(SGFE_textInputProc, text_input, (win, text, len))
@@ -2145,7 +2412,7 @@ void* SGFE__debugProcSrcUserParam;
 
 
 void SGFE__controllerSetConnection(SGFE_window* win, SGFE_controller* controller, SGFE_bool should_connect) {
-	SGFE_ASSERT_FMT(SGFE_windowIsControllerConnected(win, controller) != should_connect, "should_connect = %i;", should_connect);
+	SGFE_ASSERT_FMT(SGFE_controllerIsConnected(win->state.controllers, controller) != should_connect, "should_connect = %i;", should_connect);
 
 	if (should_connect) {
 		SGFE__controllerRemoveFromList(&win->disconnected_controllers, controller);
@@ -2203,6 +2470,87 @@ void SGFE__controllerRemoveFromList(SGFE_controllerList* list, SGFE_controller* 
 	list->count -= 1;
 }
 
+#if SGFE_MAX_KEYBOARDS != 0
+
+void SGFE__keyboardSetLUT(SGFE_keyboard* keyboard, u32 api_keycode, SGFE_key SGFE_keycode);
+
+void SGFE__keyboardSetConnection(SGFE_window* win, SGFE_keyboard* keyboard, SGFE_bool should_connect);
+void SGFE__keyboardAddToList(SGFE_keyboardList* list, SGFE_keyboard* keyboard);
+void SGFE__keyboardRemoveFromList(SGFE_keyboardList* list, SGFE_keyboard* keyboard);
+
+
+void SGFE__keyboardSetLUT(SGFE_keyboard* keyboard, u32 api_keycode, SGFE_key SGFE_keycode) {
+	SGFE_ASSERT_NOT_NULL(keyboard);
+	SGFE_ASSERT_RANGE(SGFE_keycode, 0, SGFE_keyLast);
+	SGFE_ASSERT_RANGE(api_keycode, 0, SGFE_keyCount);
+	SGFE_ASSERT_FMT(keyboard->SGFE_to_API_LUT[SGFE_keycode] == 0, "api_keycode = %i; SGFE_keycode = %i;", api_keycode, SGFE_keycode);
+	SGFE_ASSERT_FMT(keyboard->API_to_SGFE_LUT[api_keycode] == 0, "api_keycode = %i; SGFE_keycode = %i;", api_keycode, SGFE_keycode);
+
+	keyboard->SGFE_to_API_LUT[SGFE_keycode] = api_keycode;
+	keyboard->API_to_SGFE_LUT[api_keycode] = SGFE_keycode;
+}
+
+void SGFE__keyboardSetConnection(SGFE_window* win, SGFE_keyboard* keyboard, SGFE_bool should_connect) {
+	SGFE_ASSERT_FMT(SGFE_keyboardIsConnected(win->state.keyboards, keyboard) != should_connect, "should_connect = %i;", should_connect);
+
+	if (should_connect) {
+		SGFE__keyboardRemoveFromList(&win->disconnected_keyboards, keyboard);
+		SGFE__keyboardAddToList(&win->state.keyboards, keyboard);
+	}
+	else {
+		SGFE__keyboardRemoveFromList(&win->state.keyboards, keyboard);
+		SGFE__keyboardAddToList(&win->disconnected_keyboards, keyboard);
+	}
+}
+
+void SGFE__keyboardAddToList(SGFE_keyboardList* list, SGFE_keyboard* keyboard) {
+	SGFE_ASSERT_NOT_NULL(list);
+	SGFE_ASSERT_NOT_NULL(keyboard);
+	SGFE_ASSERT_FMT(list->count >= 0 && list->count < SGFE_MAX_CONTROLLERS, "list->count = %i;", list->count);
+	SGFE_ASSERT_FMT(keyboard->prev == NULL && keyboard->next == NULL, "keyboard->array_index = %i;", keyboard->array_index);
+	SGFE_ASSERT(list->first != keyboard);
+
+	if (list->first == NULL) {
+		list->count = 1;
+		list->first = keyboard;
+		list->last = keyboard;
+		return;
+	}
+	SGFE_keyboard* previous_last = list->last;
+
+	keyboard->prev = previous_last;
+	keyboard->next = NULL;
+
+	previous_last->next = keyboard;
+	list->last = keyboard;
+	list->count += 1;
+}
+
+void SGFE__keyboardRemoveFromList(SGFE_keyboardList* list, SGFE_keyboard* keyboard) {
+	SGFE_ASSERT(list->count > 0 && list->count <= SGFE_MAX_CONTROLLERS);
+
+	if (list->count == 1) {
+		list->first = NULL;
+		list->last = NULL;
+	} else if (list->first == keyboard) {
+		list->first = keyboard->next;
+		list->first->prev = NULL;
+	} else if (list->last == keyboard) {
+		keyboard->prev->next = NULL;
+		list->last = keyboard->prev;
+	} else {
+		keyboard->prev->next = keyboard->next;
+		keyboard->next->prev = keyboard->prev;
+	}
+
+	keyboard->prev = NULL;
+	keyboard->next = NULL;
+
+	list->count -= 1;
+}
+
+#endif
+
 
 void SGFE__processCallbackAndEventQueue_ButtonDown(SGFE_window* win, SGFE_controller* controller) {
 	if (controller->buttons_held == 0 || (!win->is_queueing_events && !win->callbacks.button)) {
@@ -2213,7 +2561,8 @@ void SGFE__processCallbackAndEventQueue_ButtonDown(SGFE_window* win, SGFE_contro
 	SGFE_buttonType button;
 
 	while (SGFE_iterateButtonMask(&mask, &button)) {
-		SGFE_windowButtonCallback(win, controller, button, SGFE_TRUE);
+		SGFE_bool is_repeated = (controller->buttons_down & SGFE_BIT(button)) == 0;
+		SGFE_windowButtonCallback(win, controller, button, is_repeated, SGFE_TRUE);
 
 		if (win->is_queueing_events) {
 			SGFE_event event;
@@ -2221,7 +2570,7 @@ void SGFE__processCallbackAndEventQueue_ButtonDown(SGFE_window* win, SGFE_contro
 			event.button.timestamp = SGFE_platformGetTicks();
 			event.button.controller = controller;
 			event.button.button = button;
-			event.button.repeat = (controller->buttons_down & SGFE_BIT(button)) == 0;
+			event.button.is_repeated = is_repeated;
 			event.button.raw_button = SGFE_buttonToAPI(controller->type, SGFE_BIT(button));
 			SGFE_windowEventPush(win, &event);
 		}
@@ -2237,14 +2586,14 @@ void SGFE__processCallbackAndEventQueue_ButtonUp(SGFE_window* win, SGFE_controll
 	SGFE_buttonType button;
 
 	while (SGFE_iterateButtonMask(&mask, &button)) {
-		SGFE_windowButtonCallback(win, controller, button, SGFE_TRUE);
+		SGFE_windowButtonCallback(win, controller, button, SGFE_FALSE, SGFE_FALSE);
 
 		if (win->is_queueing_events) {
 			SGFE_event event;
 			event.type = SGFE_eventButtonUp;
 			event.button.controller = controller;
 			event.button.button = button;
-			event.button.repeat = SGFE_FALSE;
+			event.button.is_repeated = SGFE_FALSE;
 			event.button.raw_button = SGFE_buttonToAPI(controller->type, SGFE_BIT(button));
 			SGFE_windowEventPush(win, &event);
 		}
@@ -2303,6 +2652,40 @@ void SGFE__processCallbackAndEventQueue_Motion(SGFE_window* win, SGFE_controller
 	}
 }
 
+
+void SGFE__processCallbackAndEventQueue_KeyDown(SGFE_window* win, SGFE_keyboard* keyboard,
+		SGFE_key key) {
+	SGFE_bool is_repeated = SGFE_isKeyHeld(keyboard, key);
+	SGFE_windowKeyCallback(win, keyboard, key, is_repeated, SGFE_TRUE);
+
+	if (win->is_queueing_events) {
+		SGFE_event event;
+		event.type = SGFE_eventKeyboardDown;
+		event.button.timestamp = SGFE_platformGetTicks();
+		event.key.keyboard = keyboard;
+		event.key.key = key;
+		event.key.is_repeated = is_repeated;
+		event.key.raw_key = SGFE_keyToAPI(keyboard, key);
+		SGFE_windowEventPush(win, &event);
+	}
+}
+
+void SGFE__processCallbackAndEventQueue_KeyUp(SGFE_window* win, SGFE_keyboard* keyboard,
+		SGFE_key key) {
+	SGFE_windowKeyCallback(win, keyboard, key, SGFE_FALSE, SGFE_FALSE);
+
+	if (win->is_queueing_events) {
+		SGFE_event event;
+		event.type = SGFE_eventKeyboardUp;
+		event.button.timestamp = SGFE_platformGetTicks();
+		event.key.keyboard = keyboard;
+		event.key.key = key;
+		event.key.is_repeated = SGFE_FALSE;
+		event.key.raw_key = SGFE_keyToAPI(keyboard, key);
+		SGFE_windowEventPush(win, &event);
+	}
+}
+
 isize SGFE_sizeofWindow(void) { return sizeof(SGFE_window); }
 isize SGFE_sizeofWindowSrc(void) { return sizeof(SGFE_windowSource); }
 
@@ -2317,6 +2700,7 @@ SGFE_windowSource* SGFE_windowGetSource(SGFE_window* win) {
 SGFE_screen SGFE_windowGetCurrentScreen(SGFE_window* win) {
 	#if SGFE_HAS_MULTIPLE_SCREENS == 0
 	return SGFE_screenPrimary;
+	SGFE_UNUSED(win);
 	#else
 	return SGFE_windowGetCurrentScreen_platform(win);
 	#endif
@@ -2325,6 +2709,7 @@ SGFE_screen SGFE_windowGetCurrentScreen(SGFE_window* win) {
 SGFE_bool SGFE_windowIsScreenEnabled(SGFE_window* win, SGFE_screen screen) {
 	#if SGFE_HAS_MULTIPLE_SCREENS == 0
 	return SGFE_TRUE;
+	SGFE_UNUSED(win); SGFE_UNUSED(screen);
 	#else
 	return SGFE_windowIsScreenEnabled_platform(win, screen);
 	#endif
@@ -2356,6 +2741,11 @@ SGFE_window* SGFE_windowMakePtr(SGFE_videoMode mode, SGFE_windowFlag flags,
 	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
 		SGFE__controllerAddToList(&win->disconnected_controllers, &win->controllers[i]);
 	}
+	#if SGFE_MAX_KEYBOARDS != 0
+	for (isize i = 0; i < SGFE_MAX_KEYBOARDS; i += 1) {
+		SGFE__keyboardAddToList(&win->disconnected_keyboards, &win->keyboards[i]);
+	}
+	#endif
 
 	SGFE_windowSetEventEnabledDefault(win);
 
@@ -2409,12 +2799,6 @@ SGFE_window* SGFE_windowMakePtrContextless(SGFE_windowFlag flags, SGFE_window* w
 void SGFE_windowClose(SGFE_window* win) {
 	SGFE_windowFreeContext(win);
 	SGFE_windowClose_platform(win);
-
-	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
-		SGFE_controller* controller = SGFE_windowGetController(win, i);
-		if (win == NULL) { continue; }
-		SGFE__controllerSetConnection(win, controller, SGFE_FALSE);
-	}
 
 	#ifndef SGFE__BACKEND_FREE_WINDOW_IN_CLOSE
 	if (win->is_allocated) {
@@ -2495,18 +2879,18 @@ void SGFE_windowSetEventEnabledDefault(SGFE_window* win) {
 	SGFE_windowSetEventEnabled(win, SGFE_eventPointer, SGFE_TRUE);
 	SGFE_windowSetEventEnabled(win, SGFE_eventMotion, SGFE_TRUE);
 
-	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardConnected, SGFE_FALSE);
-	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardDisconnected, SGFE_FALSE);
-	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardDown, SGFE_FALSE);
-	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardUp, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardConnected, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardDisconnected, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardDown, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventKeyboardUp, SGFE_TRUE);
 	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_FALSE);
 
-	SGFE_windowSetEventEnabled(win, SGFE_eventMouseConnected, SGFE_FALSE);
-	SGFE_windowSetEventEnabled(win, SGFE_eventMouseDisconnected, SGFE_FALSE);
-	SGFE_windowSetEventEnabled(win, SGFE_eventMouseMove, SGFE_FALSE);
-	SGFE_windowSetEventEnabled(win, SGFE_eventMouseButtonDown, SGFE_FALSE);
-	SGFE_windowSetEventEnabled(win, SGFE_eventMouseButtonUp, SGFE_FALSE);
-	SGFE_windowSetEventEnabled(win, SGFE_eventMouseWheel, SGFE_FALSE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventMouseConnected, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventMouseDisconnected, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventMouseMove, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventMouseButtonDown, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventMouseButtonUp, SGFE_TRUE);
+	SGFE_windowSetEventEnabled(win, SGFE_eventMouseWheel, SGFE_TRUE);
 }
 
 SGFE_bool SGFE_windowCheckEvent(SGFE_window* win, const SGFE_event** out_event) {
@@ -2705,16 +3089,14 @@ void SGFE_windowAssert(SGFE_window* win, SGFE_bool is_asserted, const char* cond
 	if (!res) { exit(1); }
 
 	while (!SGFE_windowShouldClose(win)) {
-		SGFE_windowPollEvents(win);
+		const SGFE_windowState* state = SGFE_windowPollEvents(win);
 
-		for (ssize_t i = 0; i < win->state.controllers.count; i += 1) {
-			SGFE_controller* controller = SGFE_windowGetController(win, i);
-			if (controller == NULL) { continue; }
+		SGFE_controller* controller = SGFE_controllerGet(state->controllers, 0);
+		if (controller == NULL) { continue; }
 
-			if (controller->buttons_down != 0) {
-				SGFE_windowSetShouldClose(win, SGFE_TRUE);
-				break;
-			}
+		if (controller->buttons_down != 0) {
+			SGFE_windowSetShouldClose(win, SGFE_TRUE);
+			break;
 		}
 
 		SGFE_windowSwapBuffers(win);
@@ -2935,52 +3317,27 @@ SGFE_bool SGFE_bufferIsStereoscopic(SGFE_contextBuffer* b) {
 
 
 
-SGFE_controller* SGFE_windowGetController(SGFE_window* win, isize port) {
-	SGFE_ASSERT_NOT_NULL(win);
-	SGFE_ASSERT_RANGE(port, 0, SGFE_MAX_CONTROLLERS - 1);
+SGFE_controller* SGFE_controllerGet(SGFE_controllerList list, isize player_index) {
+	SGFE_ASSERT_RANGE(player_index, 0, SGFE_MAX_CONTROLLERS - 1);
 
-	const SGFE_controllerList* list = &win->state.controllers;
-	if (port >= list->count) { return NULL; }
+	if (player_index >= list.count) { return NULL; }
 
-	SGFE_controller* res = list->first;
-	for (isize i = 0; i < port; i += 1) {
+	SGFE_controller* res = list.first;
+	for (isize i = 0; i < player_index; i += 1) {
 		res = res->next;
 	}
 
 	return res;
 }
 
-SGFE_bool SGFE_windowIsControllerConnected(SGFE_window* win, const SGFE_controller* controller) {
-	SGFE_ASSERT_NOT_NULL(win);
+SGFE_bool SGFE_controllerIsConnected(SGFE_controllerList list, const SGFE_controller* controller) {
 	SGFE_ASSERT_NOT_NULL(controller);
 
-	const SGFE_controllerList* list = &win->state.controllers;
-
-	SGFE_controller* res = list->first;
-	for (isize i = 0; i < list->count; i += 1) {
+	SGFE_controller* res = list.first;
+	for (isize i = 0; i < list.count; i += 1) {
 		if (res == controller) { return SGFE_TRUE; }
 		res = res->next;
 	}
-
-	/* NOTE(EimaMei): There's a slim chance that the given controller is invalid
-	 * because A) it doesn't come from SGFE directly OR B) the backend forgot to
-	 * set it as disconnected. Regardless, this code should catch both cases during
-	 * debug. */
-#ifndef NDEBUG
-	list = &win->disconnected_controllers;
-
-	res = list->first;
-	for (isize i = 0; i < list->count; i += 1) {
-		/* NOTE(EimaMei): Controller *is* in the disconnected list, meaning everything
-		 * is OK. */
-		if (res == controller) { return SGFE_FALSE; }
-		res = res->next;
-	}
-
-	/* NOTE(EimaMei): Something 100% went wrong. */
-	/* TODO(EimaMei): Replace this with a panic message about the comment above. */
-	SGFE_ASSERT(0);
-#endif
 
 	return SGFE_FALSE;
 }
@@ -3206,6 +3563,66 @@ SGFE_bool SGFE_controllerEnableMotion(SGFE_controller* controller, SGFE_motionTy
 	return res;
 }
 
+/* TODO. */
+SGFE_keyboard* SGFE_keyboardGet(SGFE_keyboardList list, isize player_index) {
+	SGFE_ASSERT_RANGE(player_index, 0, SGFE_MAX_CONTROLLERS - 1);
+
+	if (player_index >= list.count) { return NULL; }
+
+	SGFE_keyboard* res = list.first;
+	for (isize i = 0; i < player_index; i += 1) {
+		res = res->next;
+	}
+
+	return res;
+}
+
+SGFE_bool SGFE_keyboardIsConnected(SGFE_keyboardList list, const SGFE_keyboard* keyboard) {
+	SGFE_ASSERT_NOT_NULL(keyboard);
+
+	SGFE_keyboard* res = list.first;
+	for (isize i = 0; i < list.count; i += 1) {
+		if (res == keyboard) { return SGFE_TRUE; }
+		res = res->next;
+	}
+
+	return SGFE_FALSE;
+}
+
+
+SGFE_bool SGFE_isKeyHeld(const SGFE_keyboard* keyboard, SGFE_key key) {
+	SGFE_ASSERT_NOT_NULL(keyboard);
+	SGFE_ASSERT_RANGE(key, 0, SGFE_keyLast);
+
+	SGFE_keyState state = keyboard->keystate[key];
+	return state.was_down && state.is_down;
+}
+
+SGFE_bool SGFE_isKeyDown(const SGFE_keyboard* keyboard, SGFE_key key) {
+	SGFE_ASSERT_NOT_NULL(keyboard);
+	SGFE_ASSERT_RANGE(key, 0, SGFE_keyLast);
+
+	SGFE_keyState state = keyboard->keystate[key];
+	return state.is_down;
+}
+
+SGFE_bool SGFE_isKeyUp(const SGFE_keyboard* keyboard, SGFE_key key) {
+	SGFE_ASSERT_NOT_NULL(keyboard);
+	SGFE_ASSERT_RANGE(key, 0, SGFE_keyLast);
+
+	SGFE_keyState state = keyboard->keystate[key];
+	return state.was_down && !state.is_down;
+}
+
+SGFE_key SGFE_keyFromAPI(const SGFE_keyboard* keyboard, u32 api_keycode) {
+	SGFE_ASSERT_NOT_NULL(keyboard);
+	return keyboard->API_to_SGFE_LUT[api_keycode];
+}
+
+u32 SGFE_keyToAPI(const SGFE_keyboard* keyboard, SGFE_key key) {
+	SGFE_ASSERT_NOT_NULL(keyboard);
+	return keyboard->SGFE_to_API_LUT[key];
+}
 
 
 #if defined(SGFE_OPENGL)
@@ -3440,6 +3857,8 @@ SGFE_CALLBACK_DEFINE(SGFE_pointerProc, SGFE_windowSetPointerCallback, pointer)
 SGFE_CALLBACK_DEFINE(SGFE_motionProc, SGFE_windowSetMotionCallback, motion)
 
 SGFE_CALLBACK_DEFINE(SGFE_textInputProc, SGFE_windowSetTextInputCallback, text_input)
+SGFE_CALLBACK_DEFINE(SGFE_keyboardProc, SGFE_windowSetKeyboardCallback, keyboard)
+SGFE_CALLBACK_DEFINE(SGFE_keyProc, SGFE_windowSetKeyCallback, key)
 
 
 SGFE_debugProc SGFE_setDebugCallback(SGFE_debugProc func, void* user_param) {
@@ -4959,12 +5378,12 @@ SGFE_systemLanguage SGFE_systemGetLanguage(void) {
 		case CFG_LANGUAGE_DE: return SGFE_systemLanguageGerman;
 		case CFG_LANGUAGE_IT: return SGFE_systemLanguageItalian;
 		case CFG_LANGUAGE_ES: return SGFE_systemLanguageSpanish;
-		case CFG_LANGUAGE_ZH: return SGFE_systemLanguageChinese;
+		case CFG_LANGUAGE_ZH: return SGFE_systemLanguageSimplifiedChinese;
 		case CFG_LANGUAGE_KO: return SGFE_systemLanguageKorean;
 		case CFG_LANGUAGE_NL: return SGFE_systemLanguageDutch;
 		case CFG_LANGUAGE_PT: return SGFE_systemLanguagePortuguese;
 		case CFG_LANGUAGE_RU: return SGFE_systemLanguageRussian;
-		case CFG_LANGUAGE_TW: return SGFE_systemLanguageTaiwanese;
+		case CFG_LANGUAGE_TW: return SGFE_systemLanguageTraditionalChinese;
 		case CFG_LANGUAGE_DEFAULT:
 		default: return SGFE_systemLanguageUnknown;
 	}

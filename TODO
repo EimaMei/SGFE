@@ -1,11 +1,12 @@
 Features:
+- add adaptive vsync to buffer (check out lag via unoptimized standard.c)
 - controllerListGetAvailable
 - Add changes from Desktop to Embedded
 - Add a sizeof and getters/setters for each opaque struct type.
 - Add a "end poll" event and function. On 3ds pay mind that software keyboard should be taken account of.
 - (Wii) GameCube controller support.
 - Make "setNative" alloc non-native buffers if false is specified and buffers are null.
-- (Wii) add keyboard support. Add TextInput support for it.
+- (Wii) Add TextInput support for it.
 - (Wii) add mouse support.
 - Add options to disable app termination/loss of focus.
 - Replace  SGFE_ASSERT(0) with PANIC.
@@ -16,6 +17,7 @@ Features:
 
 
 API-breaking changes:
+- change standard format to RGB instead of RGBA
 - Use bitwise to denote features instead of ranges.
 
 
@@ -23,6 +25,7 @@ Documentation:
 - event_queue | move the explanation from basic.c to it
 - callbacks | make it more in-depth
 - window-state
+- example on ticks/platform functions
 - README.md guide on creating a console backend.
 - Document all macros.
 - Document all examples.
@@ -80,6 +83,7 @@ provided by glGetInteger (SSAA/downscale)
 - (3DS) aptSetSleepAllowed/aptIsSleepAllowed and aptSetHomeAllowed/aptIsHomeAllowed
 - (3DS) see if it's possible to implement and remove 3dsx.specs
 - (3DS) implement opengl hints
+- (Wii) replace wiikeyboard with a custom implementation.
 
 Distant TODO:
 - Create a portable stdout/stderr library that'd write the text on screen.
