@@ -40,6 +40,8 @@ CPU_Image CPU_imageMake(const CPU_Surface* s, const u8* data, isize width, isize
 
 
 /* TODO */
+void surface_set_scale(CPU_Surface* s, isize scale_multiplier);
+/* TODO */
 void surface_set_widescreen(CPU_Surface* s, SGFE_bool is_wide);
 
 
@@ -118,6 +120,12 @@ CPU_Image CPU_imageMake(const CPU_Surface* s, const u8* data, isize width, isize
 }
 
 
+void surface_set_scale(CPU_Surface* s, isize scale_multiplier) {
+	s->scale_x = s->scale_x / (float)s->scale_multiplier * (float)scale_multiplier;
+	s->scale_y = s->scale_y / (float)s->scale_multiplier * (float)scale_multiplier;
+	s->scale_multiplier = scale_multiplier;
+}
+
 void surface_set_widescreen(CPU_Surface* s, SGFE_bool is_wide) {
 	if (!is_wide) {
 		s->scale_x = s->scale_y = (float)s->scale_multiplier;
@@ -130,6 +138,7 @@ void surface_set_widescreen(CPU_Surface* s, SGFE_bool is_wide) {
 	s->scale_x = (float)s->width  / (256.0f * (float)multiply) * (float)s->scale_multiplier;
 	s->scale_y = (float)s->height / (144.0f * (float)multiply) * (float)s->scale_multiplier;
 }
+
 
 void surface_clear_buffers(CPU_Surface* surface) {
 	isize bpp = SGFE_bufferFormatGetBytesPerPixel(SGFE_bufferGetFormat(surface->ctx));

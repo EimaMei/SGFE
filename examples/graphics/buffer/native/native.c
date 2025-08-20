@@ -1,4 +1,3 @@
-#include "SGFE.h"
 #define SGFE_IMPLEMENTATION
 
 /* Specifying 'SGFE_BUFFER_NO_CONVERSION' disables Embedded functionality to convert
@@ -47,7 +46,7 @@ int main(void) {
 	if (win == NULL) { return 1; }
 
 	CPU_Surface s = surface_make(SGFE_windowGetContextBuffer(win), CPU_colorMake(255, 255, 255, 0));
-	s.scale_multiplier = SCALE_OBJECTS;
+	surface_set_scale(&s, SCALE_OBJECTS);
 
 	#ifdef SGFE_WII
 	/* NOTE(EimaMei): The Wii outputs its native video in a 4:3 aspect ratio (usually

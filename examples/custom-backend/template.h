@@ -617,7 +617,6 @@ u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b) {
 	}
 	u8* dst = b->buffers_native[b->current];
 
-	isize bpp = SGFE_bufferFormatGetBytesPerPixel(b->format);
 	isize width, height;
 	SGFE_bufferGetResolution(b, &width, &height);
 
@@ -752,6 +751,11 @@ SGFE_bool SGFE_windowTextInputBegin(SGFE_window* win, u8* buffer, isize buffer_l
 
 	/* If backend does not support text input, return false. */
 	/* s->platform_flags = ... */
+	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_TRUE);
+	win->state.has_text_input = SGFE_FALSE;
+	win->state.text = buffer;
+	win->state.text_len = 0;
+
 	return SGFE_TRUE;
 }
 
@@ -759,6 +763,9 @@ void SGFE_windowTextInputEnd(SGFE_window* win) {
 	SGFE_ASSERT_NOT_NULL(win);
 	if (!SGFE_windowTextInputIsActive(win)) { return; }
 	#warning "Warning to notify that this function hasn't been implemented yet."
+
+	/* ... */
+	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_FALSE);
 }
 
 
@@ -829,7 +836,7 @@ SGFE_systemLanguage SGFE_systemGetLanguage(void) {
 
 
 
-/* === PLATFORM FUNCTIONS === */
+#if 1 /* === PLATFORM FUNCTIONS === */
 /* NOTE(EimaMei): The 'platform' functions below are the only ones that must be
  * present on every backend.
  *
@@ -838,8 +845,6 @@ SGFE_systemLanguage SGFE_systemGetLanguage(void) {
  * features (e.g. 3D slider on the 3DS). The API also includes general functions
  * that are platform-dependent (e.g. getting time and CPU clock speed, initializing
  * terminal output, getting system model, etc). */
-#if 1
-
 
 i64 SGFE_platformGetTimeFromTicks(u64 ticks) {
 	/* NOTE(EimaMei): The return must be UNIX time with nanosecond precision. */
@@ -878,14 +883,20 @@ SGFE_bool SGFE_platformInitTerminalOutputEx(SGFE_contextBuffer* b, isize x, isiz
 	#endif
 }
 
-#endif
-/* === DEBUG FUNCTIONS === */
+SGFE_bool SGFE_platformHasSoftwareKeyboard(void) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	return SGFE_FALSE;
+
+}
+
+#endif /* === PLATFORM FUNCTIONS === */
+
+
+
+#if 1 /* === DEBUG FUNCTIONS === */
 /* NOTE(EimaMei): The backend has to providee string representations of all
  * SGFE platform API errors', warnings' and infos' names as well as their descriptions.
  * Alongside this system error names and descriptions have to be given. */
-
-
-
 
 const char* SGFE_debugSourcePlatformAPIGetName(SGFE_debugType type, isize code) {
 	SGFE_ASSERT(
@@ -968,5 +979,7 @@ SGFE_debugType SGFE_debugSystemGenerateType_platform(void* ctx_ptr, isize code) 
 	 * with SGFE's. In such cases this function has to return the closest
 	 * representation of what the code type could be in SGFE. */
 }
+
+#endif /* === DEBUG FUNCTIONS === */
 
 #endif /* SGFE_IMPLEMENTATION */

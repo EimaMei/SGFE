@@ -21,8 +21,10 @@
 	#define BUTTON_UP     SGFE_Up
 	#define BUTTON_DOWN   SGFE_Down
 
-	#define BUTTON_PRIMARY   SGFE_A
-	#define BUTTON_SECONDARY SGFE_B
+	#define BUTTON_PRIMARY    SGFE_A
+	#define BUTTON_SECONDARY  SGFE_B
+	#define BUTTON_TERTIARY   SGFE_1
+	#define BUTTON_QUATERNARY SGFE_2
 
 	#define BUTTON_BACK  SGFE_Minus
 	#define BUTTON_START SGFE_Plus

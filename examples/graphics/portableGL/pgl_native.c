@@ -25,7 +25,7 @@ void identity_vs(float* vs_output, vec4* vertex_attribs, Shader_Builtins* builti
 
 	builtins->gl_Position = mult_mat4_vec4((float*)deg90_rotation_matrix, vertex_attribs[0]);
 	#else
-	builtins->gl_Position = vertex_attribs[0];
+	#error "This example is not supported on this platform."
 	#endif
 }
 
@@ -72,10 +72,10 @@ int main() {
 	glClearColor(1, 1, 1, 1);
 
 	while (!SGFE_windowShouldClose(win)) {
-		SGFE_windowPollEvents(win);
+		const SGFE_windowState* state = SGFE_windowPollEvents(win);
 
-		SGFE_controller* p1 = SGFE_windowGetController(win, 0);
-		if (SGFE_isDown(p1, BUTTON_START)) {
+		SGFE_controller* p1 = SGFE_controllerGet(state->controllers, 0);
+		if (p1 && SGFE_isDown(p1, BUTTON_START)) {
 			SGFE_windowSetShouldClose(win, SGFE_TRUE);
 			continue;
 		}

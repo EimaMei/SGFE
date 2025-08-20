@@ -4,11 +4,9 @@
 
 size_t counter = 0;
 
-#define SGFE_WII_NO_WAIT_FOR_CONNECTION
 #define SGFE_MAX_KEYBOARDS 1
 #define SGFE_IMPLEMENTATION
-#include <SGFE-wii.h>
-#define SGFE_WII 1
+#include <SGFE.h>
 #include <resources/controls.h>
 
 SGFE_bool shutup = 0;
@@ -107,8 +105,8 @@ static
 void callback_key(SGFE_window* win, SGFE_keyboard* keyboard, SGFE_key key,
 		SGFE_bool is_repeated, SGFE_bool is_pressed) {
 	printf(
-		"button %s: %i (repeated: %i)\n", 
-		is_pressed ? "pressed" : "released", key,
+		"key %s: %s (repeated: %i)\n", 
+		is_pressed ? "pressed" : "released", SGFE_keyGetName(key),
 		is_repeated
 	);
 

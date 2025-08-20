@@ -80,7 +80,7 @@ int main(void) {
 		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_LEFT)),
 		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_RIGHT)),
 
-		SGFE_platformHasSoftwareKeybord()
+		SGFE_platformHasSoftwareKeyboard()
 	);
 
 	isize event_mode = 0;
@@ -108,10 +108,10 @@ int main(void) {
 			} break;
 		}
 
-		SGFE_controller* controller = SGFE_windowGetController(win, 0);
+		SGFE_controller* controller = SGFE_controllerGet(SGFE_windowGetState(win)->controllers, 0);
 		if (controller == NULL) { SGFE_windowSwapBuffers(win); continue; }
 
-		if (SGFE_isDown(controller, SGFE_Start)) {
+		if (SGFE_isDown(controller, BUTTON_START)) {
 			SGFE_windowSetShouldClose(win, SGFE_TRUE);
 			break;
 		}

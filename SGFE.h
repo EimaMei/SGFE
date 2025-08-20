@@ -199,6 +199,7 @@ extern "C" {
 
 	#define SGFE_HAS_OPENGL              1
 	#define SGFE_HAS_MULTIPLE_SCREENS    1
+	#define SGFE_HAS_KEYBOARD            1
 	#define SGFE_VBLANK_RATE            60
 
 	#ifdef SGFE_IMPLEMENTATION
@@ -221,6 +222,7 @@ extern "C" {
 
 	#define SGFE_HAS_OPENGL              0
 	#define SGFE_HAS_MULTIPLE_SCREENS    0
+	#define SGFE_HAS_KEYBOARD            1
 	#define SGFE_VBLANK_RATE            60
 
 	#ifdef SGFE_IMPLEMENTATION
@@ -242,6 +244,10 @@ extern "C" {
 
 #ifndef SGFE_HAS_OPENGL
 	#undef SGFE_OPENGL
+#endif
+
+#ifndef SGFE_HAS_MULTIPLE_SCREENS
+	#undef SGFE_MAX_KEYBOARDS
 #endif
 
 #ifndef SGFE_DEFINE_TYPE_STDINT
@@ -1151,9 +1157,12 @@ struct SGFE_contextGL {
 #ifndef HW_RVL
 #define HW_RVL 1
 #endif
+
 #include <gccore.h>
 #include <wiiuse/wpad.h>
-
+#if SGFE_MAX_KEYBOARDS != 0
+#include <wiikeyboard/keyboard.h>
+#endif
 
 struct SGFE_windowSource {
 	struct wiimote_t** wiimotes;
@@ -1227,8 +1236,6 @@ struct SGFE_window {
 	SGFE_windowFlag flags;
 	/* TODO */
 	void* user_ptr;
-	/* TODO */
-	SGFE_button exit_buttons;
 
 	/* TODO */
 	SGFE_bool is_allocated;
@@ -1263,15 +1270,21 @@ SGFE_DEF isize SGFE_sizeofWindow(void);
 /* TODO */
 SGFE_DEF isize SGFE_sizeofWindowSrc(void);
 
-SGFE_DEF void* SGFE_windowGetUserPtr(SGFE_window* win);
-SGFE_DEF void SGFE_windowSetUserPtr(SGFE_window* win, void* ptr);
 /* TODO */
 SGFE_DEF SGFE_windowSource* SGFE_windowGetSource(SGFE_window* win);
+/* TODO */
+SGFE_DEF const SGFE_windowState* SGFE_windowGetState(const SGFE_window* win);
+/* TODO */
+SGFE_DEF void* SGFE_windowGetUserPtr(const SGFE_window* win);
+
+/* TODO */
+SGFE_DEF void SGFE_windowSetUserPtr(SGFE_window* win, void* ptr);
+
+
 /* TODO */
 SGFE_DEF SGFE_screen SGFE_windowGetCurrentScreen(SGFE_window* win);
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_windowIsScreenEnabled(SGFE_window* win, SGFE_screen screen);
-
 
 
 
@@ -1455,6 +1468,10 @@ SGFE_DEF SGFE_bool SGFE_isKeyUp(const SGFE_keyboard* keyboard, SGFE_key key);
 SGFE_DEF SGFE_key SGFE_keyFromAPI(const SGFE_keyboard* keyboard, u32 api_keycode);
 /* TODO */
 SGFE_DEF u32 SGFE_keyToAPI(const SGFE_keyboard* keyboard, SGFE_key key);
+
+
+/* TODO */
+SGFE_DEF const char* SGFE_keyGetName(SGFE_key key);
 
 #endif
 
@@ -2013,7 +2030,7 @@ SGFE_DEF SGFE_bool SGFE_platformInitTerminalOutputEx(SGFE_contextBuffer* b, isiz
 
 
 /* TODO */
-SGFE_DEF SGFE_bool SGFE_platformHasSoftwareKeybord(void);
+SGFE_DEF SGFE_bool SGFE_platformHasSoftwareKeyboard(void);
 
 
 #ifdef SGFE_3DS
@@ -2038,8 +2055,20 @@ SGFE_DEF SGFE_bool SGFE_platformRotateScreenGL(GLuint shader_program, const char
 /* TODO */
 SGFE_DEF SGFE_button SGFE_platformButtonFromWiiRemote(u32 mask);
 /* TODO */
-SGFE_DEF u32 SGFE_platformButtonFromToRemote(SGFE_button button);
+SGFE_DEF SGFE_button SGFE_platformButtonFromNunchuk(u32 mask);
 
+/* TODO */
+SGFE_DEF u32 SGFE_platformButtonToWiiRemote(SGFE_button button);
+/* TODO */
+SGFE_DEF u32 SGFE_platformButtonToNunchuk(SGFE_button button);
+
+/* TODO */
+SGFE_DEF SGFE_bool SGFE_platformIsWidescreen(void);
+
+/* TODO */
+SGFE_DEF u32 SGFE_platformRGB8ToYCbCr(u8 r1, u8 g1, u8 b1, u8 r2, u8 g2, u8 b2);
+/* TODO */
+SGFE_DEF u32 SGFE_platformRGB8ToYCbCr_singular(u8 r, u8 g, u8 b);
 
 #endif
 
@@ -2686,16 +2715,33 @@ void SGFE__processCallbackAndEventQueue_KeyUp(SGFE_window* win, SGFE_keyboard* k
 	}
 }
 
-isize SGFE_sizeofWindow(void) { return sizeof(SGFE_window); }
-isize SGFE_sizeofWindowSrc(void) { return sizeof(SGFE_windowSource); }
 
-void* SGFE_windowGetUserPtr(SGFE_window* win) { SGFE_ASSERT_NOT_NULL(win); return win->user_ptr; }
-void SGFE_windowSetUserPtr(SGFE_window* win, void* ptr) { SGFE_ASSERT_NOT_NULL(win); win->user_ptr = ptr; }
+
+isize SGFE_sizeofWindow(void) {
+	return sizeof(SGFE_window);
+}
+isize SGFE_sizeofWindowSrc(void) {
+	return sizeof(SGFE_windowSource);
+}
 
 SGFE_windowSource* SGFE_windowGetSource(SGFE_window* win) {
 	SGFE_ASSERT_NOT_NULL(win);
 	return &win->src;
 }
+const SGFE_windowState* SGFE_windowGetState(const SGFE_window* win) {
+	SGFE_ASSERT_NOT_NULL(win);
+	return &win->state;
+}
+void* SGFE_windowGetUserPtr(const SGFE_window* win) {
+	SGFE_ASSERT_NOT_NULL(win);
+	return win->user_ptr;
+}
+
+void SGFE_windowSetUserPtr(SGFE_window* win, void* ptr) {
+	SGFE_ASSERT_NOT_NULL(win);
+	win->user_ptr = ptr;
+}
+
 
 SGFE_screen SGFE_windowGetCurrentScreen(SGFE_window* win) {
 	#if SGFE_HAS_MULTIPLE_SCREENS == 0
@@ -3345,19 +3391,34 @@ SGFE_bool SGFE_controllerIsConnected(SGFE_controllerList list, const SGFE_contro
 
 SGFE_bool SGFE_isHeld(const SGFE_controller* controller, SGFE_button mask) {
 	SGFE_ASSERT_NOT_NULL(controller);
-	SGFE_ASSERT((mask & ~SGFE_buttonGetMask(controller->type)) == 0);
+	SGFE_ASSERT_FMT(
+		(mask & ~SGFE_buttonGetMask(controller->type)) == 0,
+		"mask = %x; controller_mask = %x; res = %x; controller->type = %i",
+		mask,  SGFE_buttonGetMask(controller->type), (mask & ~SGFE_buttonGetMask(controller->type)),
+		controller->type
+	);
 	return (controller->buttons_held & mask) == mask;
 }
 
 SGFE_bool SGFE_isDown(const SGFE_controller* controller, SGFE_button mask) {
 	SGFE_ASSERT_NOT_NULL(controller);
-	SGFE_ASSERT((mask & ~SGFE_buttonGetMask(controller->type)) == 0);
+	SGFE_ASSERT_FMT(
+		(mask & ~SGFE_buttonGetMask(controller->type)) == 0,
+		"mask = %x; controller_mask = %x; res = %x; controller->type = %i",
+		mask,  SGFE_buttonGetMask(controller->type), (mask & ~SGFE_buttonGetMask(controller->type)),
+		controller->type
+	);
 	return (controller->buttons_down & mask) == mask;
 }
 
 SGFE_bool SGFE_isUp(const SGFE_controller* controller, SGFE_button mask) {
 	SGFE_ASSERT_NOT_NULL(controller);
-	SGFE_ASSERT((mask & ~SGFE_buttonGetMask(controller->type)) == 0);
+	SGFE_ASSERT_FMT(
+		(mask & ~SGFE_buttonGetMask(controller->type)) == 0,
+		"mask = %x; controller_mask = %x; res = %x; controller->type = %i",
+		mask,  SGFE_buttonGetMask(controller->type), (mask & ~SGFE_buttonGetMask(controller->type)),
+		controller->type
+	);
 	return (controller->buttons_up & mask) == mask;
 }
 
@@ -3614,6 +3675,7 @@ SGFE_bool SGFE_isKeyUp(const SGFE_keyboard* keyboard, SGFE_key key) {
 	return state.was_down && !state.is_down;
 }
 
+
 SGFE_key SGFE_keyFromAPI(const SGFE_keyboard* keyboard, u32 api_keycode) {
 	SGFE_ASSERT_NOT_NULL(keyboard);
 	return keyboard->API_to_SGFE_LUT[api_keycode];
@@ -3622,6 +3684,145 @@ SGFE_key SGFE_keyFromAPI(const SGFE_keyboard* keyboard, u32 api_keycode) {
 u32 SGFE_keyToAPI(const SGFE_keyboard* keyboard, SGFE_key key) {
 	SGFE_ASSERT_NOT_NULL(keyboard);
 	return keyboard->SGFE_to_API_LUT[key];
+}
+
+
+const char* SGFE_keyGetName(SGFE_key key) {
+	SGFE_ASSERT_RANGE(key, 0, SGFE_keyLast);
+
+	switch (key) {
+		case SGFE_keyEsc:           return "Esc";
+		case SGFE_keyBacktick:      return "`";
+
+		case SGFE_key1:             return "1";
+		case SGFE_key2:             return "2";
+		case SGFE_key3:             return "3";
+		case SGFE_key4:             return "4";
+		case SGFE_key5:             return "5";
+		case SGFE_key6:             return "6";
+		case SGFE_key7:             return "7";
+		case SGFE_key8:             return "8";
+		case SGFE_key9:             return "9";
+		case SGFE_key0:             return "0";
+
+		case SGFE_keyMinus:         return "-";
+		case SGFE_keyEquals:        return "=";
+		case SGFE_keyBackspace:     return "Backspace";
+		case SGFE_keyTab:           return "Tab";
+		case SGFE_keySpace:         return "Space";
+		case SGFE_keyA:             return "A";
+		case SGFE_keyB:             return "B";
+		case SGFE_keyC:             return "C";
+		case SGFE_keyD:             return "D";
+		case SGFE_keyE:             return "E";
+		case SGFE_keyF:             return "F";
+		case SGFE_keyG:             return "G";
+		case SGFE_keyH:             return "H";
+		case SGFE_keyI:             return "I";
+		case SGFE_keyJ:             return "J";
+		case SGFE_keyK:             return "K";
+		case SGFE_keyL:             return "L";
+		case SGFE_keyM:             return "M";
+		case SGFE_keyN:             return "N";
+		case SGFE_keyO:             return "O";
+		case SGFE_keyP:             return "P";
+		case SGFE_keyQ:             return "Q";
+		case SGFE_keyR:             return "R";
+		case SGFE_keyS:             return "S";
+		case SGFE_keyT:             return "T";
+		case SGFE_keyU:             return "U";
+		case SGFE_keyV:             return "V";
+		case SGFE_keyW:             return "W";
+		case SGFE_keyX:             return "X";
+		case SGFE_keyY:             return "Y";
+		case SGFE_keyZ:             return "Z";
+
+		case SGFE_keyPeriod:        return ".";
+		case SGFE_keyComma:         return ",";
+		case SGFE_keySlash:         return "/";
+		case SGFE_keyBracketOpen:   return "[";
+		case SGFE_keyBracketClose:  return "]";
+		case SGFE_keySemicolon:     return ";";
+		case SGFE_keyApostrophe:    return "'";
+		case SGFE_keyBackslash:     return "\\";
+		case SGFE_keyReturn:        return "Return";
+		case SGFE_keyDelete:        return "Delete";
+
+		case SGFE_keyF1:  return "F1";
+		case SGFE_keyF2:  return "F2";
+		case SGFE_keyF3:  return "F3";
+		case SGFE_keyF4:  return "F4";
+		case SGFE_keyF5:  return "F5";
+		case SGFE_keyF6:  return "F6";
+		case SGFE_keyF7:  return "F7";
+		case SGFE_keyF8:  return "F8";
+		case SGFE_keyF9:  return "F9";
+		case SGFE_keyF10: return "F10";
+		case SGFE_keyF11: return "F11";
+		case SGFE_keyF12: return "F12";
+		case SGFE_keyF13: return "F13";
+		case SGFE_keyF14: return "F14";
+		case SGFE_keyF15: return "F15";
+		case SGFE_keyF16: return "F16";
+		case SGFE_keyF17: return "F17";
+		case SGFE_keyF18: return "F18";
+		case SGFE_keyF19: return "F19";
+		case SGFE_keyF20: return "F20";
+		case SGFE_keyF21: return "F21";
+		case SGFE_keyF22: return "F22";
+		case SGFE_keyF23: return "F23";
+		case SGFE_keyF24: return "F24";
+		case SGFE_keyF25: return "F25";
+
+		case SGFE_keyCapsLock:  return "CapsLock";
+		case SGFE_keyShiftL:    return "ShiftL";
+		case SGFE_keyControlL:  return "ControlL";
+		case SGFE_keyAltL:      return "AltL";
+		case SGFE_keySuperL:    return "SuperL";
+		case SGFE_keyShiftR:    return "ShiftR";
+		case SGFE_keyControlR:  return "ControlR";
+		case SGFE_keyAltR:      return "AltR";
+		case SGFE_keySuperR:    return "SuperR";
+
+		case SGFE_keyUp:        return "Up";
+		case SGFE_keyDown:      return "Down";
+		case SGFE_keyLeft:      return "Left";
+		case SGFE_keyRight:     return "Right";
+
+		case SGFE_keyInsert:    return "Insert";
+		case SGFE_keyMenu:      return "Menu";
+		case SGFE_keyEnd:       return "End";
+		case SGFE_keyHome:      return "Home";
+		case SGFE_keyPageUp:    return "PageUp";
+		case SGFE_keyPageDown:  return "PageDown";
+
+		case SGFE_keyNumLock:     return "NumLock";
+		case SGFE_keyKpDivide:    return "KpDivide";
+		case SGFE_keyKpMultiply:  return "KpMultiply";
+		case SGFE_keyKpPlus:      return "KpPlus";
+		case SGFE_keyKpMinus:     return "KpMinus";
+		case SGFE_keyKpEqual:     return "KpEqual";
+		case SGFE_keyKp1:         return "Kp1";
+		case SGFE_keyKp2:         return "Kp2";
+		case SGFE_keyKp3:         return "Kp3";
+		case SGFE_keyKp4:         return "Kp4";
+		case SGFE_keyKp5:         return "Kp5";
+		case SGFE_keyKp6:         return "Kp6";
+		case SGFE_keyKp7:         return "Kp7";
+		case SGFE_keyKp8:         return "Kp8";
+		case SGFE_keyKp9:         return "Kp9";
+		case SGFE_keyKp0:         return "Kp0";
+		case SGFE_keyKpPeriod:    return "KpPeriod";
+		case SGFE_keyKpReturn:    return "KpReturn";
+
+		case SGFE_keyScrollLock:   return "ScrollLock";
+		case SGFE_keyPrintScreen:  return "PrintScreen";
+		case SGFE_keyPause:        return "Pause";
+		case SGFE_keyWorld1:       return "World1";
+		case SGFE_keyWorld2:       return "World2";
+
+		default: return "Unknown";
+	}
 }
 
 
@@ -5304,11 +5505,12 @@ SGFE_bool SGFE_windowTextInputBegin(SGFE_window* win, u8* buffer, isize buffer_l
 	kb->filter_flags = 0;
 	kb->max_digits = 0;
 	SGFE_MEMSET(kb->reserved, 0, sizeof(kb->reserved));
+	win->src.kb_null_terminated = s->null_terminated_strings;
 
 	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_TRUE);
+	win->state.has_text_input = SGFE_FALSE;
 	win->state.text = buffer;
 	win->state.text_len = 0;
-	win->src.kb_null_terminated = s->null_terminated_strings;
 
 	return SGFE_TRUE;
 }
@@ -5472,7 +5674,7 @@ SGFE_bool SGFE_platformInitTerminalOutputEx(SGFE_contextBuffer* b, isize x, isiz
 }
 
 
-SGFE_bool SGFE_platformHasSoftwareKeybord(void) {
+SGFE_bool SGFE_platformHasSoftwareKeyboard(void) {
 	return SGFE_TRUE;
 }
 
@@ -5614,9 +5816,1277 @@ SGFE_debugType SGFE_debugSystemGenerateType_platform(void* ctx_ptr, isize code) 
 
 #ifdef SGFE_WII
 
+const SGFE_button SGFE_BUTTON_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+	SGFE_buttonMask_WiiRemote,
+	SGFE_buttonMask_Nunchuk,
+	0
+};
+
+const isize SGFE_BUTTON_RANGE_LUT[SGFE_controllerTypeCount][2] = {
+	{0, SGFE_buttonCount_WiiRemote - 1},
+	{0, SGFE_buttonCount_Nunchuk - 1},
+	{0, -1}
+};
+const isize SGFE_AXIS_RANGE_LUT[SGFE_controllerTypeCount][2] = {
+	{0, -1},
+	{SGFE_axisLeftX, SGFE_axisLeftY},
+	{0, -1}
+};
+const isize SGFE_POINTER_RANGE_LUT[SGFE_controllerTypeCount][2] = {
+	{SGFE_pointerInfrared, SGFE_pointerInfrared},
+	{SGFE_pointerInfrared, SGFE_pointerInfrared},
+	{0, -1}
+};
+const isize SGFE_MOTION_RANGE_LUT[SGFE_controllerTypeCount][2] = {
+	{SGFE_motionAccelerometer, SGFE_motionAccelerometer},
+	{SGFE_motionAccelerometer, SGFE_motionNunchukAccelerometer},
+	{0, -1}
+};
+
+const char* SGFE_CONTROLLER_NAME_LUT[SGFE_controllerTypeCount] = {
+	"Wii Remote", "Nunchuk", "Unknown"
+};
+const char* SGFE_BUTTON_NAMES_NUNCHUK_LUT[SGFE_buttonCount_Nunchuk] = {
+	"2", "1", "B", "A", "Minus", "Home", "Left", "Right", "Down", "Up", "Plus",
+	"Z", "C"
+};
+const char* SGFE_AXIS_NAME_LUT[SGFE_axisTypeCount] = {
+	"Nunchuk X", "Nunchuk Y"
+};
+const char* SGFE_POINTER_NAME_LUT[SGFE_pointerTypeCount] = {
+	"IR Sensor"
+};
+const char* SGFE_MOTION_NAME_LUT[SGFE_motionTypeCount] = {
+	"Accelerometer", "Gyroscope", "Nunchuk accelerometer"
+};
+
+const isize SGFE_VIDEO_RESOLUTION_LUT[SGFE_videoModeCount][2] = {
+	{320, 240}, {640, 480}, {640, 480},
+	{320, 264}, {640, 576}, {640, 576},
+	{320, 240}, {640, 480}, {640, 480},
+	{320, 240}, {640, 480}, {640, 480},
+};
+
+const isize SGFE_FORMAT_BYTES_PER_PIXEL_LUT[SGFE_bufferFormatCount] = {
+	4, 2
+};
+
+const char* SGFE_VIDEO_MODE_NAME_LUT[SGFE_videoModeCount] = {
+	"SGFE_videoModeNTSC_240i",
+	"SGFE_videoModeNTSC_480i",
+	"SGFE_videoModeNTSC_480p",
+
+	"SGFE_videoModePAL_264i",
+	"SGFE_videoModePAL_528p",
+	"SGFE_videoModePAL_576i",
+
+	"SGFE_videoModeMPAL_240i",
+	"SGFE_videoModeMPAL_480i",
+	"SGFE_videoModeMPAL_480p",
+
+	"SGFE_videoModePAL60hz_240i",
+	"SGFE_videoModePAL60hz_480i",
+	"SGFE_videoModePAL60hz_480p",
+};
+
+const char* SGFE_PIXEL_FORMAT_NAME_LUT[SGFE_bufferFormatCount] = {
+	"SGFE_bufferFormatRGBA8", "SGFE_bufferFormatYCbCr"
+};
+
+
+isize SGFE__WII_EXIT_STATE;
+
+
+extern void* memalign(size_t, size_t);
+extern int usleep (__useconds_t __useconds);
+
+
+void SGFE__callbackWiiReset(u32 irq, void* ctx);
+void SGFE__callbackWiiPower(void);
+void SGFE__callbackWiiRemotePower(i32 channel);
+
+void SGFE__callbackWiiReset(u32 irq, void* ctx) { SGFE__WII_EXIT_STATE = SYS_RETURNTOMENU; SGFE_UNUSED(irq); SGFE_UNUSED(ctx); }
+void SGFE__callbackWiiPower(void) { SGFE__WII_EXIT_STATE = SYS_POWEROFF_STANDBY; }
+void SGFE__callbackWiiRemotePower(i32 channel) { SGFE__WII_EXIT_STATE = SYS_POWEROFF_STANDBY; SGFE_UNUSED(channel); }
+
+
+void SGFE__wiiCheckGXMode(SGFE_contextBuffer* b);
+
+void SGFE__wiiCheckGXMode(SGFE_contextBuffer* b) {
+	GXRModeObj** mode = &b->src.gx_video_mode;
+	if (*mode != NULL) { return; }
+
+	switch (b->mode) {
+		case SGFE_videoModeNTSC_240i:    *mode = &TVNtsc240Int;   break;
+		case SGFE_videoModeNTSC_480i:    *mode = &TVNtsc480IntDf; break;
+		case SGFE_videoModeNTSC_480p:    *mode = &TVNtsc480Prog;  break;
+
+		case SGFE_videoModePAL_264i:     *mode = &TVPal264Int;        break;
+		case SGFE_videoModePAL_576i:     *mode = &TVPal576IntDfScale; break;
+		case SGFE_videoModePAL_576p:     *mode = &TVPal576ProgScale;  break;
+
+		case SGFE_videoModeMPAL_240i:    *mode = &TVMpal240Int;    break;
+		case SGFE_videoModeMPAL_480i:    *mode = &TVMpal480IntDf;  break;
+		case SGFE_videoModeMPAL_480p:    *mode = &TVMpal480Prog;   break;
+
+		case SGFE_videoModePAL60hz_240i: *mode = &TVEurgb60Hz240Int;   break;
+		case SGFE_videoModePAL60hz_480i: *mode = &TVEurgb60Hz480IntDf; break;
+		case SGFE_videoModePAL60hz_480p: *mode = &TVEurgb60Hz480Prog;  break;
+	}
+}
+
+
+void SGFE__wiiControllerSetConnection(SGFE_window* win, SGFE_controller* controller,
+	SGFE_bool should_connected);
+void SGFE__wiiControllerAxis(SGFE_window* win, SGFE_controller* controller, SGFE_axisType type,
+	WPADData* data);
+void SGFE__wiiControllerSensor(SGFE_window* win, SGFE_controller* controller, WPADData* data);
+void SGFE__wiiControllerMotion_wiimote(SGFE_window* win, SGFE_controller* controller);
+void SGFE__wiiControllerMotion_nunchuk(SGFE_window* win, SGFE_controller* controller);
+void SGFE__wiiControllerBattery_wiimote(SGFE_window* win, SGFE_controller* controller,
+	WPADData* state, SGFE_bool report_event);
+
+void SGFE__wiiControllerSetConnection(SGFE_window* win, SGFE_controller* controller,
+		SGFE_bool should_connected) {
+	controller->array_index = (controller - win->controllers);
+
+	if (!should_connected) {
+		SGFE__controllerSetConnection(win, controller, SGFE_FALSE);
+		SGFE_windowControllerCallback(win, controller, SGFE_FALSE);
+		if (win->is_queueing_events) {
+			SGFE_event event;
+			event.type = SGFE_eventControllerDisconnected;
+			event.controller.controller = controller;
+			SGFE_windowEventPush(win, &event);
+		}
+		return ;
+	}
+
+	SGFE_MEMSET(controller->enabled_motions, 0, sizeof(controller->enabled_motions));
+	SGFE_MEMSET(controller->enabled_pointers, 0, sizeof(controller->enabled_pointers));
+
+	WPADData* data = WPAD_Data(controller->array_index);
+	#ifndef SGFE_WII_NO_WAIT_FOR_CONNECTION
+	isize connect_retries = 0;
+
+	data->exp.type = 0xFF;
+	while (data->exp.type == 0xFF && connect_retries < 3000) {
+		WPAD_ReadPending(controller->array_index, NULL);
+		connect_retries += 1;
+		usleep(1000);
+	}
+	#endif
+
+	switch (data->exp.type) {
+		case WPAD_EXP_NONE: {
+			controller->type = SGFE_controllerTypeWiiRemote;
+			SGFE__wiiControllerBattery_wiimote(win, controller, data, SGFE_FALSE);
+		} break;
+
+		case WPAD_EXP_NUNCHUK: {
+			controller->type = SGFE_controllerTypeNunchuk;
+			SGFE__wiiControllerBattery_wiimote(win, controller, data, SGFE_FALSE);
+		} break;
+
+		default: {
+			controller->type = SGFE_controllerTypeUnknown;
+			controller->power_state = SGFE_powerStateUnknown;
+			controller->battery_procent = 0;
+		}
+	}
+
+	SGFE__controllerSetConnection(win, controller, SGFE_TRUE);
+	SGFE_windowControllerCallback(win, controller, SGFE_TRUE);
+
+	if (win->is_queueing_events) {
+		SGFE_event event;
+		event.type = SGFE_eventControllerConnected;
+		event.controller.controller = controller;
+		SGFE_windowEventPush(win, &event);
+	}
+}
+
+void SGFE__wiiControllerSensor(SGFE_window* win, SGFE_controller* controller, WPADData* data) {
+	if (!controller->enabled_pointers[SGFE_pointerInfrared] || (data->data_present & WPAD_DATA_IR) == 0) {
+		return ;
+	}
+
+	/* NOTE(EimaMei): For some reason the authors of wiiuse decided not to include these in the header. Why? */
+	enum {
+		IR_STATE_DEAD = 0,
+		IR_STATE_GOOD,
+		IR_STATE_SINGLE,
+		IR_STATE_LOST,
+	};
+	ir_t* ir = &data->ir;
+	if (ir->state == IR_STATE_LOST || ir->state == IR_STATE_DEAD) {
+		return ;
+	}
+
+	SGFE_pointer* p = &controller->pointers[SGFE_pointerInfrared];
+	p->type = SGFE_pointerInfrared;
+	p->x = (i32)ir->ax;
+	p->y = (i32)ir->ay;
+
+	SGFE__processCallbackAndEventQueue_Pointer(win, controller, p);
+}
+
+void SGFE__wiiControllerMotion_wiimote(SGFE_window* win, SGFE_controller* controller) {
+	if (!controller->enabled_motions[SGFE_motionAccelerometer]) {
+		return;
+	}
+	struct wiimote_t* remote = win->src.wiimotes[controller->array_index];
+	SGFE_ASSERT(remote->accel_calib.cal_g.x != 0);
+	SGFE_ASSERT(remote->accel_calib.cal_g.y != 0);
+	SGFE_ASSERT(remote->accel_calib.cal_g.z != 0);
+
+	SGFE_motion* motion = &controller->motions[SGFE_motionAccelerometer];
+	motion->type = SGFE_motionAccelerometer;
+	motion->x = (float)(remote->accel.x - remote->accel_calib.cal_zero.x) / remote->accel_calib.cal_g.x * SGFE_STANDARD_GRAVITY;
+	motion->y = (float)(remote->accel.z - remote->accel_calib.cal_zero.z) / remote->accel_calib.cal_g.z * SGFE_STANDARD_GRAVITY;
+	motion->z = (float)(remote->accel.y - remote->accel_calib.cal_zero.y) / remote->accel_calib.cal_g.y * SGFE_STANDARD_GRAVITY;
+
+	SGFE__processCallbackAndEventQueue_Motion(win, controller, motion);
+}
+
+void SGFE__wiiControllerBattery_wiimote(SGFE_window* win, SGFE_controller* controller,
+		WPADData* state, SGFE_bool report_event) {
+	if (!SGFE_windowGetEventEnabled(win, SGFE_eventControllerBattery)) {
+		return;
+	}
+
+	controller->power_state = SGFE_powerStateOnBattery;
+	if (state->battery_level == controller->battery_procent) {
+		return;
+	}
+	controller->battery_procent = state->battery_level;
+
+	if (report_event) {
+		SGFE_windowControllerBatteryCallback(win, controller, controller->power_state, controller->battery_procent);
+		if (win->is_queueing_events) {
+			SGFE_event event;
+			event.type = SGFE_eventControllerBattery;
+			event.battery.controller = controller;
+			event.battery.state = controller->power_state;
+			event.battery.battery_procent = controller->battery_procent;
+			SGFE_windowEventPush(win, &event);
+		}
+	}
+}
+
+
+void SGFE__wiiControllerAxis(SGFE_window* win, SGFE_controller* controller, SGFE_axisType type, WPADData* data) {
+	float pos;
+	float min, max;
+
+	switch (controller->type) {
+		case SGFE_controllerTypeNunchuk: {
+			struct joystick_t* js = &data->exp.nunchuk.js;
+
+			if (type == SGFE_axisLeftX) {
+				pos = js->pos.x;
+				max = js->max.x;
+				min = js->min.x;
+			}
+			else {
+				pos = js->pos.y;
+				max = js->max.y;
+				min = js->min.y;
+			}
+		} break;
+		default: SGFE_ASSERT(0); return;
+	}
+
+	/* NOTE(EimaMei): Normalizing the axis to be from -1 to 1. */
+	SGFE_axis* axis = &controller->axes[type];
+	axis->type = type;
+	axis->value = ((pos - min) / (max - min)) * 2.0f - 1.0f;
+	axis->deadzone = 0.2f;
+
+	SGFE__processCallbackAndEventQueue_Axis(win, controller, axis);
+}
+
+void SGFE__wiiControllerMotion_nunchuk(SGFE_window* win, SGFE_controller* controller) {
+	if (!controller->enabled_motions[SGFE_motionNunchukAccelerometer]) {
+		return;
+	}
+	const nunchuk_t* nunchuk = &win->src.wiimotes[controller->array_index]->exp.nunchuk;
+	SGFE_ASSERT(nunchuk->accel_calib.cal_g.x != 0);
+	SGFE_ASSERT(nunchuk->accel_calib.cal_g.y != 0);
+	SGFE_ASSERT(nunchuk->accel_calib.cal_g.z != 0);
+
+	SGFE_motion* motion = &controller->motions[SGFE_motionAccelerometer];
+	motion->type = SGFE_motionAccelerometer;
+	motion->x = (float)(nunchuk->accel.x - nunchuk->accel_calib.cal_zero.x) / nunchuk->accel_calib.cal_g.x * 9.80665f;
+	motion->y = (float)(nunchuk->accel.z - nunchuk->accel_calib.cal_zero.z) / nunchuk->accel_calib.cal_g.z * 9.80665f;
+	motion->z = (float)(nunchuk->accel.y - nunchuk->accel_calib.cal_zero.y) / nunchuk->accel_calib.cal_g.y * 9.80665f;
+
+	SGFE__processCallbackAndEventQueue_Motion(win, controller, motion);
+}
+
+
+#if SGFE_MAX_KEYBOARDS != 0
+SGFE_keyModifier SGFE__modifiersFromAPI(u32 modifiers);
+
+SGFE_keyModifier SGFE__modifiersFromAPI(u32 modifiers) {
+	u32 res = 0;
+	res |= (modifiers & (MOD_SHIFT_L | MOD_SHIFT_R));
+	res |= (modifiers & MOD_ANYCONTROL) >> 2;
+	res |= (modifiers & MOD_ANYMETA) >> 2;
+
+	res |= (modifiers & MOD_NUMLOCK) << 1;
+	res |= (modifiers & MOD_CAPSLOCK) << 7;
+	res |= (modifiers & MOD_HOLDSCREEN) >> 1;
+	return res;
+}
+#endif
 
 
 
+
+SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
+	VIDEO_Init();
+
+	//PAD_Init();
+	WPAD_Init();
+
+	#ifndef SGFE_WII_NO_WAIT_FOR_CONNECTION
+	SGFE_bool wpad_is_active = SGFE_FALSE;
+	#endif
+
+	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
+		WPADData* data = WPAD_Data(i);
+		isize connect_retries = 0;
+
+		#ifndef SGFE_WII_NO_WAIT_FOR_CONNECTION
+			if (!wpad_is_active) { data->err = 1984; }
+
+			isize status;
+			do {
+				status = WPAD_Probe(i, NULL);
+				connect_retries += 1;
+				usleep(1000);
+			} while (connect_retries < 5000 && (data->err == 1984 || status == WPAD_ERR_NOT_READY));
+
+			wpad_is_active = SGFE_TRUE;
+			connect_retries = 0;
+		#else
+			isize status = WPAD_Probe(i, NULL);
+		#endif
+
+		if (status == WPAD_ERR_NONE) {
+			SGFE__wiiControllerSetConnection(win, &win->controllers[i], SGFE_TRUE);
+		}
+	}
+
+	/* TODO: explain why this works. */
+	win->src.wiimotes = wiiuse_init(-1, NULL);
+	#if SGFE_MAX_KEYBOARDS != 0
+	KEYBOARD_Init(NULL);
+	#endif
+
+	SYS_SetResetCallback(SGFE__callbackWiiReset);
+	SYS_SetPowerCallback(SGFE__callbackWiiPower);
+	WPAD_SetPowerButtonCallback(SGFE__callbackWiiRemotePower);
+
+	return SGFE_TRUE;
+}
+
+
+void SGFE_windowClose_platform(SGFE_window* win) {
+	WPAD_Shutdown();
+
+	if (win->is_allocated) {
+		SGFE_FREE(win);
+	}
+
+	if (SGFE__WII_EXIT_STATE != 0) {
+		SYS_ResetSystem(SGFE__WII_EXIT_STATE, 0, 0);
+	}
+}
+
+
+
+void SGFE_windowSetFlags(SGFE_window* win, SGFE_windowFlag flags) {
+	SGFE_ASSERT_NOT_NULL(win);
+	if (flags & SGFE_windowFlagTerminal) {
+		SGFE_bool res = SGFE_windowInitTerminalOutput(win);
+		if (res) { flags &= ~(SGFE_windowFlag)SGFE_windowFlagTerminal; }
+	}
+
+	win->flags = flags;
+}
+
+
+const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
+	SGFE_ASSERT_NOT_NULL(win);
+
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventQuit)) {
+		if (SGFE__WII_EXIT_STATE != 0) {
+			SGFE_windowQuitCallback(win);
+			SGFE_windowSetShouldClose(win, SGFE_TRUE);
+
+			if (win->is_queueing_events) {
+				SGFE_event event;
+				event.type = SGFE_eventQuit;
+				SGFE_windowEventPush(win, &event);
+			}
+			return &win->state;
+		}
+	}
+
+	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
+		SGFE_controller* controller = &win->controllers[i];
+		i32 res = WPAD_ReadPending(i, NULL);
+
+		if (res < WPAD_ERR_NONE) {
+			if (SGFE_windowGetEventEnabled(win, SGFE_eventControllerDisconnected)) {
+				if (!SGFE_controllerIsConnected(win->state.controllers, controller)) {
+					continue;
+				}
+				SGFE__wiiControllerSetConnection(win, controller, SGFE_FALSE);
+			}
+			continue;
+		}
+
+		if (SGFE_windowGetEventEnabled(win, SGFE_eventControllerConnected)) {
+			if (!SGFE_controllerIsConnected(win->state.controllers, controller)) {
+				SGFE__wiiControllerSetConnection(win, controller, SGFE_TRUE);
+			}
+		}
+
+		WPADData* state = WPAD_Data(i);
+
+		switch (state->exp.type) {
+			case WPAD_EXP_NONE: {
+				controller->type = SGFE_controllerTypeWiiRemote;
+
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonDown)) {
+					controller->buttons_held = SGFE_platformButtonFromWiiRemote(state->btns_h & 0xFFFF);
+					controller->buttons_down = SGFE_platformButtonFromWiiRemote(state->btns_d & 0xFFFF);
+					SGFE__processCallbackAndEventQueue_ButtonDown(win, controller);
+				}
+
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonUp)) {
+					controller->buttons_up = SGFE_platformButtonFromWiiRemote(state->btns_u & 0xFFFF);
+					SGFE__processCallbackAndEventQueue_ButtonUp(win, controller);
+				}
+
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventPointer)) {
+					SGFE__wiiControllerSensor(win, controller, state);
+				}
+
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventMotion) && (state->data_present & WPAD_DATA_ACCEL)) {
+					SGFE__wiiControllerMotion_wiimote(win, controller);
+				}
+
+				SGFE__wiiControllerBattery_wiimote(win, controller, state, SGFE_TRUE);
+			} break;
+
+			case SGFE_controllerTypeNunchuk: {
+				controller->type = SGFE_controllerTypeNunchuk;
+
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonDown)) {
+					controller->buttons_held = SGFE_platformButtonFromNunchuk(state->btns_h & 0xFFFF);
+					controller->buttons_down = SGFE_platformButtonFromNunchuk(state->btns_d & 0xFFFF);
+					SGFE__processCallbackAndEventQueue_ButtonDown(win, controller);
+				}
+
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventButtonUp)) {
+					controller->buttons_up = SGFE_platformButtonFromNunchuk(state->btns_u & 0xFFFF);
+					SGFE__processCallbackAndEventQueue_ButtonUp(win, controller);
+				}
+
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventPointer)) {
+					SGFE__wiiControllerSensor(win, controller, state);
+				}
+
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventMotion) && (state->data_present & WPAD_DATA_ACCEL)) {
+					SGFE__wiiControllerMotion_wiimote(win, controller);
+				}
+
+				SGFE__wiiControllerBattery_wiimote(win, controller, state, SGFE_TRUE);
+
+				nunchuk_t* nunchuk = &state->exp.nunchuk;
+				if (state->data_present & WPAD_DATA_EXPANSION) {
+					if (SGFE_windowGetEventEnabled(win, SGFE_eventAxis)) {
+						if (nunchuk->js.pos.x != nunchuk->js.center.x && nunchuk->js.pos.x <= nunchuk->js.max.x) {
+							SGFE__wiiControllerAxis(win, controller, SGFE_axisLeftX, state);
+						}
+						if (nunchuk->js.pos.y != nunchuk->js.center.y) {
+							SGFE__wiiControllerAxis(win, controller, SGFE_axisLeftY, state);
+						}
+					}
+
+					if (SGFE_windowGetEventEnabled(win, SGFE_eventMotion) && (state->data_present & WPAD_DATA_ACCEL)) {
+						SGFE__wiiControllerMotion_nunchuk(win, controller);
+					}
+				}
+			} break;
+		}
+	}
+
+#if SGFE_MAX_KEYBOARDS != 0
+	keyboard_event kEvent;
+	SGFE_keyboard* keyboard = &win->keyboards[0];
+
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventKeyboardDown) || SGFE_windowGetEventEnabled(win, SGFE_eventKeyboardUp)) {
+		SGFE_bool is_pressed = (keyboard->first_press_key)
+			? ((SGFE_platformGetTicks() - keyboard->first_press_timestamp) > keyboard->repeat_interval)
+			: SGFE_FALSE;
+		for (isize i = 0; i < SGFE_keyLast; i += 1) {
+			SGFE_keyState* key = &keyboard->keystate[i];
+
+			key->was_down = (key->is_down && is_pressed);
+			if (key->was_down && key->is_down) {
+				SGFE__processCallbackAndEventQueue_KeyDown(win, keyboard, i);
+			}
+		}
+	}
+
+	while (SGFE_TRUE) {
+		i32 res = KEYBOARD_GetEvent(&kEvent);
+		if (res != SGFE_TRUE) { break; }
+
+		switch (kEvent.type) {
+			case KEYBOARD_DISCONNECTED:
+			case KEYBOARD_CONNECTED: {
+				SGFE_bool connect = (kEvent.type == KEYBOARD_CONNECTED);
+				if (!SGFE_windowGetEventEnabled(win, SGFE_eventKeyboardConnected + !connect)) {
+					break;
+				}
+
+				u32 key;
+				SGFE_MEMSET(keyboard, 0, sizeof(*keyboard));
+				if (connect) {
+					keyboard->repeat_interval = 250 * 100000;
+
+					for (key = 0x04; key <= 0x1D; key += 1) {
+						SGFE__keyboardSetLUT(keyboard, key, SGFE_keyA + (SGFE_key)(key - 0x04));
+					}
+					for (key = 0x1E; key <= 0x26; key += 1) {
+						SGFE__keyboardSetLUT(keyboard, key, SGFE_key1 + (SGFE_key)(key - 0x1E));
+					}
+					SGFE__keyboardSetLUT(keyboard, 0x27, SGFE_key0);
+					SGFE__keyboardSetLUT(keyboard, 0x28, SGFE_keyReturn);
+					SGFE__keyboardSetLUT(keyboard, 0x29, SGFE_keyEsc);
+					SGFE__keyboardSetLUT(keyboard, 0x2A, SGFE_keyBackspace);
+					SGFE__keyboardSetLUT(keyboard, 0x2B, SGFE_keyTab);
+					SGFE__keyboardSetLUT(keyboard, 0x2C, SGFE_keySpace);
+					SGFE__keyboardSetLUT(keyboard, 0x2D, SGFE_keyMinus);
+					SGFE__keyboardSetLUT(keyboard, 0x2E, SGFE_keyEquals);
+					SGFE__keyboardSetLUT(keyboard, 0x2F, SGFE_keyBracketOpen);
+
+					SGFE__keyboardSetLUT(keyboard, 0x30, SGFE_keyBracketClose);
+					SGFE__keyboardSetLUT(keyboard, 0x31, SGFE_keyBackslash);
+					/* SGFE__keyboardSetLUT(keyboard, 0x32, 0); */
+					SGFE__keyboardSetLUT(keyboard, 0x33, SGFE_keySemicolon);
+					SGFE__keyboardSetLUT(keyboard, 0x34, SGFE_keyApostrophe);
+					SGFE__keyboardSetLUT(keyboard, 0x35, SGFE_keyBacktick);
+					SGFE__keyboardSetLUT(keyboard, 0x36, SGFE_keyComma);
+					SGFE__keyboardSetLUT(keyboard, 0x37, SGFE_keyPeriod);
+					SGFE__keyboardSetLUT(keyboard, 0x38, SGFE_keySlash);
+					SGFE__keyboardSetLUT(keyboard, 0x39, SGFE_keyCapsLock);
+					for (key = 0x3A; key <= 0x45; key += 1) {
+						SGFE__keyboardSetLUT(keyboard, key, SGFE_keyF1 + (SGFE_key)(key - 0x3A));
+					}
+
+					/* SGFE__keyboardSetLUT(keyboard, 0x46, 0); */
+					SGFE__keyboardSetLUT(keyboard, 0x47, SGFE_keyScrollLock);
+					SGFE__keyboardSetLUT(keyboard, 0x48, SGFE_keyPause);
+					SGFE__keyboardSetLUT(keyboard, 0x49, SGFE_keyInsert);
+					SGFE__keyboardSetLUT(keyboard, 0x4A, SGFE_keyHome);
+					SGFE__keyboardSetLUT(keyboard, 0x4B, SGFE_keyPageUp);
+					SGFE__keyboardSetLUT(keyboard, 0x4C, SGFE_keyDelete);
+					SGFE__keyboardSetLUT(keyboard, 0x4D, SGFE_keyEnd);
+					SGFE__keyboardSetLUT(keyboard, 0x4E, SGFE_keyPageDown);
+					SGFE__keyboardSetLUT(keyboard, 0x4F, SGFE_keyRight);
+
+					SGFE__keyboardSetLUT(keyboard, 0x50, SGFE_keyLeft);
+					SGFE__keyboardSetLUT(keyboard, 0x51, SGFE_keyDown);
+					SGFE__keyboardSetLUT(keyboard, 0x52, SGFE_keyUp);
+					SGFE__keyboardSetLUT(keyboard, 0x53, SGFE_keyNumLock);
+					SGFE__keyboardSetLUT(keyboard, 0x54, SGFE_keyKpDivide);
+					SGFE__keyboardSetLUT(keyboard, 0x55, SGFE_keyKpMultiply);
+					SGFE__keyboardSetLUT(keyboard, 0x56, SGFE_keyKpMinus);
+					SGFE__keyboardSetLUT(keyboard, 0x57, SGFE_keyKpPlus);
+					SGFE__keyboardSetLUT(keyboard, 0x58, SGFE_keyKpEnter);
+					for (key = 0x59; key <= 0x62; key += 1) {
+						SGFE__keyboardSetLUT(keyboard, key, SGFE_keyKp1 + (SGFE_key)(key - 0x59));
+					}
+
+					SGFE__keyboardSetLUT(keyboard, 0x63, SGFE_keyKpPeriod);
+					SGFE__keyboardSetLUT(keyboard, 0x64, SGFE_keyWorld1);
+					SGFE__keyboardSetLUT(keyboard, 0x65, SGFE_keyMenu);
+					/* SGFE__keyboardSetLUT(keyboard, 0x66, 0); */
+					SGFE__keyboardSetLUT(keyboard, 0x67, SGFE_keyKpEqual);
+					for (key = 0x68; key <= 0x6F; key += 1) {
+						SGFE__keyboardSetLUT(keyboard, key, SGFE_keyF13 + (SGFE_key)(key - 0x68));
+					}
+
+					SGFE__keyboardSetLUT(keyboard, 0xE0, SGFE_keyControlL);
+					SGFE__keyboardSetLUT(keyboard, 0xE1, SGFE_keyShiftL);
+					SGFE__keyboardSetLUT(keyboard, 0xE2, SGFE_keyAltL);
+					SGFE__keyboardSetLUT(keyboard, 0xE3, SGFE_keySuperL);
+					SGFE__keyboardSetLUT(keyboard, 0xE4, SGFE_keyControlR);
+					SGFE__keyboardSetLUT(keyboard, 0xE5, SGFE_keyShiftR);
+					SGFE__keyboardSetLUT(keyboard, 0xE6, SGFE_keyAltR);
+					SGFE__keyboardSetLUT(keyboard, 0xE7, SGFE_keySuperR);
+				}
+
+				SGFE__keyboardSetConnection(win, keyboard, connect);
+				SGFE_windowKeyboardCallback(win, keyboard, connect);
+				if (win->is_queueing_events) {
+					SGFE_event event;
+					event.type = connect ? SGFE_eventKeyboardConnected : SGFE_eventKeyboardDisconnected;
+					event.text.text = win->state.text;
+					event.text.text_len = win->state.text_len;
+					SGFE_windowEventPush(win, &event);
+				}
+			} break;
+
+			case KEYBOARD_PRESSED: {
+				if (!SGFE_windowGetEventEnabled(win, SGFE_eventKeyboardDown)) {
+					break;
+				}
+
+				SGFE_key key = SGFE_keyFromAPI(keyboard, kEvent.keycode);
+				keyboard->keystate[key].is_down = SGFE_TRUE;
+				keyboard->first_press_key = key;
+				keyboard->first_press_timestamp = SGFE_platformGetTicks();
+				keyboard->modifiers = SGFE__modifiersFromAPI(kEvent.modifiers);
+				SGFE_MASK_SET(keyboard->modifiers, (u32)SGFE_keyModifierSuperL, keyboard->keystate[SGFE_keySuperL].is_down);
+				SGFE_MASK_SET(keyboard->modifiers, (u32)SGFE_keyModifierSuperR, keyboard->keystate[SGFE_keySuperR].is_down);
+
+				SGFE__processCallbackAndEventQueue_KeyDown(win, keyboard, key);
+			} break;
+
+			case KEYBOARD_RELEASED: {
+				if (!SGFE_windowGetEventEnabled(win, SGFE_eventKeyboardUp)) {
+					break;
+				}
+
+				SGFE_key key = SGFE_keyFromAPI(keyboard, kEvent.keycode);
+				keyboard->keystate[key].was_down = SGFE_TRUE;
+				keyboard->keystate[key].is_down  = SGFE_FALSE;
+				keyboard->modifiers = SGFE__modifiersFromAPI(kEvent.modifiers);
+				SGFE_MASK_SET(keyboard->modifiers, (u32)SGFE_keyModifierSuperL, keyboard->keystate[SGFE_keySuperL].is_down);
+				SGFE_MASK_SET(keyboard->modifiers, (u32)SGFE_keyModifierSuperR, keyboard->keystate[SGFE_keySuperR].is_down);
+
+				if (keyboard->first_press_key == key) {
+					keyboard->first_press_key = 0;
+					keyboard->first_press_timestamp = 0;
+				}
+
+				SGFE__processCallbackAndEventQueue_KeyUp(win, keyboard, key);
+			} break;
+		}
+	}
+#endif
+
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventTextInput)) {
+		#warning "This event needs to be implemented."
+		/* win->state.has_text_input = ...; */
+		/* win->state.text = ...; */
+		/* win->state.text_len = ...; */
+
+		#if 0
+		if (win->state.has_text_input) {
+			SGFE_windowTextInputCallback(win, win->state.text, win->state.text_len);
+			if (win->is_queueing_events) {
+				SGFE_event event;
+				event.type = SGFE_eventTextInput;
+				event.text.text = win->state.text;
+				event.text.text_len = win->state.text_len;
+				SGFE_windowEventPush(win, &event);
+			}
+
+			SGFE_windowTextInputEnd(win);
+		}
+		#endif
+	}
+
+	return &win->state;
+}
+
+
+void SGFE_windowSetVisible(SGFE_window* win, SGFE_bool is_visible) {
+	SGFE_ASSERT_NOT_NULL(win);
+	SGFE_ASSERT_BOOL(is_visible);
+
+	win->state.is_visible = is_visible;
+	VIDEO_SetBlack(!win->state.is_visible);
+}
+
+
+
+SGFE_button SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
+	SGFE_ASSERT_FMT(type > 0 && type <= SGFE_controllerTypeCount, "type = %i;", type);
+
+	switch (type) {
+		case SGFE_controllerTypeWiiRemote: return SGFE_platformButtonFromWiiRemote(mask);
+		case SGFE_controllerTypeNunchuk: return SGFE_platformButtonFromNunchuk(mask);
+		default: return 0;
+	}
+}
+
+u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_button button) {
+	SGFE_ASSERT_FMT((button & ~SGFE_buttonGetMask(type)) == 0, "button = %i; ", button);
+
+	switch (type) {
+		case SGFE_controllerTypeWiiRemote: return SGFE_platformButtonToWiiRemote(button);
+		case SGFE_controllerTypeNunchuk: return SGFE_platformButtonToNunchuk(button);
+		default: return 0;
+	}
+}
+
+
+const char* SGFE_controllerGetNameButton_platform(SGFE_controllerType type,
+		SGFE_buttonType button) {
+	SGFE_ASSERT_RANGE(type, SGFE_controllerTypeWiiRemote, SGFE_controllerTypeNunchuk);
+	switch (type) {
+		case SGFE_controllerTypeWiiRemote:
+		case SGFE_controllerTypeNunchuk:
+			return SGFE_BUTTON_NAMES_NUNCHUK_LUT[button];
+	}
+	return "N/A";
+}
+
+
+SGFE_bool SGFE_controllerEnablePointer_platform(SGFE_controller* controller,
+		SGFE_pointerType pointer, SGFE_bool enable) {
+	i32 res = 1;
+
+	switch (pointer) {
+		case SGFE_pointerInfrared: {
+			if (enable) {
+				res = WPAD_SetDataFormat(controller->array_index, WPAD_FMT_BTNS_ACC_IR);
+			}
+			else {
+				res = WPAD_SetDataFormat(
+					controller->array_index,
+					(controller->enabled_motions[SGFE_motionAccelerometer])
+						? WPAD_FMT_BTNS_ACC
+						: WPAD_FMT_BTNS
+				);
+			}
+		} break;
+	}
+
+	return (res == 0);
+}
+
+SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
+		SGFE_motionType motion, SGFE_bool enable) {
+	i32 res = 1;
+
+	switch (motion) {
+		case SGFE_motionAccelerometer: {
+			if (enable) {
+				if (!controller->enabled_pointers[SGFE_pointerInfrared]) {
+					res = WPAD_SetDataFormat(controller->array_index, WPAD_FMT_BTNS_ACC);
+				}
+			}
+			else {
+				res = WPAD_SetDataFormat(
+					controller->array_index,
+					(controller->enabled_pointers[SGFE_pointerInfrared])
+						? WPAD_FMT_BTNS_ACC_IR
+						: WPAD_FMT_BTNS
+				);
+			}
+		} break;
+	}
+
+	return (res == 0);
+}
+
+
+
+SGFE_bufferFormat SGFE_bufferGetOptimalFormat(void) {
+	return SGFE_bufferFormatYCbCr;
+}
+
+SGFE_bool SGFE_bufferSetPlatformSettings(SGFE_contextBuffer* b) {
+	SGFE_ASSERT_NOT_NULL(b);
+	b->src.gx_video_mode = NULL;
+	SGFE__wiiCheckGXMode(b);
+	return SGFE_TRUE;
+}
+
+
+SGFE_bool SGFE_bufferCreateContext(SGFE_contextBuffer* b) {
+	SGFE_ASSERT_NOT_NULL(b);
+	SGFE__wiiCheckGXMode(b);
+	b->current = 0;
+
+	VIDEO_Configure(b->src.gx_video_mode);
+	u8* fb = b->is_native ? SGFE_bufferGetFramebuffer(b) : b->buffers_native[0];
+	VIDEO_SetNextFramebuffer(fb);
+	VIDEO_ClearFrameBuffer(b->src.gx_video_mode, fb, COLOR_BLACK);
+	VIDEO_Flush();
+
+	VIDEO_WaitVSync();
+	if (b->src.gx_video_mode->viTVMode & VI_NON_INTERLACE) {
+		VIDEO_WaitVSync();
+	}
+
+	SGFE_debugSendAPI(b, SGFE_debugTypeInfo, SGFE_infoCreateContextBuffer);
+	return SGFE_TRUE;
+}
+
+void SGFE_bufferFreeContext(SGFE_contextBuffer* b) {
+	SGFE_ASSERT_NOT_NULL(b);
+	SGFE_bufferFreeFramebuffers(b);
+	b->buffers[0] = NULL;
+	b->buffers[1] = NULL;
+	SGFE_debugSendAPI(b, SGFE_debugTypeInfo, SGFE_infoFreeContextBuffer);
+}
+
+
+SGFE_bool SGFE_bufferAllocFramebuffers(SGFE_contextBuffer* b) {
+	SGFE_ASSERT_NOT_NULL(b);
+	SGFE_bufferFreeFramebuffers(b);
+
+	/* TODO(EimaMei): rework this a bit. */
+	isize width, height;
+	SGFE_bufferGetResolution(b, &width, &height);
+
+	isize size = width * height * SGFE_bufferFormatGetBytesPerPixel(b->format);
+	size = (size + 32 - 1) & ~(32 - 1);
+
+	if (b->is_native) {
+		u8* buffers = memalign(32, (size_t)(2 * size));
+		if (buffers == NULL) {
+			SGFE_debugSendAPI(b, SGFE_debugTypeError, SGFE_errorOutOfMemory);
+			return SGFE_FALSE;
+		}
+
+		b->buffers[0] = MEM_K0_TO_K1(&buffers[0 * size]);
+		b->buffers[1] = MEM_K0_TO_K1(&buffers[1 * size]);
+	}
+	else {
+		u8* buffers = SGFE_ALLOC((size_t)(2 * size));
+		if (buffers == NULL) {
+			SGFE_debugSendAPI(b, SGFE_debugTypeError, SGFE_errorOutOfMemory);
+			return SGFE_FALSE;
+		}
+
+		isize native_size = width * height * 2;
+		native_size = (size + 32 - 1) & ~(32 - 1);
+
+		u8* native_buffers = memalign(32, (size_t)(2 * native_size));
+		if (native_buffers == NULL) {
+			SGFE_debugSendAPI(b, SGFE_debugTypeError, SGFE_errorOutOfMemory);
+			return SGFE_FALSE;
+		}
+
+		b->buffers[0] = &buffers[0 * size];
+		b->buffers[1] = &buffers[1 * size];
+
+		b->buffers_native[0] = MEM_K0_TO_K1(&native_buffers[0 * native_size]);
+		b->buffers_native[1] = MEM_K0_TO_K1(&native_buffers[1 * native_size]);
+	}
+
+	b->is_buffer_allocated = SGFE_TRUE;
+	return SGFE_TRUE;
+}
+
+SGFE_bool SGFE_bufferFreeFramebuffers(SGFE_contextBuffer* b) {
+	SGFE_ASSERT_NOT_NULL(b);
+	if (b->buffers[0] == NULL || !b->is_buffer_allocated) { return SGFE_FALSE; }
+
+	if (b->is_native) {
+		free(MEM_K1_TO_K0(b->buffers[0]));
+		b->buffers[0] = NULL;
+		b->buffers[1] = NULL;
+	}
+	else {
+		SGFE_FREE(b->buffers[0]);
+		b->buffers[0] = NULL;
+		b->buffers[1] = NULL;
+
+		free(MEM_K1_TO_K0(b->buffers_native[0]));
+		b->buffers_native[0] = NULL;
+		b->buffers_native[1] = NULL;
+	}
+
+	b->is_buffer_allocated = SGFE_FALSE;
+	return SGFE_TRUE;
+}
+
+u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b) {
+	u8* src = SGFE_bufferGetFramebuffer(b);
+
+	if (b->is_native) {
+		return src;
+	}
+	u32* dst = (void*)b->buffers_native[b->current];
+
+	isize width, height;
+	SGFE_bufferGetResolution(b, &width, &height);
+
+	u32* ptr = dst;
+	for (isize y = 0; y < height; y += 1) {
+		for (isize x = 0; x < width; x += 2) {
+			isize src_pixel = 4 * (y * width + x);
+
+			ptr[x / 2] = SGFE_platformRGB8ToYCbCr(
+				src[src_pixel + 0], src[src_pixel + 1], src[src_pixel + 2],
+				src[src_pixel + 4], src[src_pixel + 5], src[src_pixel + 6]
+			);
+		}
+		ptr += width / 2;
+	}
+
+	#warning "Alpha not implemnted yet."
+
+	return (void*)dst;
+}
+
+
+void SGFE_bufferGetResolution(SGFE_contextBuffer* b, isize* out_width, isize* out_height) {
+	SGFE_ASSERT_NOT_NULL(b);
+	SGFE_videoGetResolution(b->mode, out_width, out_height);
+}
+
+
+void SGFE_windowSwapBuffersBuffer(SGFE_window* win) {
+	SGFE_ASSERT(win != NULL);
+	SGFE_contextBuffer* b = SGFE_windowGetContextBuffer(win);
+
+	b->current ^= b->is_double_buffered;
+	VIDEO_SetNextFramebuffer(SGFE__fetchSwapBuffer(b));
+	VIDEO_Flush();
+	VIDEO_WaitVSync();
+}
+
+
+
+SGFE_bool SGFE_textInputSetPlatformFlags(SGFE_textInputSettings* s) {
+	SGFE_ASSERT_NOT_NULL(s);
+	#warning "Warning to notify that this function hasn't been implemented yet."
+
+	/* If backend does not support text input, return false. */
+	/* s->platform_flags = ... */
+	return SGFE_TRUE;
+}
+
+
+SGFE_bool SGFE_windowTextInputBegin(SGFE_window* win, u8* buffer, isize buffer_len,
+		SGFE_textInputSettings* s) {
+	SGFE_ASSERT_NOT_NULL(win);
+	SGFE_ASSERT_NOT_NULL(buffer);
+	SGFE_ASSERT_NOT_NULL(s);
+	SGFE_ASSERT_NOT_NEG(buffer_len);
+	SGFE_windowTextInputEnd(win);
+
+	#warning "Warning to notify that this function hasn't been implemented yet."
+
+	/* If backend does not support text input, return false. */
+	/* s->platform_flags = ... */
+	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_TRUE);
+	win->state.has_text_input = SGFE_FALSE;
+	win->state.text = buffer;
+	win->state.text_len = 0;
+
+	return SGFE_TRUE;
+}
+
+void SGFE_windowTextInputEnd(SGFE_window* win) {
+	SGFE_ASSERT_NOT_NULL(win);
+	if (!SGFE_windowTextInputIsActive(win)) { return; }
+
+	win->state.has_text_input = SGFE_FALSE;
+	win->state.text = NULL;
+	win->state.text_len = 0;
+	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_FALSE);
+}
+
+
+
+SGFE_videoSignal SGFE_videoGetSignal(void) {
+	switch (CONF_GetVideo()) {
+		case CONF_VIDEO_NTSC: return SGFE_videoSignalNTSC;
+		case CONF_VIDEO_PAL: return (CONF_GetEuRGB60() > 0) ? SGFE_videoSignalPAL60 : SGFE_videoSignalPAL;
+		case CONF_VIDEO_MPAL: return SGFE_videoSignalMPAL;
+		default: return SGFE_videoSignalUnknown;
+	}
+}
+
+SGFE_videoCable SGFE_videoGetCable(void) {
+	return VIDEO_HaveComponentCable() ? SGFE_videoCableComponent : SGFE_videoCableComposite;
+}
+
+SGFE_bool SGFE_videoIsProgressive(void) {
+	return (CONF_GetProgressiveScan() > 0);
+}
+
+SGFE_videoMode SGFE_videoGetOptimalMode(void) {
+	SGFE_videoSignal signal = SGFE_videoGetSignal();
+
+	if (SGFE_videoIsProgressive() && SGFE_videoGetCable() == SGFE_videoCableComposite) {
+		switch (signal) {
+			case SGFE_videoSignalNTSC:  return SGFE_videoModeNTSC_480p;
+			case SGFE_videoSignalPAL60: return SGFE_videoModePAL60hz_480p;
+			case SGFE_videoSignalPAL:   return SGFE_videoModePAL_576p;
+			case SGFE_videoSignalMPAL:  return SGFE_videoModeMPAL_480p;
+			default: return SGFE_videoModeNTSC_480p;
+		}
+	}
+	else {
+		switch (signal) {
+			case SGFE_videoSignalNTSC:  return SGFE_videoModeNTSC_480i;
+			case SGFE_videoSignalPAL60: return SGFE_videoModePAL60hz_480i;
+			case SGFE_videoSignalPAL:   return SGFE_videoModePAL_576i;
+			case SGFE_videoSignalMPAL:  return SGFE_videoModeMPAL_480i;
+			default: return SGFE_videoModeNTSC_480i;
+		}
+	}
+}
+
+
+
+SGFE_systemModel SGFE_systemGetModel(void) {
+	return SGFE_systemModelNone;
+}
+
+SGFE_systemRegion SGFE_systemGetRegion(void) {
+	switch (CONF_GetRegion()) {
+		case CONF_REGION_JP: return SGFE_systemRegionJapan;
+		case CONF_REGION_US: return SGFE_systemRegionUS;
+		case CONF_REGION_EU: return SGFE_systemRegionEurope;
+		case CONF_REGION_KR: return SGFE_systemRegionKorea;
+		case CONF_REGION_CN: return SGFE_systemRegionChina;
+	}
+
+	switch (CONF_GetArea()) {
+		case CONF_AREA_JPN: return SGFE_systemRegionJapan;
+		case CONF_AREA_USA: return SGFE_systemRegionUS;
+		case CONF_AREA_EUR: return SGFE_systemRegionEurope;
+		case CONF_AREA_AUS: return SGFE_systemRegionAustralia;
+		case CONF_AREA_BRA: return SGFE_systemRegionBrazil;
+		case CONF_AREA_TWN: return SGFE_systemRegionTaiwan;
+		case CONF_AREA_KOR: return SGFE_systemRegionKorea;
+		case CONF_AREA_HKG: return SGFE_systemRegionAsia;
+		case CONF_AREA_ASI: return SGFE_systemRegionAsia;
+		case CONF_AREA_LTN: return SGFE_systemRegionLatinAmerica;
+		case CONF_AREA_SAF: return SGFE_systemRegionSouthAfrica;
+		case CONF_AREA_CHN: return SGFE_systemRegionChina;
+	}
+
+	return SGFE_systemRegionUnknown;
+}
+
+SGFE_systemLanguage SGFE_systemGetLanguage(void) {
+	switch (CONF_GetRegion()) {
+		case CONF_LANG_JAPANESE: return SGFE_systemLanguageJapanese;
+		case CONF_LANG_ENGLISH: return SGFE_systemLanguageEnglish;
+		case CONF_LANG_GERMAN: return SGFE_systemLanguageGerman;
+		case CONF_LANG_FRENCH: return SGFE_systemLanguageFrench;
+		case CONF_LANG_SPANISH: return SGFE_systemLanguageSpanish;
+		case CONF_LANG_ITALIAN: return SGFE_systemLanguageItalian;
+		case CONF_LANG_DUTCH: return SGFE_systemLanguageDutch;
+		case CONF_LANG_SIMP_CHINESE: return SGFE_systemLanguageSimplifiedChinese;
+		case CONF_LANG_TRAD_CHINESE: return SGFE_systemLanguageTraditionalChinese;
+		case CONF_LANG_KOREAN: return SGFE_systemLanguageKorean;
+	}
+
+	return SGFE_systemLanguageUnknown;
+}
+
+
+
+#if 1 /* === PLATFORM FUNCTIONS === */
+
+i64 SGFE_platformGetTimeFromTicks(u64 ticks) {
+	/* NOTE(EimaMei): The return must be UNIX time with nanosecond precision. */
+	#warning "Warning to notify that this function hasn't been implemented yet."
+}
+
+u64 SGFE_platformGetTicks(void) {
+	extern u32 gettick(void);
+	return gettick();
+}
+
+u64 SGFE_platformGetClockSpeed(void) {
+	return 729000000;
+}
+
+
+void SGFE_platformWaitForVBlank(void) {
+	VIDEO_WaitVSync();
+}
+
+SGFE_bool SGFE_platformInitTerminalOutputEx(SGFE_contextBuffer* b, isize x, isize y,
+		isize width, isize height) {
+	SGFE_ASSERT_NOT_NULL(b);
+	SGFE_ASSERT_NOT_NEG(x);
+	SGFE_ASSERT_NOT_NEG(y);
+	SGFE_ASSERT_NOT_NEG(width);
+	SGFE_ASSERT_NOT_NEG(height);
+	if (b->buffers[0] == NULL) { return SGFE_FALSE; }
+
+	SGFE_bufferSetNative(b, SGFE_TRUE);
+	SGFE_bufferSetFormat(b, SGFE_bufferFormatYCbCr);
+	SGFE_bufferSetDoubleBuffered(b, SGFE_FALSE);
+
+	console_init(
+		SGFE_bufferGetFramebuffer(b),
+		x, y, width, height, width  * VI_DISPLAY_PIX_SZ
+	);
+
+	return SGFE_TRUE;
+}
+
+
+SGFE_bool SGFE_platformHasSoftwareKeyboard(void) {
+	return SGFE_FALSE;
+}
+
+
+
+SGFE_button SGFE_platformButtonFromWiiRemote(u32 mask) {
+	return ((mask & (u32)~0x1F) >> 2) | (mask & 0x1F);
+}
+
+SGFE_button SGFE_platformButtonFromNunchuk(u32 mask) {
+	return ((mask & ~0xFFFFu) >> 5) | SGFE_platformButtonFromWiiRemote(mask & 0xFFFF);
+}
+
+u32 SGFE_platformButtonToWiiRemote(SGFE_button button) {
+	return ((button & (u32)~0x1F) << 2) | (button & 0x1F);
+}
+
+SGFE_button SGFE_platformButtonToNunchuk(u32 mask) {
+	return ((mask & ~0xFFFFu) << 5) | SGFE_platformButtonFromWiiRemote(mask & 0xFFFF);
+}
+
+
+SGFE_bool SGFE_platformIsWidescreen(void) {
+	return (CONF_GetAspectRatio() == CONF_ASPECT_16_9);
+}
+
+u32 SGFE_platformRGB8ToYCbCr(u8 r1, u8 g1, u8 b1, u8 r2, u8 g2, u8 b2) {
+	/* NOTE(EimaMei): taken from libogc's console.c. */
+	if (r1 < 16) r1 = 16;
+	if (g1 < 16) g1 = 16;
+	if (b1 < 16) b1 = 16;
+	if (r2 < 16) r2 = 16;
+	if (g2 < 16) g2 = 16;
+	if (b2 < 16) b2 = 16;
+
+	if (r1 > 240) r1 = 240;
+	if (g1 > 240) g1 = 240;
+	if (b1 > 240) b1 = 240;
+	if (r2 > 240) r2 = 240;
+	if (g2 > 240) g2 = 240;
+	if (b2 > 240) b2 = 240;
+
+	u8 Y1 = ( 77 * r1 + 150 * g1 + 29 * b1) / 256;
+	u8 Y2 = ( 77 * r2 + 150 * g2 + 29 * b2) / 256;
+	u8 Cb = (112 * (b1 + b2) -  74 * (g1 + g2) - 38 * (r1 + r2)) / 512 + 128;
+	u8 Cr = (112 * (r1 + r2) - 94 * (g1 + g2) - 18 * (b1 + b2)) / 512 + 128;
+
+	return (u32)Y1 << 24 | (u32)Cb << 16 | (u32)Y2 << 8 | (u32)Cr;
+}
+
+u32 SGFE_platformRGB8ToYCbCr_singular(u8 r, u8 g, u8 b) {
+	return SGFE_platformRGB8ToYCbCr(r, g, b, r, g, b);
+}
+
+#endif /* === PLATFORM FUNCTIONS === */
+
+
+
+#if 1 /* === DEBUG FUNCTIONS === */
+/* NOTE(EimaMei): The backend has to providee string representations of all
+ * SGFE platform API errors', warnings' and infos' names as well as their descriptions.
+ * Alongside this system error names and descriptions have to be given. */
+
+const char* SGFE_debugSourcePlatformAPIGetName(SGFE_debugType type, isize code) {
+	SGFE_ASSERT(
+		(type == SGFE_debugTypeError   && (code >= 0 && code < SGFE_errorPlatformCount))   ||
+		(type == SGFE_debugTypeWarning && (code >= 0 && code < SGFE_warningPlatformCount)) ||
+		(type == SGFE_debugTypeInfo    && (code >= 0 && code < SGFE_infoPlatformCount))
+	);
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* NOTE(EimaMei): If the custom backend does not contain any errors, warnings
+	 * or infos, these arrays can be removed. */
+
+	#if 0
+	static const char* ERROR_LUT[SGFE_errorPlatformCount] = {
+		/* ... */
+	};
+
+	static const char* WARNING_LUT[SGFE_warningPlatformCount] = {
+		/* ... */
+
+	}
+
+	static const char* INFO_LUT[SGFE_infoPlatformCount] = {
+		/* ... */
+	}
+
+	static const char** ARR_LUT[] = {ERROR_LUT, WARNING_LUT, INFO_LUT};
+	return ARR_LUT[type][code];
+	#endif
+}
+
+const char* SGFE_debugSourcePlatformAPIGetDesc(SGFE_debugType type, isize code) {
+	SGFE_ASSERT(
+		(type == SGFE_debugTypeError   && (code >= 0 && code < SGFE_errorPlatformCount))   ||
+		(type == SGFE_debugTypeWarning && (code >= 0 && code < SGFE_warningPlatformCount)) ||
+		(type == SGFE_debugTypeInfo    && (code >= 0 && code < SGFE_infoPlatformCount))
+	);
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* NOTE(EimaMei): If the custom backend does not contain any errors, warnings
+	 * or infos, these arrays can be removed. */
+
+	#if 0
+	static const char* ERROR_LUT[SGFE_errorPlatformCount] = {
+		/* ... */
+	};
+
+	static const char* WARNING_LUT[SGFE_warningPlatformCount] = {
+		/* ... */
+
+	};
+
+	static const char* INFO_LUT[SGFE_infoPlatformCount] = {
+		/* ... */
+	};
+
+	static const char** ARR_LUT[] = {ERROR_LUT, WARNING_LUT, INFO_LUT};
+	return ARR_LUT[type][code];
+	#endif
+}
+
+
+const char* SGFE_debugCodeSystemGetName(SGFE_debugType type, isize code) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* NOTE(EimaMei): Usually you can ignore the debug type for system errors. */
+	return "Unknown";
+	SGFE_UNUSED(type);
+}
+
+const char* SGFE_debugSourceSystemGetDesc(SGFE_debugType type, isize code) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* NOTE(EimaMei): Usually you can ignore the debug type for system errors. */
+	return "Unknown";
+	SGFE_UNUSED(type);
+}
+
+
+SGFE_debugType SGFE_debugSystemGenerateType_platform(void* ctx_ptr, isize code) {
+	#warning "Warning to notify that this function hasn't been implemented yet."
+	/* NOTE(EimaMei): More often than not system APIs either provide no further
+	 * debug types than just 'errors' or have debug types that are incompatible
+	 * with SGFE's. In such cases this function has to return the closest
+	 * representation of what the code type could be in SGFE. */
+}
+
+#endif /* === DEBUG FUNCTIONS === */
 
 #endif /* ifdef SGFE_WII */
 #endif /* ifndef SGFE_CUSTOM_BACKEND */

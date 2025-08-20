@@ -172,7 +172,7 @@ endif
 clean:
 	rm -rf $(OUTPUT)/*
 
-$(EXE): $(SRC) SGFE.h SGFE-wii.h Makefile examples/*
+$(EXE): $(SRC) SGFE.h Makefile examples/*
 ifeq ($(PLATFORM),3DS)
 	$(CC) $(FLAGS) $(EXTRA_FLAGS) $(INCLUDES) $(SRC) $(LIBS) -o "$(OUTPUT)/$(NAME).elf"
 	smdhtool --create "$(NAME)" "$(DESCRIPTION)" "$(AUTHOR)" "$(ICON)" "$(OUTPUT)/$(NAME).smdh"

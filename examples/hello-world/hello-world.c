@@ -54,8 +54,8 @@ int main(void) {
 		/* You can access input by requesting the 1st connected (or player 1's)
 		 * controller. If the requested player's controller does not exist, the
 		 * function will return NULL.  */
-		SGFE_controller* controller = SGFE_windowGetController(win, 0);
-		if (controller && controller->buttons_down != 0) {
+		SGFE_controller* p1 = SGFE_controllerGet(state->controllers, 0);
+		if (p1 && p1->buttons_down != 0) {
 			SGFE_windowSetShouldClose(win, SGFE_TRUE);
 		}
 

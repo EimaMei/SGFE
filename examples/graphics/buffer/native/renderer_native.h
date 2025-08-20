@@ -6,7 +6,7 @@ typedef struct {
 } CPU_Rect;
 
 typedef struct {
-	u8* data;
+	u32* data;
 	isize w, h;
 } CPU_Image;
 
@@ -39,6 +39,8 @@ CPU_Color CPU_colorMake(u8 r, u8 g, u8 b, u8 a);
 CPU_Image CPU_imageMake(const CPU_Surface* s, const u8* data, isize width, isize height);
 
 
+/* TODO */
+void surface_set_scale(CPU_Surface* s, isize scale_multiplier);
 /* TODO */
 void surface_set_widescreen(CPU_Surface* s, SGFE_bool is_wide);
 
@@ -99,24 +101,29 @@ CPU_Image CPU_imageMake(const CPU_Surface* s, const u8* data, isize width, isize
 	CPU_Image res;
 	res.w = (isize)((float)width  * s->scale_x);
 	res.h = (isize)((float)height * s->scale_y);
-	res.data = SGFE_ALLOC(4 * res.w * res.h);
+	res.data = (u32*)SGFE_ALLOC(2 * res.w * res.h);
 
+	u32* ptr = res.data;
 	for (isize y = 0; y < res.h; y += 1) {
-		isize scaled_y = (isize)((float)y / s->scale_y);
+		for (isize x = 0; x < res.w; x += 2) {
+			const u8* src = &data[4 * ((isize)((float)y / s->scale_y) * width + (isize)((float)x / s->scale_x))];
 
-		for (isize x = 0; x < res.w; x += 1) {
-			float scaled_x = (float)x / s->scale_x;
-
-			SGFE_MEMCPY(
-				&res.data[4 * (y * res.w + x)],
-				&data[4 * (scaled_y * width + (isize)scaled_x)],
-				4
-			);
+			u32 YCbCr = SGFE_platformRGB8ToYCbCr(src[0], src[1], src[2], src[4], src[5], src[6]);
+			ptr[x / 2] = YCbCr;
 		}
+
+		ptr += res.w / 2;
 	}
+
 	return res;
 }
 
+
+void surface_set_scale(CPU_Surface* s, isize scale_multiplier) {
+	s->scale_x = s->scale_x / (float)s->scale_multiplier * (float)scale_multiplier;
+	s->scale_y = s->scale_y / (float)s->scale_multiplier * (float)scale_multiplier;
+	s->scale_multiplier = scale_multiplier;
+}
 
 void surface_set_widescreen(CPU_Surface* s, SGFE_bool is_wide) {
 	if (!is_wide) {
@@ -130,6 +137,7 @@ void surface_set_widescreen(CPU_Surface* s, SGFE_bool is_wide) {
 	s->scale_x = (float)s->width  / (256.0f * (float)multiply) * (float)s->scale_multiplier;
 	s->scale_y = (float)s->height / (144.0f * (float)multiply) * (float)s->scale_multiplier;
 }
+
 
 void surface_clear_buffers(CPU_Surface* surface) {
 	for (isize i = 0; i < SGFE_bufferGetFramebufferCount(surface->ctx); i += 1) {
@@ -170,17 +178,17 @@ void surface_rect(CPU_Surface* surface, CPU_Rect r, CPU_Color color) {
 
 	surface_add_dirty_rect(surface, r);
 
-	u8* buffer = SGFE_bufferGetFramebuffer(surface->ctx);
+	u32* ptr = (u32*)(void*)SGFE_bufferGetFramebuffer(surface->ctx);
+	ptr += (r.y * surface->width + r.x) / 2;
+
 	u32 YcbCr = SGFE_platformRGB8ToYCbCr_singular(color.r, color.g, color.b);
 
-	for (isize y = r.y; y < r.y + r.h; y += 1) {
-		for (isize x = r.x; x < r.x + r.w; x += 2) {
-			SGFE_MEMCPY(
-				&buffer[2 * (y * surface->width + x)],
-				&YcbCr,
-				4
-			);
+	for (isize y = 0; y < r.h; y += 1) {
+		for (isize x = 0; x < r.w; x += 2) {
+			ptr[x / 2] = YcbCr;
 		}
+
+		ptr += surface->width / 2;
 	}
 }
 
@@ -191,17 +199,16 @@ void surface_bitmap(CPU_Surface* surface, isize x, isize y, CPU_Image img) {
 
 	surface_add_dirty_rect(surface, r);
 
-	u32* buffer = (void*)SGFE_bufferGetFramebuffer(surface->ctx);
-	buffer += (r.x + r.y * surface->width) / 2;
+	u32* ptr = (u32*)(void*)SGFE_bufferGetFramebuffer(surface->ctx);
+	ptr += (r.y * surface->width + r.x) / 2;
 
 	for (y = 0; y < r.h; y += 1) {
 		for (x = 0; x < r.w; x += 2) {
-			u8* src = &img.data[4 * (y * r.w + x)];
-			u32 YcbCr = SGFE_platformRGB8ToYCbCr(src[0], src[1], src[2], src[4], src[5], src[6]);
-
-			buffer[x / 2] = YcbCr;
+			ptr[x / 2] = img.data[x / 2];
 		}
-		buffer += surface->width / 2;
+
+		ptr += surface->width / 2;
+		img.data += img.w / 2;
 	}
 }
 

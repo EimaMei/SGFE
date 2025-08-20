@@ -31,7 +31,7 @@ int main(void) {
 	SGFE_windowSetEventEnabled(win, SGFE_eventMotion, SGFE_FALSE);
 
 	for (isize i = 0; i < SGFE_MAX_CONTROLLERS; i += 1) {
-		controller_printInfo(SGFE_windowGetController(win, i));
+		controller_printInfo(SGFE_controllerGet(SGFE_windowGetState(win)->controllers, i));
 	}
 
 	while (!SGFE_windowShouldClose(win)) {
@@ -46,7 +46,7 @@ int main(void) {
 					printf(
 						"pressed %s (repeat: %i)\n",
 						SGFE_controllerGetNameButton(event->button.controller->type, event->button.button),
-						event->button.repeat
+						event->button.is_repeated
 					);
 				} break;
 
@@ -92,7 +92,7 @@ int main(void) {
 			}
 		}
 
-		SGFE_controller* controller = SGFE_windowGetController(win, 0);
+		SGFE_controller* controller = SGFE_controllerGet(SGFE_windowGetState(win)->controllers, 0);
 		if (controller && SGFE_isHeld(controller, BUTTON_BACK)) {
 			if (SGFE_isDown(controller, BUTTON_PRIMARY)) {
 				SGFE_bool state = !SGFE_windowGetEventEnabled(win, SGFE_eventPointer);

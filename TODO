@@ -1,3 +1,8 @@
+Current TODOs:
+- compare template with wii backend 
+- add warnings for VIDEO_Init, WPAD
+- rework buffers so that you could change from native to non-native and back to native. this requires to have seperate buffers with consistent names.
+
 Features:
 - add adaptive vsync to buffer (check out lag via unoptimized standard.c)
 - controllerListGetAvailable
@@ -5,6 +10,7 @@ Features:
 - Add a sizeof and getters/setters for each opaque struct type.
 - Add a "end poll" event and function. On 3ds pay mind that software keyboard should be taken account of.
 - (Wii) GameCube controller support.
+- (Wii) Classic (U) controller support.
 - Make "setNative" alloc non-native buffers if false is specified and buffers are null.
 - (Wii) Add TextInput support for it.
 - (Wii) add mouse support.
@@ -52,8 +58,8 @@ version of libctru.
 Bugs:
 - (3DS) Fix flicker when opening standard buffer.
 - (3DS) Fix flicker when closing basic buffer.
-- (Wii) Fix bug where nunchuk controllers are eligible for gyroscope support.
 - (3DS) initial text length bug for software keyboard (see text-input.c)
+- (Wii) Fix bug where nunchuk controllers are eligible for gyroscope support.
 
 
 Build system:
@@ -68,7 +74,6 @@ Maybe TODOs:
 - Replace wpad code with wiiuse.
 - (Wii) Add a "fade out" effect when exiting.
 - Make an SDL-style library that'd combine SGFE and RGFW.
-- (Wii) White/black/red/blue Wiis as "system models"? Or maybe base it on this: https://en-americas-support.nintendo.com/app/answers/detail/a_id/2650/~/what-is-the-difference-between-the-models-of-wii-consoles%3F
 - Make private API functions visible in the platform section.
 - UIApplicationMain & example.
 - Make a CHANGELOG
@@ -84,6 +89,8 @@ provided by glGetInteger (SSAA/downscale)
 - (3DS) see if it's possible to implement and remove 3dsx.specs
 - (3DS) implement opengl hints
 - (Wii) replace wiikeyboard with a custom implementation.
+- Record video(s) of SGFE working.
+- port over lazy foo examples? https://lazyfoo.net/tutorials/SDL/32_text_input_and_clipboard_handling/index.php
 
 Distant TODO:
 - Create a portable stdout/stderr library that'd write the text on screen.
