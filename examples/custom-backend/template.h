@@ -409,10 +409,92 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 		}
 	}
 
+	#if 0
+	while (SGFE_TRUE) {
+		keyboard_event_struct kEvent;
+		i32 res = get_keyboard_event(&kEvent);
+		if (res != SGFE_TRUE) { break; }
+
+		switch (kEvent.type) {
+			case KEYBOARD_EVENT_DISCONNECTED:
+			case KEYBOARD_EVENT_CONNECTED: {
+				SGFE_bool connect = (kEvent.type == KEYBOARD_CONNECTED);
+				if (!SGFE_windowGetEventEnabled(win, SGFE_eventKeyboardConnected + !connect)) {
+					break;
+				}
+
+				u32 key;
+				SGFE_MEMSET(keyboard, 0, sizeof(*keyboard));
+				if (connect) {
+					keyboard->repeat_interval = 250 * 100000;
+
+					#if 0
+					for (key = 0x04; key <= 0x1D; key += 1) {
+						SGFE__keyboardSetLUT(keyboard, key, SGFE_keyA + (SGFE_key)(key - 0x04));
+					}
+					for (key = 0x1E; key <= 0x26; key += 1) {
+						SGFE__keyboardSetLUT(keyboard, key, SGFE_key1 + (SGFE_key)(key - 0x1E));
+					}
+					SGFE__keyboardSetLUT(keyboard, 0x27, SGFE_key0);
+					#endif
+					/* ... */
+				}
+
+				SGFE__keyboardSetConnection(win, keyboard, connect);
+				SGFE_windowKeyboardCallback(win, keyboard, connect);
+				if (win->is_queueing_events) {
+					SGFE_event event;
+					event.type = connect ? SGFE_eventKeyboardConnected : SGFE_eventKeyboardDisconnected;
+					event.keyboard.keyboard = keyboard;
+					event.keyboard.keyboard = win->state.text;
+					event.text.text_len = win->state.text_len;
+					SGFE_windowEventPush(win, &event);
+				}
+			} break;
+
+			case KEYBOARD_EVENT_PRESSED: {
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventKeyboardDown)) {
+					SGFE_key key = SGFE_keyFromAPI(keyboard, kEvent.keycode);
+					keyboard->keystate[key].was_down = SGFE_FALSE;
+					keyboard->keystate[key].is_down  = SGFE_TRUE;
+					keyboard->first_press_key = key;
+					keyboard->first_press_timestamp = SGFE_platformGetTicks();
+					/* keyboard->modifiers = ... */
+					/* keyboard->SGFE_to_SYMBOL_LUT[key] = kEvent.symbol; */
+
+					SGFE__processCallbackAndEventQueue_KeyDown(win, keyboard, key);
+
+					/* if (SGFE_windowGetEventEnabled(win, SGFE_eventTextInput)) {
+						SGFE__handleTextInput(win, keyboard, key, win->src.text_input_type, win->src.text_is_multiline, win->src.text_max_len);
+					} */
+				}
+			} break;
+
+			case KEYBOARD_EVENT_RELEASED: {
+				if (!SGFE_windowGetEventEnabled(win, SGFE_eventKeyboardUp)) {
+					break;
+				}
+
+				SGFE_key key = SGFE_keyFromAPI(keyboard, kEvent.keycode);
+				keyboard->keystate[key].was_down = SGFE_TRUE;
+				keyboard->keystate[key].is_down  = SGFE_FALSE;
+				/* keyboard->modifiers = ... */
+
+				SGFE__processCallbackAndEventQueue_KeyUp(win, keyboard, key);
+			} break;
+		}
+	}
+#endif
 
 	if (SGFE_windowGetEventEnabled(win, SGFE_eventTextInput)) {
+		/* NOTE(EimaMei): We should always reset text input _state and length_ if
+		 * there are no key inputs. Do not reset the text to NULL as that'll result
+		 * in a crash for obvious reasons. Only set it to NULL when the user isn't
+		 * resquesting text input anymore. */
+		win->state.has_text_input = SGFE_FALSE;
+		win->state.text_len = 0;
+
 		/* win->state.has_text_input = ...; */
-		/* win->state.text = ...; */
 		/* win->state.text_len = ...; */
 
 		#if 0
@@ -425,15 +507,8 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 				event.text.text_len = win->state.text_len;
 				SGFE_windowEventPush(win, &event);
 			}
-
-			SGFE_windowTextInputEnd(win);
 		}
 		#endif
-	}
-	else if (win->state.has_text_input) {
-		win->state.has_text_input = SGFE_FALSE;
-		win->state.text = NULL;
-		win->state.text_len = 0;
 	}
 
 	return &win->state;
@@ -766,6 +841,9 @@ void SGFE_windowTextInputEnd(SGFE_window* win) {
 
 	/* ... */
 	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_FALSE);
+	win->state.has_text_input = SGFE_FALSE;
+	win->state.text = NULL;
+	win->state.text_len = 0;
 }
 
 

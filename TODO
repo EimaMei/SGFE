@@ -2,6 +2,8 @@ Current TODOs:
 - compare template with wii backend 
 - add warnings for VIDEO_Init, WPAD
 - rework buffers so that you could change from native to non-native and back to native. this requires to have seperate buffers with consistent names.
+- allocate keyboard for wii instead of keeping it inside the struct. it's too mf large.
+- keyboard name through USB
 
 Features:
 - add adaptive vsync to buffer (check out lag via unoptimized standard.c)
@@ -91,6 +93,7 @@ provided by glGetInteger (SSAA/downscale)
 - (Wii) replace wiikeyboard with a custom implementation.
 - Record video(s) of SGFE working.
 - port over lazy foo examples? https://lazyfoo.net/tutorials/SDL/32_text_input_and_clipboard_handling/index.php
+- (Wii) Connect xbox controller via USB?
 
 Distant TODO:
 - Create a portable stdout/stderr library that'd write the text on screen.
@@ -107,3 +110,8 @@ Console library TODO:
 - Make it creatable/independent of SGFE_window and of createWindow init function.
 - use the system font if possible.
 - make library compatible with opengl/native APIs
+
+
+siligl TODO:
+- Checkpoint timestamps. These should be called in-between graphic pipeline stages
+to find out where the bottleneck is.

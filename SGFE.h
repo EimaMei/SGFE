@@ -673,6 +673,7 @@ typedef SGFE_ENUM(isize, SGFE_key) {
 	SGFE_keyEsc           = '\033',
 	SGFE_keyBacktick      = '`',
 
+	SGFE_key0             = '0',
 	SGFE_key1             = '1',
 	SGFE_key2             = '2',
 	SGFE_key3             = '3',
@@ -682,7 +683,6 @@ typedef SGFE_ENUM(isize, SGFE_key) {
 	SGFE_key7             = '7',
 	SGFE_key8             = '8',
 	SGFE_key9             = '9',
-	SGFE_key0             = '0',
 
 	SGFE_keyMinus         = '-',
 	SGFE_keyEquals        = '=',
@@ -781,6 +781,7 @@ typedef SGFE_ENUM(isize, SGFE_key) {
 	SGFE_keyKpPlus,
 	SGFE_keyKpMinus,
 	SGFE_keyKpEqual,
+	SGFE_keyKp0,
 	SGFE_keyKp1,
 	SGFE_keyKp2,
 	SGFE_keyKp3,
@@ -790,7 +791,6 @@ typedef SGFE_ENUM(isize, SGFE_key) {
 	SGFE_keyKp7,
 	SGFE_keyKp8,
 	SGFE_keyKp9,
-	SGFE_keyKp0,
 	SGFE_keyKpPeriod,
 	SGFE_keyKpReturn,
 	SGFE_keyKpEnter = SGFE_keyKpReturn,
@@ -837,6 +837,7 @@ typedef struct SGFE_keyboard {
 	SGFE_keyState keystate[SGFE_keyCount];
 	SGFE_key API_to_SGFE_LUT[SGFE_keyCount];
 	u32 SGFE_to_API_LUT[SGFE_keyCount];
+	i32 SGFE_to_SYMBOL_LUT[SGFE_keyCount];
 	SGFE_keyModifier modifiers;
 
 	/* TODO */
@@ -1166,6 +1167,11 @@ struct SGFE_contextGL {
 
 struct SGFE_windowSource {
 	struct wiimote_t** wiimotes;
+
+	isize text_input_type;
+	SGFE_bool text_is_multiline;
+	SGFE_bool text_is_null_term;
+	isize text_max_len;
 };
 
 struct SGFE_contextBufferSource {
@@ -1796,11 +1802,11 @@ typedef SGFE_ENUM(u32, SGFE_textInputFlag) {
 	/* TODO */
 	SGFE_textInputFlagMultiline                = SGFE_BIT(0),
 
-	/* TODO */
+	/* TODO | move to 3DS platform flags? */
 	SGFE_textInputFlagFixedLength              = SGFE_BIT(1),
-	/* TODO */
+	/* TODO | move to 3DS platform flags? */
 	SGFE_textInputFlagNotEmpty                 = SGFE_BIT(2),
-	/* TODO */
+	/* TODO | move to 3DS platform flags? */
 	SGFE_textInputFlagNotBlank                 = SGFE_BIT(3),
 };
 
@@ -2501,12 +2507,17 @@ void SGFE__controllerRemoveFromList(SGFE_controllerList* list, SGFE_controller* 
 
 #if SGFE_MAX_KEYBOARDS != 0
 
-void SGFE__keyboardSetLUT(SGFE_keyboard* keyboard, u32 api_keycode, SGFE_key SGFE_keycode);
+SGFE_DEF void SGFE__keyboardSetLUT(SGFE_keyboard* keyboard, u32 api_keycode, SGFE_key SGFE_keycode);
+SGFE_DEF SGFE_bool SGFE__keyboardSymbolIsWestern(i32 sym);
 
-void SGFE__keyboardSetConnection(SGFE_window* win, SGFE_keyboard* keyboard, SGFE_bool should_connect);
-void SGFE__keyboardAddToList(SGFE_keyboardList* list, SGFE_keyboard* keyboard);
-void SGFE__keyboardRemoveFromList(SGFE_keyboardList* list, SGFE_keyboard* keyboard);
+SGFE_DEF void SGFE__keyboardSetConnection(SGFE_window* win, SGFE_keyboard* keyboard, SGFE_bool should_connect);
+SGFE_DEF void SGFE__keyboardAddToList(SGFE_keyboardList* list, SGFE_keyboard* keyboard);
+SGFE_DEF void SGFE__keyboardRemoveFromList(SGFE_keyboardList* list, SGFE_keyboard* keyboard);
 
+SGFE_DEF isize SGFE__utf8Encode(i32 codepoint, u8 out_char[4]);
+
+SGFE_DEF void SGFE__handleTextInput(SGFE_window* win, SGFE_keyboard* keyboard, SGFE_key key,
+		SGFE_textInputType text_input_type, SGFE_bool text_is_multiline, isize text_max_len);
 
 void SGFE__keyboardSetLUT(SGFE_keyboard* keyboard, u32 api_keycode, SGFE_key SGFE_keycode) {
 	SGFE_ASSERT_NOT_NULL(keyboard);
@@ -2518,6 +2529,37 @@ void SGFE__keyboardSetLUT(SGFE_keyboard* keyboard, u32 api_keycode, SGFE_key SGF
 	keyboard->SGFE_to_API_LUT[SGFE_keycode] = api_keycode;
 	keyboard->API_to_SGFE_LUT[api_keycode] = SGFE_keycode;
 }
+
+SGFE_bool SGFE__keyboardSymbolIsWestern(i32 sym) {
+	static u16 other_WGL4_symbols_range[][2] = {
+		{0x0020, 0x017F},
+		{0x0193, 0x0193},
+		{0x01FA, 0x01FF},
+		{0x02C6, 0x02C7},
+		{0x02CA, 0x02CA},
+		{0x02D8, 0x02DD},
+		{0x0384, 0x038A},
+		{0x038C, 0x038C},
+		{0x038E, 0x03CE},
+		{0x0400, 0x0491},
+		{0x1E80, 0x1E85},
+		{0x1EF2, 0x1EF3},
+		{0x2013, 0x2015},
+		{0x2017, 0x201E},
+		{0x2020, 0x2022},
+		{0x2026, 0x2026}
+	};
+
+	isize len = SGFE_COUNTOF(other_WGL4_symbols_range);
+	for (isize i = 0; i < len; i++) {
+		if (sym >= other_WGL4_symbols_range[i][0] && sym <= other_WGL4_symbols_range[i][1]) {
+			return true;
+		}
+	}
+	return false;
+}
+
+
 
 void SGFE__keyboardSetConnection(SGFE_window* win, SGFE_keyboard* keyboard, SGFE_bool should_connect) {
 	SGFE_ASSERT_FMT(SGFE_keyboardIsConnected(win->state.keyboards, keyboard) != should_connect, "should_connect = %i;", should_connect);
@@ -2576,6 +2618,105 @@ void SGFE__keyboardRemoveFromList(SGFE_keyboardList* list, SGFE_keyboard* keyboa
 	keyboard->next = NULL;
 
 	list->count -= 1;
+}
+
+
+isize SGFE__utf8Encode(i32 codepoint, u8 out_char[4]) {
+	SGFE_ASSERT_RANGE(codepoint, 0, 0x10FFFF);
+	SGFE_ASSERT_NOT_NULL(out_char);
+
+	if (codepoint <= 0x7F) {
+		out_char[0] = (u8)codepoint;
+		return 1;
+	}
+	else if (codepoint <= 0x7FF) {
+		out_char[0] = (u8)(0xC0 | (codepoint >> 6));
+		out_char[1] = (u8)(0x80 | (codepoint & 0x3F));
+		return 2;
+	}
+	else if (codepoint <= 0xFFFF) {
+		if (codepoint >= 0xD800 && codepoint <= 0xDFFF) {
+			return -1;
+		}
+		out_char[0] = (u8)(0xE0 | (codepoint >> 12));
+		out_char[1] = (u8)(0x80 | ((codepoint >> 6) & 0x3F));
+		out_char[2] = (u8)(0x80 | (codepoint & 0x3F));
+		return 3;
+	}
+	else if (codepoint <= 0x10FFFF) {
+		out_char[0] = (u8)(0xF0 | (codepoint >> 18));
+		out_char[1] = (u8)(0x80 | ((codepoint >> 12) & 0x3F));
+		out_char[2] = (u8)(0x80 | ((codepoint >> 6) & 0x3F));
+		out_char[3] = (u8)(0x80 | (codepoint & 0x3F));
+		return 4;
+	}
+
+	return -1;
+}
+
+
+void SGFE__handleTextInput(SGFE_window* win, SGFE_keyboard* keyboard, SGFE_key key,
+		SGFE_textInputType text_input_type, SGFE_bool text_is_multiline, isize text_max_len) {
+	if (key == SGFE_keyEnter || key == SGFE_keyEsc || key == SGFE_keyKpEnter) {
+		if (!text_is_multiline) { SGFE_windowTextInputEnd(win); }
+		return ;
+	}
+
+	i32 sym;
+	if (key >= SGFE_keyKpDivide && key <= SGFE_keyKpEqual) {
+		switch (key) {
+			case SGFE_keyKpDivide:   sym = '/'; break;
+			case SGFE_keyKpMultiply: sym = '*'; break;
+			case SGFE_keyKpMinus:    sym = '-'; break;
+			case SGFE_keyKpPlus:     sym = '+'; break;
+			case SGFE_keyKpEqual:    sym = '='; break;
+			case SGFE_keyKpPeriod:   sym = '.'; break;
+		}
+	}
+	else if (key >= SGFE_keyKp0 && key <= SGFE_keyKpPeriod) {
+		if ((keyboard->modifiers & SGFE_keyModifierNumsLock) == 0) {
+			return ;
+		}
+		sym = '0' + (key - SGFE_keyKp0);
+	}
+	else if ((key >= SGFE_keyDelete && key < SGFE_keyWorld1) || key == SGFE_keyBackspace) {
+		return;
+	}
+	else {
+		sym = keyboard->SGFE_to_SYMBOL_LUT[key];
+	}
+
+	SGFE_bool valid_input;
+	switch (text_input_type) {
+		case SGFE_textInputTypeStandard: {
+			valid_input = SGFE_TRUE;
+		} break;
+
+		case SGFE_textInputTypeNumpad: {
+			valid_input = (sym >= '0' && sym <= '9');
+		} break;
+
+		case SGFE_textInputTypeQWERTY: {
+			valid_input = (sym >= ' ' && sym <= '~');
+		} break;
+
+		case SGFE_textInputTypeWestern: {
+			valid_input = SGFE__keyboardSymbolIsWestern(sym);
+		} break;
+	}
+
+	if (!valid_input) {
+		return;
+	}
+
+	u8 character[4];
+	isize len = SGFE__utf8Encode(sym, character);
+	if (len == -1 || (win->state.text_len + len) > text_max_len) {
+		return;
+	}
+
+	SGFE_MEMCPY(&win->state.text[win->state.text_len], character, (usize)len);
+	win->state.text_len += len;
 }
 
 #endif
@@ -6134,8 +6275,8 @@ SGFE_keyModifier SGFE__modifiersFromAPI(u32 modifiers) {
 	res |= (modifiers & MOD_ANYCONTROL) >> 2;
 	res |= (modifiers & MOD_ANYMETA) >> 2;
 
-	res |= (modifiers & MOD_NUMLOCK) << 1;
-	res |= (modifiers & MOD_CAPSLOCK) << 7;
+	res |= (modifiers & MOD_NUMLOCK) >> 1;
+	res |= (modifiers & MOD_CAPSLOCK) << 6;
 	res |= (modifiers & MOD_HOLDSCREEN) >> 1;
 	return res;
 }
@@ -6330,16 +6471,26 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 	keyboard_event kEvent;
 	SGFE_keyboard* keyboard = &win->keyboards[0];
 
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventTextInput)) {
+		win->state.has_text_input = SGFE_FALSE;
+		win->state.text_len = 0;
+	}
+
+	/* TODO(EimaMei): Make this into a seperate function. */
 	if (SGFE_windowGetEventEnabled(win, SGFE_eventKeyboardDown) || SGFE_windowGetEventEnabled(win, SGFE_eventKeyboardUp)) {
 		SGFE_bool is_pressed = (keyboard->first_press_key)
 			? ((SGFE_platformGetTicks() - keyboard->first_press_timestamp) > keyboard->repeat_interval)
 			: SGFE_FALSE;
+
 		for (isize i = 0; i < SGFE_keyLast; i += 1) {
 			SGFE_keyState* key = &keyboard->keystate[i];
 
 			key->was_down = (key->is_down && is_pressed);
 			if (key->was_down && key->is_down) {
 				SGFE__processCallbackAndEventQueue_KeyDown(win, keyboard, i);
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventTextInput)) {
+					SGFE__handleTextInput(win, keyboard, i, win->src.text_input_type, win->src.text_is_multiline, win->src.text_max_len);
+				}
 			}
 		}
 	}
@@ -6411,10 +6562,11 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 					SGFE__keyboardSetLUT(keyboard, 0x56, SGFE_keyKpMinus);
 					SGFE__keyboardSetLUT(keyboard, 0x57, SGFE_keyKpPlus);
 					SGFE__keyboardSetLUT(keyboard, 0x58, SGFE_keyKpEnter);
-					for (key = 0x59; key <= 0x62; key += 1) {
+					for (key = 0x59; key <= 0x61; key += 1) {
 						SGFE__keyboardSetLUT(keyboard, key, SGFE_keyKp1 + (SGFE_key)(key - 0x59));
 					}
 
+					SGFE__keyboardSetLUT(keyboard, 0x62, SGFE_keyKp0);
 					SGFE__keyboardSetLUT(keyboard, 0x63, SGFE_keyKpPeriod);
 					SGFE__keyboardSetLUT(keyboard, 0x64, SGFE_keyWorld1);
 					SGFE__keyboardSetLUT(keyboard, 0x65, SGFE_keyMenu);
@@ -6439,26 +6591,31 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 				if (win->is_queueing_events) {
 					SGFE_event event;
 					event.type = connect ? SGFE_eventKeyboardConnected : SGFE_eventKeyboardDisconnected;
-					event.text.text = win->state.text;
-					event.text.text_len = win->state.text_len;
+					event.keyboard.keyboard = keyboard;
 					SGFE_windowEventPush(win, &event);
 				}
 			} break;
 
 			case KEYBOARD_PRESSED: {
-				if (!SGFE_windowGetEventEnabled(win, SGFE_eventKeyboardDown)) {
-					break;
+				if (SGFE_windowGetEventEnabled(win, SGFE_eventKeyboardDown)) {
+					SGFE_key key = SGFE_keyFromAPI(keyboard, kEvent.keycode);
+					keyboard->keystate[key].was_down = SGFE_FALSE;
+					keyboard->keystate[key].is_down  = SGFE_TRUE;
+					keyboard->first_press_key = key;
+					keyboard->first_press_timestamp = SGFE_platformGetTicks();
+					keyboard->modifiers = SGFE__modifiersFromAPI(kEvent.modifiers);
+					/* TODO(EimaMei): possibly improve this by looking at the source
+					 * code of wiikeyboard. */
+					keyboard->SGFE_to_SYMBOL_LUT[key] = kEvent.symbol;
+					SGFE_MASK_SET(keyboard->modifiers, (u32)SGFE_keyModifierSuperL, keyboard->keystate[SGFE_keySuperL].is_down);
+					SGFE_MASK_SET(keyboard->modifiers, (u32)SGFE_keyModifierSuperR, keyboard->keystate[SGFE_keySuperR].is_down);
+
+					SGFE__processCallbackAndEventQueue_KeyDown(win, keyboard, key);
+
+					if (SGFE_windowGetEventEnabled(win, SGFE_eventTextInput)) {
+						SGFE__handleTextInput(win, keyboard, key, win->src.text_input_type, win->src.text_is_multiline, win->src.text_max_len);
+					}
 				}
-
-				SGFE_key key = SGFE_keyFromAPI(keyboard, kEvent.keycode);
-				keyboard->keystate[key].is_down = SGFE_TRUE;
-				keyboard->first_press_key = key;
-				keyboard->first_press_timestamp = SGFE_platformGetTicks();
-				keyboard->modifiers = SGFE__modifiersFromAPI(kEvent.modifiers);
-				SGFE_MASK_SET(keyboard->modifiers, (u32)SGFE_keyModifierSuperL, keyboard->keystate[SGFE_keySuperL].is_down);
-				SGFE_MASK_SET(keyboard->modifiers, (u32)SGFE_keyModifierSuperR, keyboard->keystate[SGFE_keySuperR].is_down);
-
-				SGFE__processCallbackAndEventQueue_KeyDown(win, keyboard, key);
 			} break;
 
 			case KEYBOARD_RELEASED: {
@@ -6484,13 +6641,13 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 	}
 #endif
 
-	if (SGFE_windowGetEventEnabled(win, SGFE_eventTextInput)) {
-		#warning "This event needs to be implemented."
-		/* win->state.has_text_input = ...; */
-		/* win->state.text = ...; */
-		/* win->state.text_len = ...; */
+	if (SGFE_windowGetEventEnabled(win, SGFE_eventTextInput) && win->state.text_len != 0) {
+		if (win->src.text_is_null_term) {
+			win->state.text[win->state.text_len] = '\0';
+			win->state.text_len += 1;
+		}
+		win->state.has_text_input = SGFE_TRUE;
 
-		#if 0
 		if (win->state.has_text_input) {
 			SGFE_windowTextInputCallback(win, win->state.text, win->state.text_len);
 			if (win->is_queueing_events) {
@@ -6500,10 +6657,7 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 				event.text.text_len = win->state.text_len;
 				SGFE_windowEventPush(win, &event);
 			}
-
-			SGFE_windowTextInputEnd(win);
 		}
-		#endif
 	}
 
 	return &win->state;
@@ -6781,10 +6935,11 @@ SGFE_bool SGFE_windowTextInputBegin(SGFE_window* win, u8* buffer, isize buffer_l
 	SGFE_ASSERT_NOT_NEG(buffer_len);
 	SGFE_windowTextInputEnd(win);
 
-	#warning "Warning to notify that this function hasn't been implemented yet."
+	win->src.text_input_type = s->type;
+	win->src.text_is_null_term = s->null_terminated_strings;
+	win->src.text_is_multiline = SGFE_BOOL(s->flags & SGFE_textInputFlagMultiline);
+	win->src.text_max_len = buffer_len - win->src.text_is_null_term;
 
-	/* If backend does not support text input, return false. */
-	/* s->platform_flags = ... */
 	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_TRUE);
 	win->state.has_text_input = SGFE_FALSE;
 	win->state.text = buffer;
@@ -6797,10 +6952,10 @@ void SGFE_windowTextInputEnd(SGFE_window* win) {
 	SGFE_ASSERT_NOT_NULL(win);
 	if (!SGFE_windowTextInputIsActive(win)) { return; }
 
+	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_FALSE);
 	win->state.has_text_input = SGFE_FALSE;
 	win->state.text = NULL;
 	win->state.text_len = 0;
-	SGFE_windowSetEventEnabled(win, SGFE_eventTextInput, SGFE_FALSE);
 }
 
 
@@ -6931,6 +7086,8 @@ SGFE_bool SGFE_platformInitTerminalOutputEx(SGFE_contextBuffer* b, isize x, isiz
 	SGFE_bufferSetFormat(b, SGFE_bufferFormatYCbCr);
 	SGFE_bufferSetDoubleBuffered(b, SGFE_FALSE);
 
+	y += 20;
+	height -= 20;
 	console_init(
 		SGFE_bufferGetFramebuffer(b),
 		x, y, width, height, width  * VI_DISPLAY_PIX_SZ

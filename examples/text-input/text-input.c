@@ -1,8 +1,8 @@
-
-#include <stdio.h>
 #define SGFE_IMPLEMENTATION
 #include <SGFE.h>
 #include <resources/controls.h>
+#include <stdio.h>
+
 
 static
 void debug_callback(SGFE_debugContext ctx) {
@@ -45,11 +45,6 @@ void text_input_callback(SGFE_window* win, u8* text, isize len) {
 	);
 }
 
-int si = 0;
-void annoying_af(void* buffer_ptr) {
-	printf("refres!\n");
-	si = 1;
-}
 
 int main(void) {
 	SGFE_setDebugCallback(debug_callback, NULL);
@@ -130,6 +125,7 @@ int main(void) {
 			SGFE_windowSetQueueEvents(win, (event_mode == 1));
 			SGFE_windowSetTextInputCallback(win, (event_mode == 2) ? text_input_callback : NULL);
 		}
+
 
 		if (SGFE_isDown(controller, BUTTON_PRIMARY)) {
 			SGFE_textInputSettingsMakeDefault(&settings, SGFE_TRUE);
