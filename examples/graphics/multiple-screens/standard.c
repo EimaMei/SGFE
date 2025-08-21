@@ -3,14 +3,14 @@
 #include <SGFE.h>
 #include <resources/controls.h>
 #include <resources/lonic_bin.h>
-#include <resources/cpu_renderer.h>
+#include "../buffer/standard/renderer_standard.h"
 
 
 int main(void) {
 #ifdef SGFE_3DS
 	SGFE_window* win = SGFE_windowMake(SGFE_videoGetOptimalMode(), SGFE_windowFlagBuffer | SGFE_windowFlagDualScreen);
 
-	CPU_Surface top = surface_make(
+	CPU_Surface primary = surface_make(
 		SGFE_windowGetContextExBuffer(win, SGFE_screenTop),
 		CPU_colorMake(255, 255, 255, 255)
 	);
@@ -20,42 +20,48 @@ int main(void) {
 	);
 
 	surface_clear_buffers(&bottom);
-	surface_clear_buffers(&top);
+	surface_clear_buffers(&primary);
+
 #else
-	#error "This platform does not support multiple screens."
+	#error "This platform does not support multiple scre
 #endif
 
-	CPU_Rect r = CPU_rectMake(100, 100, img_lonic_width, img_lonic_height);
-
 	isize width, height;
-	SGFE_bufferGetResolution(top.ctx, &width, &height);
+	SGFE_bufferGetResolution(primary.ctx, &width, &height);
+
+	isize x = 100, y = 100;
+	CPU_Image img = CPU_imageMake(&primary, img_lonic_data, img_lonic_width, img_lonic_height);
+
+	surface_clear_buffers(&primary);
 
 	while (!SGFE_windowShouldClose(win)) {
-		SGFE_windowPollEvents(win);
+		const SGFE_windowState* state = SGFE_windowPollEvents(win);
 
-		SGFE_controller* p1 = SGFE_windowGetController(win, 0);
-		if (SGFE_isDown(p1, BUTTON_START)) {
-			SGFE_windowSetShouldClose(win, SGFE_TRUE);
-			continue;
-		}
+		SGFE_controller* p1 = SGFE_controllerGet(state->controllers, 0);
+		if (p1) {
+			if (SGFE_isDown(p1, BUTTON_START)) {
+				SGFE_windowSetShouldClose(win, SGFE_TRUE);
+				continue;
+			}
 
-		if (SGFE_isHeld(p1, BUTTON_LEFT) && r.x > 0) {
-			r.x -= 1;
-		}
-		else if (SGFE_isHeld(p1, BUTTON_RIGHT) && r.x + r.w < width) {
-			r.x += 1;
-		}
+			if (SGFE_isHeld(p1, BUTTON_LEFT) && (isize)((float)x * primary.scale_x) > 0) {
+				x -= 1;
+			}
+			else if (SGFE_isHeld(p1, BUTTON_RIGHT) && (isize)((float)x * primary.scale_x) + img.w < width) {
+				x += 1;
+			}
 
-		if (SGFE_isHeld(p1, BUTTON_UP) && r.y > 0) {
-			r.y -= 1;
-		}
-		else if (SGFE_isHeld(p1, BUTTON_DOWN) && r.y + r.h < height) {
-			r.y += 1;
+			if (SGFE_isHeld(p1, BUTTON_UP) && (isize)((float)y * primary.scale_y) > 0) {
+				y -= 1;
+			}
+			else if (SGFE_isHeld(p1, BUTTON_DOWN) && (isize)((float)y * primary.scale_y) + img.h < height) {
+				y += 1;
+			}
 		}
 
 		#ifdef SGFE_3DS
-		surface_rect(&top, CPU_rectMake(15, 15, 64, 64), CPU_colorMake(0, 255, 0, 255));
-		surface_bitmap(&top, r, img_lonic_data);
+		surface_rect(&primary, CPU_rectMake(15, 15, 64, 64), CPU_colorMake(0, 255, 0, 255));
+		surface_bitmap(&primary, x, y, img);
 
 		surface_rect(&bottom, CPU_rectMake(15, 15, 64, 64), CPU_colorMake(15, 129, 216, 255));
 		#endif
@@ -63,7 +69,7 @@ int main(void) {
 		SGFE_windowSwapBuffers(win);
 
 		#ifdef SGFE_3DS
-		surface_clear_dirty_rects(&top);
+		surface_clear_dirty_rects(&primary);
 		surface_clear_dirty_rects(&bottom);
 		#endif
 	}

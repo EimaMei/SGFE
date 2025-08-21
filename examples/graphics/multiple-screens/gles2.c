@@ -3,7 +3,7 @@
 #define SGFE_IMPLEMENTATION
 #include <SGFE.h>
 #include <resources/controls.h>
-#include "../gles/gles1_vshader.h"
+#include "../gles/gles2_vshader.h"
 
 static
 GLuint load_shader(GLenum shader_type, const u8* binary_source, isize binary_size) {
@@ -98,10 +98,10 @@ int main(void) {
 #endif
 
 	while (!SGFE_windowShouldClose(win)) {
-		SGFE_windowPollEvents(win);
+		const SGFE_windowState* state = SGFE_windowPollEvents(win);
 
-		SGFE_controller* p1 = SGFE_windowGetController(win, 0);
-		if (SGFE_isDown(p1, BUTTON_START)) {
+		SGFE_controller* p1 = SGFE_controllerGet(state->controllers, 0);
+		if (p1 && SGFE_isDown(p1, BUTTON_START)) {
 			SGFE_windowSetShouldClose(win, SGFE_TRUE);
 			continue;
 		}

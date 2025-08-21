@@ -541,24 +541,24 @@ typedef SGFE_ENUM(isize, SGFE_motionType) {
 /* TODO(EimaMei): document */
 typedef SGFE_ENUM(u32, SGFE_buttonMask) {
 	#ifdef SGFE_3DS
-	SGFE_A            = SGFE_BIT(SGFE_button_A),
-	SGFE_B            = SGFE_BIT(SGFE_button_B),
-	SGFE_Select       = SGFE_BIT(SGFE_button_Select),
-	SGFE_Start        = SGFE_BIT(SGFE_button_Start),
-	SGFE_DpadRight    = SGFE_BIT(SGFE_button_DpadRight),
-	SGFE_DpadLeft     = SGFE_BIT(SGFE_button_DpadLeft),
-	SGFE_DpadUp       = SGFE_BIT(SGFE_button_DpadUp),
-	SGFE_DpadDown     = SGFE_BIT(SGFE_button_DpadDown),
-	SGFE_R            = SGFE_BIT(SGFE_button_R),
-	SGFE_L            = SGFE_BIT(SGFE_button_L),
-	SGFE_X            = SGFE_BIT(SGFE_button_X),
-	SGFE_Y            = SGFE_BIT(SGFE_button_Y),
-	SGFE_ZL           = SGFE_BIT(SGFE_button_ZL),
-	SGFE_ZR           = SGFE_BIT(SGFE_button_ZR),
-	SGFE_CstickRight  = SGFE_BIT(SGFE_button_CstickRight),
-	SGFE_CstickLeft   = SGFE_BIT(SGFE_button_CstickLeft),
-	SGFE_CstickUp     = SGFE_BIT(SGFE_button_CstickUp),
-	SGFE_CstickDown   = SGFE_BIT(SGFE_button_CstickDown),
+	SGFE_A            = SGFE_BIT(SGFE_buttonTypeA),
+	SGFE_B            = SGFE_BIT(SGFE_buttonTypeB),
+	SGFE_Select       = SGFE_BIT(SGFE_buttonTypeSelect),
+	SGFE_Start        = SGFE_BIT(SGFE_buttonTypeStart),
+	SGFE_DpadRight    = SGFE_BIT(SGFE_buttonTypeDpadRight),
+	SGFE_DpadLeft     = SGFE_BIT(SGFE_buttonTypeDpadLeft),
+	SGFE_DpadUp       = SGFE_BIT(SGFE_buttonTypeDpadUp),
+	SGFE_DpadDown     = SGFE_BIT(SGFE_buttonTypeDpadDown),
+	SGFE_R            = SGFE_BIT(SGFE_buttonTypeR),
+	SGFE_L            = SGFE_BIT(SGFE_buttonTypeL),
+	SGFE_X            = SGFE_BIT(SGFE_buttonTypeX),
+	SGFE_Y            = SGFE_BIT(SGFE_buttonTypeY),
+	SGFE_ZL           = SGFE_BIT(SGFE_buttonTypeZL),
+	SGFE_ZR           = SGFE_BIT(SGFE_buttonTypeZR),
+	SGFE_CstickRight  = SGFE_BIT(SGFE_buttonTypeCstickRight),
+	SGFE_CstickLeft   = SGFE_BIT(SGFE_buttonTypeCstickLeft),
+	SGFE_CstickUp     = SGFE_BIT(SGFE_buttonTypeCstickUp),
+	SGFE_CstickDown   = SGFE_BIT(SGFE_buttonTypeCstickDown),
 
 	SGFE_buttonMask_Face = SGFE_A | SGFE_B | SGFE_X | SGFE_Y | SGFE_Select | SGFE_Start,
 	SGFE_buttonMask_Dpad = SGFE_DpadRight | SGFE_DpadLeft | SGFE_DpadUp | SGFE_DpadDown,
@@ -598,8 +598,8 @@ typedef SGFE_ENUM(u32, SGFE_buttonMask) {
 /* TODO(EimaMei): document */
 typedef SGFE_ENUM(u32, SGFE_axisMask) {
 	#ifdef SGFE_3DS
-	SGFE_axisLeftX,
-	SGFE_axisLeftY,
+	SGFE_axisLeftX = SGFE_BIT(SGFE_axisTypeLeftX),
+	SGFE_axisLeftY = SGFE_BIT(SGFE_axisTypeLeftY),
 
 	/* TODO(EimaMei): As of July 2nd 2025 Circle Pad Pro support isn't going to
 	 * be added until this PR gets merged: https://github.com/devkitPro/libctru/pull/568. */
@@ -616,7 +616,7 @@ typedef SGFE_ENUM(u32, SGFE_axisMask) {
 /* TODO(EimaMei): document */
 typedef SGFE_ENUM(u32, SGFE_pointerMask) {
 	#ifdef SGFE_3DS
-	SGFE_pointerTouchscreen,
+	SGFE_pointerTouchscreen = SGFE_BIT(SGFE_pointerTypeTouchscreen),
 
 	#elif SGFE_WII
 	SGFE_pointerInfrared = SGFE_BIT(SGFE_pointerTypeInfrared),
@@ -627,8 +627,8 @@ typedef SGFE_ENUM(u32, SGFE_pointerMask) {
 /* TODO(EimaMei): document */
 typedef SGFE_ENUM(u32, SGFE_motionMask) {
 	#if SGFE_3DS
-	SGFE_motionAccelerometer,
-	SGFE_motionGyroscope,
+	SGFE_motionAccelerometer = SGFE_BIT(SGFE_motionTypeAccelerometer),
+	SGFE_motionGyroscope     = SGFE_BIT(SGFE_motionTypeAccelerometer),
 
 	#elif SGFE_WII
 	SGFE_motionAccelerometer        = SGFE_BIT(SGFE_motionTypeAccelerometer),
@@ -4445,29 +4445,29 @@ SGFE_bool (SGFE_debugSendGL)(void* ctx_ptr, const char* filename, isize line, co
 
 
 #ifndef SGFE_CUSTOM_BACKEND
+
 #ifdef SGFE_3DS
 
 const SGFE_buttonMask SGFE_BUTTON_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
-	SGFE_buttonMask_All
+	SGFE_buttonMask_All,
 };
 
-const isize SGFE_BUTTON_BITS_LUT[SGFE_controllerTypeCount][2] = {
-	{SGFE_button_A, SGFE_button_CstickDown}
+const SGFE_axisMask SGFE_AXIS_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+	SGFE_axisLeftX  | SGFE_axisLeftY,
 };
-const isize SGFE_AXIS_MASK_BITS_LUT[SGFE_controllerTypeCount][2] = {
-	{SGFE_axisLeftX, SGFE_axisLeftY},
+
+const SGFE_pointerMask SGFE_POINTER_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+	SGFE_pointerTouchscreen
 };
-const isize SGFE_POINTER_MASK_BITS_LUT[SGFE_controllerTypeCount][2] = {
-	{SGFE_pointerTouchscreen, SGFE_pointerTouchscreen},
-};
-const isize SGFE_MOTION_MASK_BITS_LUT[SGFE_controllerTypeCount][2] = {
-	{SGFE_motionAccelerometer, SGFE_motionGyroscope}
+
+const SGFE_motionMask SGFE_MOTION_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+	SGFE_motionAccelerometer | SGFE_motionGyroscope,
 };
 
 const char* SGFE_CONTROLLER_NAME_LUT[SGFE_controllerTypeCount] = {
 	"Nintendo 3DS"
 };
-const char* SGFE_BUTTON_NAMES_3DS_LUT[SGFE_buttonCount] = {
+const char* SGFE_BUTTON_NAMES_3DS_LUT[SGFE_buttonTypeCount] = {
 	"A",
 	"B",
 	"Select",

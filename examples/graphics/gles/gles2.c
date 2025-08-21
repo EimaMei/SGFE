@@ -78,10 +78,10 @@ int main(void) {
 	glEnableVertexAttribArray(1);
 
 	while (!SGFE_windowShouldClose(win)) {
-		SGFE_windowPollEvents(win);
+		const SGFE_windowState* state = SGFE_windowPollEvents(win);
 
-		SGFE_controller* p1 = SGFE_windowGetController(win, 0);
-		if (SGFE_isDown(p1, BUTTON_START)) {
+		SGFE_controller* p1 = SGFE_controllerGet(state->controllers, 0);
+		if (p1 && SGFE_isDown(p1, BUTTON_START)) {
 			SGFE_windowSetShouldClose(win, SGFE_TRUE);
 			continue;
 		}

@@ -1,5 +1,6 @@
 Current TODOs:
-- compare template with wii backend 
+- (3DS) Implement back 3D functionality into native
+- compare template with wii backend
 - rework buffers so that you could change from native to non-native and back to native. this requires to have seperate buffers with consistent names.
 - (wii) keyboard name through USB
 - (wii) add wii motion plus
