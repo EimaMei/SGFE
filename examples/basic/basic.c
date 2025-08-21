@@ -124,18 +124,18 @@ int main(void) {
 void controller_printInfo(SGFE_controller* controller) {
 	if (controller == NULL) { return ; }
 	printf("\n\n");
-	isize first, last;
+	isize type;
 
 	printf("Controller #%zi: %s\n", controller->array_index, SGFE_controllerGetName(controller->type));
 
-	SGFE_controllerGetRangeAxis(controller->type, &first, &last);
-	for (SGFE_axisType j = first; j <= last; j += 1) {
-		printf("\tAxis #%02zi: %s\n", j, SGFE_controllerGetNameAxis(controller->type, j));
+	SGFE_axisMask axes = SGFE_controllerGetMaskAxis(controller->type);
+	while (SGFE_iterateMask(&axes, &type)) {
+		printf("\tAxis #%02zi: %s\n", type, SGFE_controllerGetNameAxis(controller->type, type));
 	}
 
-	SGFE_controllerGetRangeButton(controller->type, &first, &last);
-	for (SGFE_buttonType j = first; j <= last; j += 1) {
-		printf("\tButton #%02zi: %s\n", j, SGFE_controllerGetNameButton(controller->type, j));
+	SGFE_buttonMask buttons = SGFE_controllerGetMaskButton(controller->type);
+	while (SGFE_iterateMask(&buttons, &type)) {
+		printf("\tButton #%02zi: %s\n", type, SGFE_controllerGetNameButton(controller->type, type));
 	}
 
 	/* NOTE(EimaMei): More often than not motion capabilities are disabled
@@ -144,10 +144,10 @@ void controller_printInfo(SGFE_controller* controller) {
 	 *
 	 * You can see which motion sensors are enabled by checking
 	 * '.enabled_motions[]' and seeing if they equal to true. */
-	SGFE_controllerGetRangeMotion(controller->type, &first, &last);
-	for (SGFE_motionType j = first; j <= last; j += 1) {
-		SGFE_controllerEnableMotion(controller, j, SGFE_TRUE);
-		printf("\tMotion device #%02zi: %s\n", j, SGFE_controllerGetNameMotion(controller->type, j));
+	SGFE_motionMask motions = SGFE_controllerGetMaskMotion(controller->type);
+	while (SGFE_iterateMask(&motions, &type)) {
+		SGFE_controllerEnableMotion(controller, type, SGFE_TRUE);
+		printf("\tMotion device #%02zi: %s\n", type, SGFE_controllerGetNameMotion(controller->type, type));
 	}
 
 	/* NOTE(EimaMei): Usually most pointer capabilities are enabled by default
@@ -156,9 +156,9 @@ void controller_printInfo(SGFE_controller* controller) {
 	 *
 	 * You can see which pointer functionalities are enabled by checking
 	 * '.enabled_pointers[]' and seeing if they equal to true. */
-	SGFE_controllerGetRangePointer(controller->type, &first, &last);
-	for (SGFE_pointerType j = first; j <= last; j += 1) {
-		SGFE_controllerEnablePointer(controller, j, SGFE_TRUE);
-		printf("\tPointer device #%02zi: %s\n", j, SGFE_controllerGetNamePointer(controller->type, j));
+	SGFE_pointerMask pointers = SGFE_controllerGetMaskPointer(controller->type);
+	while (SGFE_iterateMask(&pointers, &type)) {
+		SGFE_controllerEnablePointer(controller, type, SGFE_TRUE);
+		printf("\tPointer device #%02zi: %s\n", type, SGFE_controllerGetNamePointer(controller->type, type));
 	}
 }

@@ -442,56 +442,104 @@ typedef SGFE_ENUM(isize, SGFE_controllerType) {
 	SGFE_controllerTypeLast = SGFE_controllerTypeCount - 1,
 };
 
+
 /* TODO(EimaMei): document */
 typedef SGFE_ENUM(isize, SGFE_buttonType) {
-	SGFE_buttonInvalid = -1,
-
 	#ifdef SGFE_3DS
-	SGFE_button_A = 0,
-	SGFE_button_B,
-	SGFE_button_Select,
-	SGFE_button_Start,
-	SGFE_button_DpadRight,
-	SGFE_button_DpadLeft,
-	SGFE_button_DpadUp,
-	SGFE_button_DpadDown,
-	SGFE_button_R,
-	SGFE_button_L,
-	SGFE_button_X,
-	SGFE_button_Y,
-	SGFE_button_ZL,
-	SGFE_button_ZR,
-	SGFE_button_CstickRight,
-	SGFE_button_CstickLeft,
-	SGFE_button_CstickUp,
-	SGFE_button_CstickDown,
+	SGFE_buttonTypeA = 0,
+	SGFE_buttonTypeB,
+	SGFE_buttonTypeSelect,
+	SGFE_buttonTypeStart,
+	SGFE_buttonTypeDpadRight,
+	SGFE_buttonTypeDpadLeft,
+	SGFE_buttonTypeDpadUp,
+	SGFE_buttonTypeDpadDown,
+	SGFE_buttonTypeR,
+	SGFE_buttonTypeL,
+	SGFE_buttonTypeX,
+	SGFE_buttonTypeY,
+	SGFE_buttonTypeZL,
+	SGFE_buttonTypeZR,
+	SGFE_buttonTypeCstickRight,
+	SGFE_buttonTypeCstickLeft,
+	SGFE_buttonTypeCstickUp,
+	SGFE_buttonTypeCstickDown,
 
-	SGFE_buttonCount,
+	SGFE_buttonTypeCount,
 
 	#elif SGFE_WII
-	SGFE_button_2 = 0,
-	SGFE_button_1,
-	SGFE_button_B,
-	SGFE_button_A,
-	SGFE_button_Minus,
-	SGFE_button_Home,
-	SGFE_button_Left,
-	SGFE_button_Right,
-	SGFE_button_Down,
-	SGFE_button_Up,
-	SGFE_button_Plus,
+	SGFE_buttonType2 = 0,
+	SGFE_buttonType1,
+	SGFE_buttonTypeB,
+	SGFE_buttonTypeA,
+	SGFE_buttonTypeMinus,
+	SGFE_buttonTypeHome,
+	SGFE_buttonTypeLeft,
+	SGFE_buttonTypeRight,
+	SGFE_buttonTypeDown,
+	SGFE_buttonTypeUp,
+	SGFE_buttonTypePlus,
 
-	SGFE_buttonCount_WiiRemote,
+	SGFE_buttonTypeCount_WiiRemote,
 
 
-	SGFE_button_Z = SGFE_button_Plus + 1,
-	SGFE_button_C,
-	SGFE_buttonCount_Nunchuk,
+	SGFE_buttonTypeZ = SGFE_buttonTypePlus + 1,
+	SGFE_buttonTypeC,
+	SGFE_buttonTypeCount_Nunchuk,
 	#endif
 };
 
 /* TODO(EimaMei): document */
-typedef SGFE_ENUM(u32, SGFE_button) {
+typedef SGFE_ENUM(isize, SGFE_axisType) {
+	#ifdef SGFE_3DS
+	SGFE_axisTypeLeftX,
+	SGFE_axisTypeLeftY,
+
+	/* TODO(EimaMei): As of July 2nd 2025 Circle Pad Pro support isn't going to
+	 * be added until this PR gets merged: https://github.com/devkitPro/libctru/pull/568. */
+	/* SGFE_axisTypeRightX,
+	SGFE_axisTypeRightY, */
+
+	#elif SGFE_WII
+	SGFE_axisTypeLeftX,
+	SGFE_axisTypeLeftY,
+
+	#endif
+
+	SGFE_axisTypeCount,
+};
+
+/* TODO(EimaMei): document */
+typedef SGFE_ENUM(isize, SGFE_pointerType) {
+	#ifdef SGFE_3DS
+	SGFE_pointerTypeTouchscreen,
+
+	#elif SGFE_WII
+	SGFE_pointerTypeInfrared,
+
+	#endif
+
+	SGFE_pointerTypeCount,
+};
+
+/* TODO(EimaMei): document */
+typedef SGFE_ENUM(isize, SGFE_motionType) {
+	#if SGFE_3DS
+	SGFE_motionTypeAccelerometer,
+	SGFE_motionTypeGyroscope,
+
+	#elif SGFE_WII
+	SGFE_motionTypeAccelerometer,
+	SGFE_motionTypeGyroscope,
+	SGFE_motionTypeNunchukAccelerometer,
+
+	#endif
+
+	SGFE_motionTypeCount,
+};
+
+/* TODO(EimaMei): document */
+typedef SGFE_ENUM(u32, SGFE_buttonMask) {
 	#ifdef SGFE_3DS
 	SGFE_A            = SGFE_BIT(SGFE_button_A),
 	SGFE_B            = SGFE_BIT(SGFE_button_B),
@@ -525,19 +573,19 @@ typedef SGFE_ENUM(u32, SGFE_button) {
 						  SGFE_buttonMask_Cstick
 
 	#elif SGFE_WII
-	SGFE_2      = SGFE_BIT(SGFE_button_2),
-	SGFE_1      = SGFE_BIT(SGFE_button_1),
-	SGFE_B      = SGFE_BIT(SGFE_button_B),
-	SGFE_A      = SGFE_BIT(SGFE_button_A),
-	SGFE_Minus  = SGFE_BIT(SGFE_button_Minus),
-	SGFE_Home   = SGFE_BIT(SGFE_button_Home),
-	SGFE_Left   = SGFE_BIT(SGFE_button_Left),
-	SGFE_Right  = SGFE_BIT(SGFE_button_Right),
-	SGFE_Down   = SGFE_BIT(SGFE_button_Down),
-	SGFE_Up     = SGFE_BIT(SGFE_button_Up),
-	SGFE_Plus   = SGFE_BIT(SGFE_button_Plus),
-	SGFE_Z      = SGFE_BIT(SGFE_button_Z),
-	SGFE_C      = SGFE_BIT(SGFE_button_C),
+	SGFE_2      = SGFE_BIT(SGFE_buttonType2),
+	SGFE_1      = SGFE_BIT(SGFE_buttonType1),
+	SGFE_B      = SGFE_BIT(SGFE_buttonTypeB),
+	SGFE_A      = SGFE_BIT(SGFE_buttonTypeA),
+	SGFE_Minus  = SGFE_BIT(SGFE_buttonTypeMinus),
+	SGFE_Home   = SGFE_BIT(SGFE_buttonTypeHome),
+	SGFE_Left   = SGFE_BIT(SGFE_buttonTypeLeft),
+	SGFE_Right  = SGFE_BIT(SGFE_buttonTypeRight),
+	SGFE_Down   = SGFE_BIT(SGFE_buttonTypeDown),
+	SGFE_Up     = SGFE_BIT(SGFE_buttonTypeUp),
+	SGFE_Plus   = SGFE_BIT(SGFE_buttonTypePlus),
+	SGFE_Z      = SGFE_BIT(SGFE_buttonTypeZ),
+	SGFE_C      = SGFE_BIT(SGFE_buttonTypeC),
 
 	SGFE_buttonMask_WiiRemote = SGFE_2 | SGFE_1 | SGFE_B | SGFE_A | SGFE_Minus |
 						SGFE_Home | SGFE_Left | SGFE_Right | SGFE_Down | SGFE_Up |
@@ -548,7 +596,7 @@ typedef SGFE_ENUM(u32, SGFE_button) {
 };
 
 /* TODO(EimaMei): document */
-typedef SGFE_ENUM(isize, SGFE_axisType) {
+typedef SGFE_ENUM(u32, SGFE_axisMask) {
 	#ifdef SGFE_3DS
 	SGFE_axisLeftX,
 	SGFE_axisLeftY,
@@ -559,41 +607,35 @@ typedef SGFE_ENUM(isize, SGFE_axisType) {
 	SGFE_axisTypeRightY, */
 
 	#elif SGFE_WII
-	SGFE_axisLeftX,
-	SGFE_axisLeftY,
+	SGFE_axisLeftX = SGFE_BIT(SGFE_axisTypeLeftX),
+	SGFE_axisLeftY = SGFE_BIT(SGFE_axisTypeLeftY),
 
 	#endif
-
-	SGFE_axisTypeCount,
 };
 
 /* TODO(EimaMei): document */
-typedef SGFE_ENUM(isize, SGFE_pointerType) {
+typedef SGFE_ENUM(u32, SGFE_pointerMask) {
 	#ifdef SGFE_3DS
 	SGFE_pointerTouchscreen,
 
 	#elif SGFE_WII
-	SGFE_pointerInfrared,
+	SGFE_pointerInfrared = SGFE_BIT(SGFE_pointerTypeInfrared),
 
 	#endif
-
-	SGFE_pointerTypeCount,
 };
 
 /* TODO(EimaMei): document */
-typedef SGFE_ENUM(isize, SGFE_motionType) {
+typedef SGFE_ENUM(u32, SGFE_motionMask) {
 	#if SGFE_3DS
 	SGFE_motionAccelerometer,
 	SGFE_motionGyroscope,
 
 	#elif SGFE_WII
-	SGFE_motionAccelerometer,
-	SGFE_motionGyroscope,
-	SGFE_motionNunchukAccelerometer,
+	SGFE_motionAccelerometer        = SGFE_BIT(SGFE_motionTypeAccelerometer),
+	SGFE_motionGyroscope            = SGFE_BIT(SGFE_motionTypeGyroscope),
+	SGFE_motionNunchukAccelerometer = SGFE_BIT(SGFE_motionTypeNunchukAccelerometer),
 
 	#endif
-
-	SGFE_motionTypeCount,
 };
 
 #endif /* SGFE_CUSTOM_BACKEND */
@@ -632,11 +674,11 @@ typedef struct SGFE_controller {
 	isize array_index;
 
 	/* Buttons that have been pressed down for multiple frames. */
-	SGFE_button buttons_held;
+	SGFE_buttonMask buttons_held;
 	/* Buttons that were pressed down this exact frame. */
-	SGFE_button buttons_down;
+	SGFE_buttonMask buttons_down;
 	/* Buttons that are currently released up this exact frame. */
-	SGFE_button buttons_up;
+	SGFE_buttonMask buttons_up;
 
 	/* Current axes states. */
 	SGFE_axis axes[SGFE_axisTypeCount];
@@ -1396,22 +1438,20 @@ SGFE_DEF SGFE_controller* SGFE_controllerGet(SGFE_controllerList list, isize pla
 SGFE_DEF SGFE_bool SGFE_controllerIsConnected(SGFE_controllerList list,
 	const SGFE_controller* controller);
 
-SGFE_DEF SGFE_bool SGFE_isHeld(const SGFE_controller* controller, SGFE_button mask);
-SGFE_DEF SGFE_bool SGFE_isDown(const SGFE_controller* controller, SGFE_button mask);
-SGFE_DEF SGFE_bool SGFE_isUp(const SGFE_controller* controller, SGFE_button mask);
+SGFE_DEF SGFE_bool SGFE_isHeld(const SGFE_controller* controller, SGFE_buttonMask mask);
+SGFE_DEF SGFE_bool SGFE_isDown(const SGFE_controller* controller, SGFE_buttonMask mask);
+SGFE_DEF SGFE_bool SGFE_isUp(const SGFE_controller* controller, SGFE_buttonMask mask);
 
 
 /* TODO */
-SGFE_DEF SGFE_buttonType SGFE_buttonGetType(SGFE_button mask);
+SGFE_DEF isize SGFE_maskGetType(u32 mask);
 /* TODO */
-SGFE_DEF SGFE_bool SGFE_iterateButtonMask(SGFE_button* buttons_mask, SGFE_buttonType* out_button);
+SGFE_DEF SGFE_bool SGFE_iterateMask(u32* mask, isize* out_type);
 
 /* TODO */
-SGFE_DEF SGFE_button SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask);
+SGFE_DEF SGFE_buttonMask SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask);
 /* TODO */
-SGFE_DEF u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_button button);
-/* TODO(EimaMei): NEW FUNCTION */
-SGFE_DEF SGFE_button SGFE_buttonGetMask(SGFE_controllerType type);
+SGFE_DEF u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_buttonMask button);
 
 
 /* TODO(EimaMei): */
@@ -1424,14 +1464,14 @@ SGFE_DEF const SGFE_pointer* SGFE_controllerGetPointer(const SGFE_controller* co
 SGFE_DEF const SGFE_motion* SGFE_controllerGetMotion(const SGFE_controller* controller,
 	SGFE_motionType which);
 
-/* TODO(EimaMei): */
-SGFE_DEF void SGFE_controllerGetRangeButton(SGFE_controllerType type, SGFE_buttonType* out_first, SGFE_buttonType* out_last);
 /* TODO(EimaMei): NEW FUNCTION */
-SGFE_DEF void SGFE_controllerGetRangeAxis(SGFE_controllerType type, SGFE_axisType* out_first, SGFE_axisType* out_last);
+SGFE_DEF SGFE_buttonMask SGFE_controllerGetMaskButton(SGFE_controllerType type);
 /* TODO(EimaMei): NEW FUNCTION */
-SGFE_DEF void SGFE_controllerGetRangePointer(SGFE_controllerType type, SGFE_pointerType* out_first, SGFE_pointerType* out_last);
+SGFE_DEF SGFE_axisMask SGFE_controllerGetMaskAxis(SGFE_controllerType type);
 /* TODO(EimaMei): NEW FUNCTION */
-SGFE_DEF void SGFE_controllerGetRangeMotion(SGFE_controllerType type, SGFE_motionType* out_first, SGFE_motionType* out_last);
+SGFE_DEF SGFE_pointerMask SGFE_controllerGetMaskPointer(SGFE_controllerType type);
+/* TODO(EimaMei): NEW FUNCTION */
+SGFE_DEF SGFE_motionMask SGFE_controllerGetMaskMotion(SGFE_controllerType type);
 
 /* TODO(EimaMei): NEW FUNCTION */
 SGFE_DEF const char* SGFE_controllerGetName(SGFE_controllerType type);
@@ -2025,9 +2065,9 @@ SGFE_DEF SGFE_bool SGFE_platformHasSoftwareKeyboard(void);
 #ifdef SGFE_3DS
 
 /* TODO */
-SGFE_DEF SGFE_button SGFE_platformButtonFromAPI(u32 mask);
+SGFE_DEF SGFE_buttonMask SGFE_platformButtonFromAPI(u32 mask);
 /* TODO */
-SGFE_DEF u32 SGFE_platformButtonToAPI(SGFE_button button);
+SGFE_DEF u32 SGFE_platformButtonToAPI(SGFE_buttonMask button);
 
 
 /* TODO(EimaMei): new function. */
@@ -2042,14 +2082,14 @@ SGFE_DEF SGFE_bool SGFE_platformRotateScreenGL(GLuint shader_program, const char
 #elif SGFE_WII
 
 /* TODO */
-SGFE_DEF SGFE_button SGFE_platformButtonFromWiiRemote(u32 mask);
+SGFE_DEF SGFE_buttonMask SGFE_platformButtonFromWiiRemote(u32 mask);
 /* TODO */
-SGFE_DEF SGFE_button SGFE_platformButtonFromNunchuk(u32 mask);
+SGFE_DEF SGFE_buttonMask SGFE_platformButtonFromNunchuk(u32 mask);
 
 /* TODO */
-SGFE_DEF u32 SGFE_platformButtonToWiiRemote(SGFE_button button);
+SGFE_DEF u32 SGFE_platformButtonToWiiRemote(SGFE_buttonMask button);
 /* TODO */
-SGFE_DEF u32 SGFE_platformButtonToNunchuk(SGFE_button button);
+SGFE_DEF u32 SGFE_platformButtonToNunchuk(SGFE_buttonMask button);
 
 /* TODO */
 SGFE_DEF SGFE_bool SGFE_platformIsWidescreen(void);
@@ -2292,12 +2332,10 @@ void (SGFE_debugSendMsg)(void* ctx_ptr, SGFE_debugType type, isize code,
 
 #ifdef SGFE_IMPLEMENTATION
 
-const SGFE_button SGFE_BUTTON_MASK_BITS_LUT[SGFE_controllerTypeCount];
-
-const isize SGFE_BUTTON_RANGE_LUT[SGFE_controllerTypeCount][2];
-const isize SGFE_AXIS_RANGE_LUT[SGFE_controllerTypeCount][2];
-const isize SGFE_POINTER_RANGE_LUT[SGFE_controllerTypeCount][2];
-const isize SGFE_MOTION_RANGE_LUT[SGFE_controllerTypeCount][2];
+const SGFE_buttonMask  SGFE_BUTTON_MASK_BITS_LUT[SGFE_controllerTypeCount];
+const SGFE_axisMask    SGFE_AXIS_MASK_BITS_LUT[SGFE_controllerTypeCount];
+const SGFE_pointerMask SGFE_POINTER_MASK_BITS_LUT[SGFE_controllerTypeCount];
+const SGFE_motionMask  SGFE_MOTION_MASK_BITS_LUT[SGFE_controllerTypeCount];
 
 const char* SGFE_CONTROLLER_NAME_LUT[SGFE_controllerTypeCount];
 const char* SGFE_AXIS_NAME_LUT[SGFE_axisTypeCount];
@@ -2713,10 +2751,10 @@ void SGFE__processCallbackAndEventQueue_ButtonDown(SGFE_window* win, SGFE_contro
 		return;
 	}
 
-	SGFE_button mask = controller->buttons_held;
+	SGFE_buttonMask mask = controller->buttons_held;
 	SGFE_buttonType button;
 
-	while (SGFE_iterateButtonMask(&mask, &button)) {
+	while (SGFE_iterateMask(&mask, &button)) {
 		SGFE_bool is_repeated = (controller->buttons_down & SGFE_BIT(button)) == 0;
 		SGFE_windowButtonCallback(win, controller, button, is_repeated, SGFE_TRUE);
 
@@ -2738,10 +2776,10 @@ void SGFE__processCallbackAndEventQueue_ButtonUp(SGFE_window* win, SGFE_controll
 		return;
 	}
 
-	SGFE_button mask = controller->buttons_up;
+	SGFE_buttonMask mask = controller->buttons_up;
 	SGFE_buttonType button;
 
-	while (SGFE_iterateButtonMask(&mask, &button)) {
+	while (SGFE_iterateMask(&mask, &button)) {
 		SGFE_windowButtonCallback(win, controller, button, SGFE_FALSE, SGFE_FALSE);
 
 		if (win->is_queueing_events) {
@@ -3516,41 +3554,41 @@ SGFE_bool SGFE_controllerIsConnected(SGFE_controllerList list, const SGFE_contro
 }
 
 
-SGFE_bool SGFE_isHeld(const SGFE_controller* controller, SGFE_button mask) {
+SGFE_bool SGFE_isHeld(const SGFE_controller* controller, SGFE_buttonMask mask) {
 	SGFE_ASSERT_NOT_NULL(controller);
 	SGFE_ASSERT_FMT(
-		(mask & ~SGFE_buttonGetMask(controller->type)) == 0,
+		(mask & ~SGFE_controllerGetMaskButton(controller->type)) == 0,
 		"mask = %x; controller_mask = %x; res = %x; controller->type = %i",
-		mask,  SGFE_buttonGetMask(controller->type), (mask & ~SGFE_buttonGetMask(controller->type)),
+		mask,  SGFE_controllerGetMaskButton(controller->type), (mask & ~SGFE_controllerGetMaskButton(controller->type)),
 		controller->type
 	);
 	return (controller->buttons_held & mask) == mask;
 }
 
-SGFE_bool SGFE_isDown(const SGFE_controller* controller, SGFE_button mask) {
+SGFE_bool SGFE_isDown(const SGFE_controller* controller, SGFE_buttonMask mask) {
 	SGFE_ASSERT_NOT_NULL(controller);
 	SGFE_ASSERT_FMT(
-		(mask & ~SGFE_buttonGetMask(controller->type)) == 0,
+		(mask & ~SGFE_controllerGetMaskButton(controller->type)) == 0,
 		"mask = %x; controller_mask = %x; res = %x; controller->type = %i",
-		mask,  SGFE_buttonGetMask(controller->type), (mask & ~SGFE_buttonGetMask(controller->type)),
+		mask,  SGFE_controllerGetMaskButton(controller->type), (mask & ~SGFE_controllerGetMaskButton(controller->type)),
 		controller->type
 	);
 	return (controller->buttons_down & mask) == mask;
 }
 
-SGFE_bool SGFE_isUp(const SGFE_controller* controller, SGFE_button mask) {
+SGFE_bool SGFE_isUp(const SGFE_controller* controller, SGFE_buttonMask mask) {
 	SGFE_ASSERT_NOT_NULL(controller);
 	SGFE_ASSERT_FMT(
-		(mask & ~SGFE_buttonGetMask(controller->type)) == 0,
+		(mask & ~SGFE_controllerGetMaskButton(controller->type)) == 0,
 		"mask = %x; controller_mask = %x; res = %x; controller->type = %i",
-		mask,  SGFE_buttonGetMask(controller->type), (mask & ~SGFE_buttonGetMask(controller->type)),
+		mask,  SGFE_controllerGetMaskButton(controller->type), (mask & ~SGFE_controllerGetMaskButton(controller->type)),
 		controller->type
 	);
 	return (controller->buttons_up & mask) == mask;
 }
 
 
-SGFE_buttonType SGFE_buttonGetType(SGFE_button mask) {
+isize SGFE_maskGetType(u32 mask) {
 	isize count = 0;
 	while ((mask & 1) == 0) {
 		count += 1;
@@ -3559,93 +3597,61 @@ SGFE_buttonType SGFE_buttonGetType(SGFE_button mask) {
 	return count;
 }
 
-SGFE_bool SGFE_iterateButtonMask(SGFE_button* buttons_mask, SGFE_buttonType* out_button) {
-	SGFE_ASSERT_NOT_NULL(buttons_mask);
-	SGFE_ASSERT_NOT_NULL(out_button);
-	if (*buttons_mask == 0) { return SGFE_FALSE; }
+SGFE_bool SGFE_iterateMask(u32* mask, isize* out_type) {
+	SGFE_ASSERT_NOT_NULL(mask);
+	SGFE_ASSERT_NOT_NULL(out_type);
+	if (*mask == 0) { return SGFE_FALSE; }
 
-	SGFE_buttonType type = SGFE_buttonGetType(*buttons_mask);
-	*buttons_mask &= (SGFE_button)~SGFE_BIT(type);
-	*out_button = type;
+	isize type = SGFE_maskGetType(*mask);
+	*mask &= (SGFE_buttonMask)~SGFE_BIT(type);
+	*out_type = type;
 
 	return SGFE_TRUE;
 }
 
 
-SGFE_button SGFE_buttonGetMask(SGFE_controllerType type) {
-	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
-	return SGFE_BUTTON_MASK_BITS_LUT[type];
-}
-
 
 const SGFE_axis* SGFE_controllerGetAxis(const SGFE_controller* controller,
 		SGFE_axisType axis) {
 	SGFE_ASSERT_NOT_NULL(controller);
-	#ifndef NDEBUG
-	SGFE_axisType start, end;
-	SGFE_controllerGetRangeAxis(controller->type, &start, &end);
-	SGFE_ASSERT_NOT_NEG(start);
-	SGFE_ASSERT_NOT_NEG(end);
-	SGFE_ASSERT_RANGE(axis, start, end);
-	#endif
-
+	SGFE_ASSERT(SGFE_BOOL(SGFE_controllerGetMaskAxis(controller->type) & SGFE_BIT(axis)));
 	return &controller->axes[axis];
 }
 
 const SGFE_pointer* SGFE_controllerGetPointer(const SGFE_controller* controller,
 		SGFE_pointerType pointer) {
 	SGFE_ASSERT_NOT_NULL(controller);
-	#ifndef NDEBUG
-	SGFE_pointerType start, end;
-	SGFE_controllerGetRangePointer(controller->type, &start, &end);
-	SGFE_ASSERT_NOT_NEG(start);
-	SGFE_ASSERT_NOT_NEG(end);
-	SGFE_ASSERT_RANGE(pointer, start, end);
-	#endif
-
+	SGFE_ASSERT(SGFE_BOOL(SGFE_controllerGetMaskPointer(controller->type) & SGFE_BIT(pointer)));
 	return &controller->pointers[pointer];
 }
 
 const SGFE_motion* SGFE_controllerGetMotion(const SGFE_controller* controller,
 		SGFE_motionType motion) {
 	SGFE_ASSERT_NOT_NULL(controller);
-	#ifndef NDEBUG
-	SGFE_motionType start, end;
-	SGFE_controllerGetRangeMotion(controller->type, &start, &end);
-	SGFE_ASSERT_NOT_NEG(start);
-	SGFE_ASSERT_NOT_NEG(end);
-	SGFE_ASSERT_RANGE(motion, start, end);
-	#endif
+	SGFE_ASSERT(SGFE_BOOL(SGFE_controllerGetMaskMotion(controller->type) & SGFE_BIT(motion)));
 
 	return &controller->motions[motion];
 }
 
-void SGFE_controllerGetRangeButton(SGFE_controllerType type,
-		SGFE_buttonType* out_first,SGFE_buttonType* out_last) {
+
+SGFE_buttonMask SGFE_controllerGetMaskButton(SGFE_controllerType type) {
 	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
-	if (out_first) { *out_first = SGFE_BUTTON_RANGE_LUT[type][0]; }
-	if (out_last)  { *out_last  = SGFE_BUTTON_RANGE_LUT[type][1]; }
+	return SGFE_BUTTON_MASK_BITS_LUT[type];
 }
 
-void SGFE_controllerGetRangeAxis(SGFE_controllerType type,
-		SGFE_axisType* out_first, SGFE_axisType* out_last) {
+SGFE_axisMask SGFE_controllerGetMaskAxis(SGFE_controllerType type) {
 	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
-	if (out_first) { *out_first = SGFE_AXIS_RANGE_LUT[type][0]; }
-	if (out_last)  { *out_last  = SGFE_AXIS_RANGE_LUT[type][1]; }
+	return SGFE_AXIS_MASK_BITS_LUT[type];
 }
 
-void SGFE_controllerGetRangePointer(SGFE_controllerType type,
-		SGFE_pointerType* out_first, SGFE_pointerType* out_last) {
+SGFE_pointerMask SGFE_controllerGetMaskPointer(SGFE_controllerType type) {
 	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
-	if (out_first) { *out_first = SGFE_POINTER_RANGE_LUT[type][0]; }
-	if (out_last)  { *out_last  = SGFE_POINTER_RANGE_LUT[type][1]; }
+	return SGFE_POINTER_MASK_BITS_LUT[type];
 }
 
-void SGFE_controllerGetRangeMotion(SGFE_controllerType type,
-		SGFE_motionType* out_first, SGFE_motionType* out_last) {
+SGFE_motionMask SGFE_controllerGetMaskMotion(SGFE_controllerType type) {
 	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
-	if (out_first) { *out_first = SGFE_MOTION_RANGE_LUT[type][0]; }
-	if (out_last)  { *out_last  = SGFE_MOTION_RANGE_LUT[type][1]; }
+	return SGFE_MOTION_MASK_BITS_LUT[type];
 }
 
 
@@ -3654,16 +3660,9 @@ const char* SGFE_controllerGetName(SGFE_controllerType type) {
 	return SGFE_CONTROLLER_NAME_LUT[type];
 }
 
-const char* SGFE_controllerGetNameButton(SGFE_controllerType type,
-		SGFE_buttonType button) {
+const char* SGFE_controllerGetNameButton(SGFE_controllerType type, SGFE_buttonType button) {
 	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
-	#ifndef NDEBUG
-	SGFE_buttonType start, end;
-	SGFE_controllerGetRangeButton(type, &start, &end);
-	SGFE_ASSERT_NOT_NEG(start);
-	SGFE_ASSERT_NOT_NEG(end);
-	SGFE_ASSERT_RANGE(button, start, end);
-	#endif
+	SGFE_ASSERT(SGFE_BOOL(SGFE_controllerGetMaskButton(type) & SGFE_BIT(button)));
 
 	return SGFE_controllerGetNameButton_platform(type, button);
 }
@@ -3671,13 +3670,7 @@ const char* SGFE_controllerGetNameButton(SGFE_controllerType type,
 const char* SGFE_controllerGetNameAxis(SGFE_controllerType type,
 		SGFE_axisType axis) {
 	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
-	#ifndef NDEBUG
-	SGFE_axisType start, end;
-	SGFE_controllerGetRangeAxis(type, &start, &end);
-	SGFE_ASSERT_NOT_NEG(start);
-	SGFE_ASSERT_NOT_NEG(end);
-	SGFE_ASSERT_RANGE(axis, start, end);
-	#endif
+	SGFE_ASSERT(SGFE_BOOL(SGFE_controllerGetMaskAxis(type) & SGFE_BIT(axis)));
 
 	return SGFE_AXIS_NAME_LUT[axis];
 }
@@ -3685,13 +3678,7 @@ const char* SGFE_controllerGetNameAxis(SGFE_controllerType type,
 const char* SGFE_controllerGetNamePointer(SGFE_controllerType type,
 		SGFE_pointerType pointer) {
 	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
-	#ifndef NDEBUG
-	SGFE_pointerType start, end;
-	SGFE_controllerGetRangePointer(type, &start, &end);
-	SGFE_ASSERT_NOT_NEG(start);
-	SGFE_ASSERT_NOT_NEG(end);
-	SGFE_ASSERT_RANGE(pointer, start, end);
-	#endif
+	SGFE_ASSERT(SGFE_BOOL(SGFE_controllerGetMaskPointer(type) & SGFE_BIT(pointer)));
 
 	return SGFE_POINTER_NAME_LUT[pointer];
 }
@@ -3699,13 +3686,7 @@ const char* SGFE_controllerGetNamePointer(SGFE_controllerType type,
 const char* SGFE_controllerGetNameMotion(SGFE_controllerType type,
 		SGFE_motionType motion) {
 	SGFE_ASSERT_RANGE(type, 0, SGFE_controllerTypeLast);
-	#ifndef NDEBUG
-	SGFE_motionType start, end;
-	SGFE_controllerGetRangeMotion(type, &start, &end);
-	SGFE_ASSERT_NOT_NEG(start);
-	SGFE_ASSERT_NOT_NEG(end);
-	SGFE_ASSERT_RANGE(motion, start, end);
-	#endif
+	SGFE_ASSERT(SGFE_BOOL(SGFE_controllerGetMaskMotion(type) & SGFE_BIT(motion)));
 
 	return SGFE_MOTION_NAME_LUT[motion];
 }
@@ -3715,13 +3696,7 @@ SGFE_bool SGFE_controllerEnablePointer(SGFE_controller* controller, SGFE_motionT
 		SGFE_bool enable) {
 	SGFE_ASSERT(controller != NULL);
 	SGFE_ASSERT(pointer >= 0 && pointer < SGFE_pointerTypeCount);
-
-	#ifndef NDEBUG
-	isize start, end;
-	SGFE_controllerGetRangePointer(controller->type, &start, &end);
-	SGFE_ASSERT(start != -1 && end != -1);
-	SGFE_ASSERT(pointer >= start && pointer <= end);
-	#endif
+	SGFE_ASSERT(SGFE_BOOL(SGFE_controllerGetMaskPointer(controller->type) & SGFE_BIT(pointer)));
 
 	SGFE_bool res = SGFE_controllerEnablePointer_platform(controller, pointer, SGFE_BOOL(enable));
 	if (res) {
@@ -3735,13 +3710,7 @@ SGFE_bool SGFE_controllerEnableMotion(SGFE_controller* controller, SGFE_motionTy
 		SGFE_bool enable) {
 	SGFE_ASSERT(controller != NULL);
 	SGFE_ASSERT(motion >= 0 && motion < SGFE_motionTypeCount);
-
-	#ifndef NDEBUG
-	isize start, end;
-	SGFE_controllerGetRangeMotion(controller->type, &start, &end);
-	SGFE_ASSERT(start != -1 && end != -1);
-	SGFE_ASSERT(motion >= start && motion <= end);
-	#endif
+	SGFE_ASSERT(SGFE_BOOL(SGFE_controllerGetMaskMotion(controller->type) & SGFE_BIT(motion)));
 
 	SGFE_bool res = SGFE_controllerEnableMotion_platform(controller, motion, SGFE_BOOL(enable));
 	if (res) {
@@ -4478,20 +4447,20 @@ SGFE_bool (SGFE_debugSendGL)(void* ctx_ptr, const char* filename, isize line, co
 #ifndef SGFE_CUSTOM_BACKEND
 #ifdef SGFE_3DS
 
-const SGFE_button SGFE_BUTTON_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+const SGFE_buttonMask SGFE_BUTTON_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
 	SGFE_buttonMask_All
 };
 
-const isize SGFE_BUTTON_RANGE_LUT[SGFE_controllerTypeCount][2] = {
+const isize SGFE_BUTTON_BITS_LUT[SGFE_controllerTypeCount][2] = {
 	{SGFE_button_A, SGFE_button_CstickDown}
 };
-const isize SGFE_AXIS_RANGE_LUT[SGFE_controllerTypeCount][2] = {
+const isize SGFE_AXIS_MASK_BITS_LUT[SGFE_controllerTypeCount][2] = {
 	{SGFE_axisLeftX, SGFE_axisLeftY},
 };
-const isize SGFE_POINTER_RANGE_LUT[SGFE_controllerTypeCount][2] = {
+const isize SGFE_POINTER_MASK_BITS_LUT[SGFE_controllerTypeCount][2] = {
 	{SGFE_pointerTouchscreen, SGFE_pointerTouchscreen},
 };
-const isize SGFE_MOTION_RANGE_LUT[SGFE_controllerTypeCount][2] = {
+const isize SGFE_MOTION_MASK_BITS_LUT[SGFE_controllerTypeCount][2] = {
 	{SGFE_motionAccelerometer, SGFE_motionGyroscope}
 };
 
@@ -4734,7 +4703,7 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 	SGFE_controller* controller = &win->controllers[0];
 	controller->array_index = 0;
 	controller->type = SGFE_controllerTypeStandard;
-	controller->enabled_pointers[SGFE_pointerTouchscreen] = SGFE_TRUE;
+	controller->enabled_pointers[SGFE_pointerTypeTouchscreen] = SGFE_TRUE;
 
 	for (SGFE_axisType which = 0; which < SGFE_axisTypeCount; which += 1) {
 		controller->axes[which].type = which;
@@ -4823,24 +4792,24 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 		hidCircleRead(&cpad);
 
 		if (held & (KEY_CPAD_LEFT | KEY_CPAD_RIGHT)) {
-			SGFE_axis* a = &controller->axes[SGFE_axisLeftX];
+			SGFE_axis* a = &controller->axes[SGFE_axisTypeLeftX];
 			a->value = (float)cpad.dx / 175.0f;
 			SGFE__processCallbackAndEventQueue_Axis(win, controller, a);
 		}
 
 		if (held & (KEY_CPAD_UP | KEY_CPAD_DOWN)) {
-			SGFE_axis* a = &controller->axes[SGFE_axisLeftY];
+			SGFE_axis* a = &controller->axes[SGFE_axisTypeLeftY];
 			a->value = (float)cpad.dy / 175.0f;
 			SGFE__processCallbackAndEventQueue_Axis(win, controller, a);
 		}
 	}
 
 	if (SGFE_windowGetEventEnabled(win, SGFE_eventPointer)) {
-		if (controller->enabled_pointers[SGFE_pointerTouchscreen] && (held & KEY_TOUCH)) {
+		if (controller->enabled_pointers[SGFE_pointerTypeTouchscreen] && (held & KEY_TOUCH)) {
 			touchPosition touch;
 			hidTouchRead(&touch);
 
-			SGFE_pointer* p = &controller->pointers[SGFE_pointerTouchscreen];
+			SGFE_pointer* p = &controller->pointers[SGFE_pointerTypeTouchscreen];
 			p->x = touch.px;
 			p->y = touch.py;
 
@@ -4849,11 +4818,11 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 	}
 
 	if (SGFE_windowGetEventEnabled(win, SGFE_eventMotion)) {
-		if (controller->enabled_motions[SGFE_motionAccelerometer]) {
+		if (controller->enabled_motions[SGFE_motionTypeAccelerometer]) {
 			accelVector accel;
 			hidAccelRead(&accel);
 
-			SGFE_motion* m = &controller->motions[SGFE_motionAccelerometer];
+			SGFE_motion* m = &controller->motions[SGFE_motionTypeAccelerometer];
 			m->x = (float)accel.x / 512.0f * SGFE_STANDARD_GRAVITY;
 			m->y = (float)accel.y / 512.0f * SGFE_STANDARD_GRAVITY;
 			m->z = (float)accel.z / 512.0f * SGFE_STANDARD_GRAVITY;
@@ -4861,14 +4830,14 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 			SGFE__processCallbackAndEventQueue_Motion(win, controller, m);
 		}
 
-		if (controller->enabled_motions[SGFE_motionGyroscope]) {
+		if (controller->enabled_motions[SGFE_motionTypeGyroscope]) {
 			angularRate gyro;
 			hidGyroRead(&gyro);
 
 			float coeff = 1.0f;
 			HIDUSER_GetGyroscopeRawToDpsCoefficient(&coeff);
 
-			SGFE_motion* m = &controller->motions[SGFE_motionGyroscope];
+			SGFE_motion* m = &controller->motions[SGFE_motionTypeGyroscope];
 			m->x = (float)gyro.x * coeff * SGFE_PI / 180.0f;
 			m->y = (float)gyro.y * coeff * SGFE_PI / 180.0f;
 			m->z = (float)gyro.z * coeff * SGFE_PI / 180.0f;
@@ -5002,13 +4971,13 @@ void SGFE_windowSetVisible(SGFE_window* win, SGFE_bool is_visible) {
 
 
 
-SGFE_button SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
+SGFE_buttonMask SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
 	SGFE_ASSERT_FMT(type > 0 && type <= SGFE_controllerTypeCount, "type = %i;", type);
 	return SGFE_platformButtonFromAPI(mask);
 }
 
-u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_button button) {
-	SGFE_ASSERT_FMT((button & ~SGFE_buttonGetMask(type)) == 0, "button = %i; ", button);
+u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_buttonMask button) {
+	SGFE_ASSERT_FMT((button & ~SGFE_controllerGetMaskButton(type)) == 0, "button = %i; ", button);
 	return SGFE_platformButtonToAPI(button);
 }
 
@@ -5030,12 +4999,12 @@ SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
 		SGFE_motionType motion, SGFE_bool enable) {
 	Result res;
 	switch (motion) {
-		case SGFE_motionAccelerometer: {
+		case SGFE_motionTypeAccelerometer: {
 			if (enable) res = HIDUSER_EnableAccelerometer();
 			else        res = HIDUSER_DisableAccelerometer();
 		} break;
 
-		case SGFE_motionGyroscope: {
+		case SGFE_motionTypeGyroscope: {
 			if (enable) res = HIDUSER_EnableGyroscope();
 			else        res = HIDUSER_DisableGyroscope();
 		} break;
@@ -5790,7 +5759,7 @@ SGFE_bool SGFE_platformHasSoftwareKeyboard(void) {
 }
 
 
-SGFE_button SGFE_platformButtonFromAPI(u32 mask) {
+SGFE_buttonMask SGFE_platformButtonFromAPI(u32 mask) {
 	#define SGFE__BUTTONS_BITS (u32)(0xFFF)
 	#define SGFE__CSTICK_BITS (u32)(KEY_CSTICK_RIGHT | KEY_CSTICK_LEFT | KEY_CSTICK_UP | KEY_CSTICK_DOWN)
 	#define SGFE__ZL_ZR_BITS (u32)(KEY_ZL | KEY_ZR)
@@ -5805,7 +5774,7 @@ SGFE_button SGFE_platformButtonFromAPI(u32 mask) {
 	#undef SGFE__ZL_ZR_BITS
 }
 
-u32 SGFE_platformButtonToAPI(SGFE_button button) {
+u32 SGFE_platformButtonToAPI(SGFE_buttonMask button) {
 	return
 		((button & SGFE_buttonMask_Cstick) << 11) |
 		((button & SGFE_buttonMask_ZL_ZR) << 2) |
@@ -5927,37 +5896,35 @@ SGFE_debugType SGFE_debugSystemGenerateType_platform(void* ctx_ptr, isize code) 
 
 #ifdef SGFE_WII
 
-const SGFE_button SGFE_BUTTON_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+const SGFE_buttonMask SGFE_BUTTON_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
 	SGFE_buttonMask_WiiRemote,
 	SGFE_buttonMask_Nunchuk,
 	0
 };
 
-const isize SGFE_BUTTON_RANGE_LUT[SGFE_controllerTypeCount][2] = {
-	{0, SGFE_buttonCount_WiiRemote - 1},
-	{0, SGFE_buttonCount_Nunchuk - 1},
-	{0, -1}
+const SGFE_axisMask SGFE_AXIS_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+	0,
+	SGFE_axisLeftX  | SGFE_axisLeftY,
+	0
 };
-const isize SGFE_AXIS_RANGE_LUT[SGFE_controllerTypeCount][2] = {
-	{0, -1},
-	{SGFE_axisLeftX, SGFE_axisLeftY},
-	{0, -1}
+
+const SGFE_pointerMask SGFE_POINTER_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+	SGFE_pointerInfrared,
+	SGFE_pointerInfrared,
+	0
 };
-const isize SGFE_POINTER_RANGE_LUT[SGFE_controllerTypeCount][2] = {
-	{SGFE_pointerInfrared, SGFE_pointerInfrared},
-	{SGFE_pointerInfrared, SGFE_pointerInfrared},
-	{0, -1}
+
+const SGFE_motionMask SGFE_MOTION_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+	SGFE_motionAccelerometer,
+	SGFE_motionAccelerometer | SGFE_motionNunchukAccelerometer,
+	0
 };
-const isize SGFE_MOTION_RANGE_LUT[SGFE_controllerTypeCount][2] = {
-	{SGFE_motionAccelerometer, SGFE_motionAccelerometer},
-	{SGFE_motionAccelerometer, SGFE_motionNunchukAccelerometer},
-	{0, -1}
-};
+
 
 const char* SGFE_CONTROLLER_NAME_LUT[SGFE_controllerTypeCount] = {
 	"Wii Remote", "Nunchuk", "Unknown"
 };
-const char* SGFE_BUTTON_NAMES_NUNCHUK_LUT[SGFE_buttonCount_Nunchuk] = {
+const char* SGFE_BUTTON_NAMES_NUNCHUK_LUT[SGFE_buttonTypeCount_Nunchuk] = {
 	"2", "1", "B", "A", "Minus", "Home", "Left", "Right", "Down", "Up", "Plus",
 	"Z", "C"
 };
@@ -6118,7 +6085,7 @@ void SGFE__wiiControllerSetConnection(SGFE_window* win, SGFE_controller* control
 }
 
 void SGFE__wiiControllerSensor(SGFE_window* win, SGFE_controller* controller, WPADData* data) {
-	if (!controller->enabled_pointers[SGFE_pointerInfrared] || (data->data_present & WPAD_DATA_IR) == 0) {
+	if (!controller->enabled_pointers[SGFE_pointerTypeInfrared] || (data->data_present & WPAD_DATA_IR) == 0) {
 		return ;
 	}
 
@@ -6134,8 +6101,8 @@ void SGFE__wiiControllerSensor(SGFE_window* win, SGFE_controller* controller, WP
 		return ;
 	}
 
-	SGFE_pointer* p = &controller->pointers[SGFE_pointerInfrared];
-	p->type = SGFE_pointerInfrared;
+	SGFE_pointer* p = &controller->pointers[SGFE_pointerTypeInfrared];
+	p->type = SGFE_pointerTypeInfrared;
 	p->x = (i32)ir->ax;
 	p->y = (i32)ir->ay;
 
@@ -6143,7 +6110,7 @@ void SGFE__wiiControllerSensor(SGFE_window* win, SGFE_controller* controller, WP
 }
 
 void SGFE__wiiControllerMotion_wiimote(SGFE_window* win, SGFE_controller* controller) {
-	if (!controller->enabled_motions[SGFE_motionAccelerometer]) {
+	if (!controller->enabled_motions[SGFE_motionTypeAccelerometer]) {
 		return;
 	}
 	struct wiimote_t* remote = win->src.wiimotes[controller->array_index];
@@ -6151,8 +6118,8 @@ void SGFE__wiiControllerMotion_wiimote(SGFE_window* win, SGFE_controller* contro
 	SGFE_ASSERT(remote->accel_calib.cal_g.y != 0);
 	SGFE_ASSERT(remote->accel_calib.cal_g.z != 0);
 
-	SGFE_motion* motion = &controller->motions[SGFE_motionAccelerometer];
-	motion->type = SGFE_motionAccelerometer;
+	SGFE_motion* motion = &controller->motions[SGFE_motionTypeAccelerometer];
+	motion->type = SGFE_motionTypeAccelerometer;
 	motion->x = (float)(remote->accel.x - remote->accel_calib.cal_zero.x) / remote->accel_calib.cal_g.x * SGFE_STANDARD_GRAVITY;
 	motion->y = (float)(remote->accel.z - remote->accel_calib.cal_zero.z) / remote->accel_calib.cal_g.z * SGFE_STANDARD_GRAVITY;
 	motion->z = (float)(remote->accel.y - remote->accel_calib.cal_zero.y) / remote->accel_calib.cal_g.y * SGFE_STANDARD_GRAVITY;
@@ -6194,7 +6161,7 @@ void SGFE__wiiControllerAxis(SGFE_window* win, SGFE_controller* controller, SGFE
 		case SGFE_controllerTypeNunchuk: {
 			struct joystick_t* js = &data->exp.nunchuk.js;
 
-			if (type == SGFE_axisLeftX) {
+			if (type == SGFE_axisTypeLeftX) {
 				pos = js->pos.x;
 				max = js->max.x;
 				min = js->min.x;
@@ -6218,7 +6185,7 @@ void SGFE__wiiControllerAxis(SGFE_window* win, SGFE_controller* controller, SGFE
 }
 
 void SGFE__wiiControllerMotion_nunchuk(SGFE_window* win, SGFE_controller* controller) {
-	if (!controller->enabled_motions[SGFE_motionNunchukAccelerometer]) {
+	if (!controller->enabled_motions[SGFE_motionTypeNunchukAccelerometer]) {
 		return;
 	}
 	const nunchuk_t* nunchuk = &win->src.wiimotes[controller->array_index]->exp.nunchuk;
@@ -6226,8 +6193,8 @@ void SGFE__wiiControllerMotion_nunchuk(SGFE_window* win, SGFE_controller* contro
 	SGFE_ASSERT(nunchuk->accel_calib.cal_g.y != 0);
 	SGFE_ASSERT(nunchuk->accel_calib.cal_g.z != 0);
 
-	SGFE_motion* motion = &controller->motions[SGFE_motionAccelerometer];
-	motion->type = SGFE_motionAccelerometer;
+	SGFE_motion* motion = &controller->motions[SGFE_motionTypeAccelerometer];
+	motion->type = SGFE_motionTypeAccelerometer;
 	motion->x = (float)(nunchuk->accel.x - nunchuk->accel_calib.cal_zero.x) / nunchuk->accel_calib.cal_g.x * 9.80665f;
 	motion->y = (float)(nunchuk->accel.z - nunchuk->accel_calib.cal_zero.z) / nunchuk->accel_calib.cal_g.z * 9.80665f;
 	motion->z = (float)(nunchuk->accel.y - nunchuk->accel_calib.cal_zero.y) / nunchuk->accel_calib.cal_g.y * 9.80665f;
@@ -6426,10 +6393,10 @@ const SGFE_windowState* SGFE_windowPollEvents(SGFE_window* win) {
 				if (state->data_present & WPAD_DATA_EXPANSION) {
 					if (SGFE_windowGetEventEnabled(win, SGFE_eventAxis)) {
 						if (nunchuk->js.pos.x != nunchuk->js.center.x && nunchuk->js.pos.x <= nunchuk->js.max.x) {
-							SGFE__wiiControllerAxis(win, controller, SGFE_axisLeftX, state);
+							SGFE__wiiControllerAxis(win, controller, SGFE_axisTypeLeftX, state);
 						}
 						if (nunchuk->js.pos.y != nunchuk->js.center.y) {
-							SGFE__wiiControllerAxis(win, controller, SGFE_axisLeftY, state);
+							SGFE__wiiControllerAxis(win, controller, SGFE_axisTypeLeftY, state);
 						}
 					}
 
@@ -6648,7 +6615,7 @@ void SGFE_windowSetVisible(SGFE_window* win, SGFE_bool is_visible) {
 
 
 
-SGFE_button SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
+SGFE_buttonMask SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
 	SGFE_ASSERT_FMT(type > 0 && type <= SGFE_controllerTypeCount, "type = %i;", type);
 
 	switch (type) {
@@ -6658,8 +6625,8 @@ SGFE_button SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
 	}
 }
 
-u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_button button) {
-	SGFE_ASSERT_FMT((button & ~SGFE_buttonGetMask(type)) == 0, "button = %i; ", button);
+u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_buttonMask button) {
+	SGFE_ASSERT_FMT((button & ~SGFE_controllerGetMaskButton(type)) == 0, "button = %i; ", button);
 
 	switch (type) {
 		case SGFE_controllerTypeWiiRemote: return SGFE_platformButtonToWiiRemote(button);
@@ -6686,14 +6653,14 @@ SGFE_bool SGFE_controllerEnablePointer_platform(SGFE_controller* controller,
 	i32 res = 1;
 
 	switch (pointer) {
-		case SGFE_pointerInfrared: {
+		case SGFE_pointerTypeInfrared: {
 			if (enable) {
 				res = WPAD_SetDataFormat(controller->array_index, WPAD_FMT_BTNS_ACC_IR);
 			}
 			else {
 				res = WPAD_SetDataFormat(
 					controller->array_index,
-					(controller->enabled_motions[SGFE_motionAccelerometer])
+					(controller->enabled_motions[SGFE_motionTypeAccelerometer])
 						? WPAD_FMT_BTNS_ACC
 						: WPAD_FMT_BTNS
 				);
@@ -6709,16 +6676,16 @@ SGFE_bool SGFE_controllerEnableMotion_platform(SGFE_controller* controller,
 	i32 res = 1;
 
 	switch (motion) {
-		case SGFE_motionAccelerometer: {
+		case SGFE_motionTypeAccelerometer: {
 			if (enable) {
-				if (!controller->enabled_pointers[SGFE_pointerInfrared]) {
+				if (!controller->enabled_pointers[SGFE_pointerTypeInfrared]) {
 					res = WPAD_SetDataFormat(controller->array_index, WPAD_FMT_BTNS_ACC);
 				}
 			}
 			else {
 				res = WPAD_SetDataFormat(
 					controller->array_index,
-					(controller->enabled_pointers[SGFE_pointerInfrared])
+					(controller->enabled_pointers[SGFE_pointerTypeInfrared])
 						? WPAD_FMT_BTNS_ACC_IR
 						: WPAD_FMT_BTNS
 				);
@@ -7066,19 +7033,19 @@ SGFE_bool SGFE_platformHasSoftwareKeyboard(void) {
 
 
 
-SGFE_button SGFE_platformButtonFromWiiRemote(u32 mask) {
+SGFE_buttonMask SGFE_platformButtonFromWiiRemote(u32 mask) {
 	return ((mask & (u32)~0x1F) >> 2) | (mask & 0x1F);
 }
 
-SGFE_button SGFE_platformButtonFromNunchuk(u32 mask) {
+SGFE_buttonMask SGFE_platformButtonFromNunchuk(u32 mask) {
 	return ((mask & ~0xFFFFu) >> 5) | SGFE_platformButtonFromWiiRemote(mask & 0xFFFF);
 }
 
-u32 SGFE_platformButtonToWiiRemote(SGFE_button button) {
+u32 SGFE_platformButtonToWiiRemote(SGFE_buttonMask button) {
 	return ((button & (u32)~0x1F) << 2) | (button & 0x1F);
 }
 
-SGFE_button SGFE_platformButtonToNunchuk(u32 mask) {
+SGFE_buttonMask SGFE_platformButtonToNunchuk(u32 mask) {
 	return ((mask & ~0xFFFFu) << 5) | SGFE_platformButtonFromWiiRemote(mask & 0xFFFF);
 }
 

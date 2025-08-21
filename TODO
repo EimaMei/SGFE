@@ -1,8 +1,9 @@
 Current TODOs:
 - compare template with wii backend 
-- add warnings for VIDEO_Init, WPAD
 - rework buffers so that you could change from native to non-native and back to native. this requires to have seperate buffers with consistent names.
-- keyboard name through USB
+- (wii) keyboard name through USB
+- (wii) add wii motion plus
+- Make "setNative" alloc non-native buffers if false is specified and buffers are null.
 
 Features:
 - add adaptive vsync to buffer (check out lag via unoptimized standard.c)
@@ -12,8 +13,6 @@ Features:
 - Add a "end poll" event and function. On 3ds pay mind that software keyboard should be taken account of.
 - (Wii) GameCube controller support.
 - (Wii) Classic (U) controller support.
-- Make "setNative" alloc non-native buffers if false is specified and buffers are null.
-- (Wii) Add TextInput support for it.
 - (Wii) add mouse support.
 - Add options to disable app termination/loss of focus.
 - Replace  SGFE_ASSERT(0) with PANIC.
@@ -25,7 +24,6 @@ Features:
 
 API-breaking changes:
 - change standard format to RGB instead of RGBA
-- Use bitwise to denote features instead of ranges.
 
 
 Documentation:
@@ -60,7 +58,6 @@ Bugs:
 - (3DS) Fix flicker when opening standard buffer.
 - (3DS) Fix flicker when closing basic buffer.
 - (3DS) initial text length bug for software keyboard (see text-input.c)
-- (Wii) Fix bug where nunchuk controllers are eligible for gyroscope support.
 
 
 Build system:

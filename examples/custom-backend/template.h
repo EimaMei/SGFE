@@ -87,44 +87,61 @@ typedef SGFE_ENUM(isize, SGFE_controllerType) {
 	SGFE_controllerTypeLast = SGFE_controllerTypeCount - 1
 };
 
+
+/* TODO(EimaMei): document */
 typedef SGFE_ENUM(isize, SGFE_buttonType) {
-	SGFE_buttonInvalid = -1,
-
-	#ifdef SGFE_CUSTOM_BACKEND
 	/* ... */
-	#endif
+
+	SGFE_buttonTypeCount
 };
 
-typedef SGFE_ENUM(u32, SGFE_button) {
-	#ifdef SGFE_CUSTOM_BACKEND
-	BlankEnumValueSoThatTheCompilerWouldStopComplaining,
-	/* ... */
-	#endif
-};
-
+/* TODO(EimaMei): document */
 typedef SGFE_ENUM(isize, SGFE_axisType) {
-	#ifdef SGFE_CUSTOM_BACKEND
 	/* ... */
-	#endif
 
 	SGFE_axisTypeCount,
 };
 
+/* TODO(EimaMei): document */
 typedef SGFE_ENUM(isize, SGFE_pointerType) {
-	#ifdef SGFE_CUSTOM_BACKEND
 	/* ... */
-	#endif
+
 
 	SGFE_pointerTypeCount,
 };
 
+/* TODO(EimaMei): document */
 typedef SGFE_ENUM(isize, SGFE_motionType) {
-	#ifdef SGFE_CUSTOM_BACKEND
 	/* ... */
-	#endif
 
 	SGFE_motionTypeCount,
 };
+
+/* TODO(EimaMei): document */
+typedef SGFE_ENUM(u32, SGFE_buttonMask) {
+	/* ... */
+	SGFE_buttonMaskSoThatEnumIsntEmpty,
+	/* SGFE_S = SGFE_BIT(SGFE_buttonTypeS) */
+};
+
+/* TODO(EimaMei): document */
+typedef SGFE_ENUM(u32, SGFE_axisMask) {
+	/* ... */
+	SGFE_axisMaskSoThatEnumIsntEmpty,
+};
+
+/* TODO(EimaMei): document */
+typedef SGFE_ENUM(u32, SGFE_pointerMask) {
+	/* ... */
+	SGFE_pointerMaskSoThatEnumIsntEmpty,
+};
+
+/* TODO(EimaMei): document */
+typedef SGFE_ENUM(u32, SGFE_motionMask) {
+	/* ... */
+	SGFE_motionMaskSoThatEnumIsntEmpty,
+};
+
 
 typedef SGFE_ENUM(isize, SGFE_systemModel) {
 	SGFE_systemModelUnknown,
@@ -182,21 +199,24 @@ struct SGFE_contextGL {
 
 #ifdef SGFE_IMPLEMENTATION
 
-const SGFE_button SGFE_BUTTON_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+const SGFE_buttonMask SGFE_BUTTON_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+	#warning "Unfilled LUT."
 	/* ... */
 };
 
-const isize SGFE_BUTTON_RANGE_LUT[SGFE_controllerTypeCount][2] = {
+const SGFE_axisMask SGFE_AXIS_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+	#warning "Unfilled LUT."
 	/* ... */
 };
-const isize SGFE_AXIS_RANGE_LUT[SGFE_controllerTypeCount][2] = {
-	/* {..., ...} */
+
+const SGFE_pointerMask SGFE_POINTER_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+	#warning "Unfilled LUT."
+	/* ... */
 };
-const isize SGFE_POINTER_RANGE_LUT[SGFE_controllerTypeCount][2] = {
-	/* {..., ...} */
-};
-const isize SGFE_MOTION_RANGE_LUT[SGFE_controllerTypeCount][2] = {
-	/* {..., ...} */
+
+const SGFE_motionMask SGFE_MOTION_MASK_BITS_LUT[SGFE_controllerTypeCount] = {
+	#warning "Unfilled LUT."
+	/* ... */
 };
 
 const char* SGFE_CONTROLLER_NAME_LUT[SGFE_controllerTypeCount] = {
@@ -529,7 +549,7 @@ void SGFE_windowSetVisible(SGFE_window* win, SGFE_bool is_visible) {
 }
 
 
-SGFE_button SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
+SGFE_buttonMask SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
 	SGFE_ASSERT_FMT(type > 0 && type <= SGFE_controllerTypeCount, "type = %i;", type);
 	#warning "Warning to notify that this function hasn't been implemented yet."
 	#if 0
@@ -541,8 +561,8 @@ SGFE_button SGFE_buttonFromAPI(SGFE_controllerType type, u32 mask) {
 	#endif
 }
 
-u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_button button) {
-	SGFE_ASSERT_FMT((button & ~SGFE_buttonGetMask(type)) == 0, "button = %i; ", button);
+u32 SGFE_buttonToAPI(SGFE_controllerType type, SGFE_buttonMask button) {
+	SGFE_ASSERT_FMT((button & ~SGFE_controllerGetMaskButton(type)) == 0, "button = %i; ", button);
 	#warning "Warning to notify that this function hasn't been implemented yet."
 	#if 0
 	switch (type) {

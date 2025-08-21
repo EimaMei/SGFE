@@ -1,4 +1,7 @@
-#define SGFE_IMPLEMENTATION
+#define SGFE_IMPLEMENTATION 1
+/* NOTE(EimaMei): Defining 'SGFE_MAX_KEYBOARDS' with an integer larger than zero
+ * enables keyboard support on supported platforms. */
+#define SGFE_MAX_KEYBOARDS 1
 #include <SGFE.h>
 #include <resources/controls.h>
 #include <stdio.h>
@@ -67,13 +70,13 @@ int main(void) {
 		"\n"
 		"Has software keyboard: %i\n",
 
-		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_PRIMARY)),
-		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_SECONDARY)),
-		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_TERTIARY)),
-		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_QUATERNARY)),
+		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_maskGetType(BUTTON_PRIMARY)),
+		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_maskGetType(BUTTON_SECONDARY)),
+		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_maskGetType(BUTTON_TERTIARY)),
+		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_maskGetType(BUTTON_QUATERNARY)),
 
-		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_LEFT)),
-		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_buttonGetType(BUTTON_RIGHT)),
+		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_maskGetType(BUTTON_LEFT)),
+		SGFE_controllerGetNameButton(SGFE_controllerTypeStandard, SGFE_maskGetType(BUTTON_RIGHT)),
 
 		SGFE_platformHasSoftwareKeyboard()
 	);
