@@ -30,6 +30,7 @@
 
 #ifndef SGFE_DEFINE_TYPE_SIZE
 	#include <stddef.h>
+	typedef size_t usize;
 	typedef ptrdiff_t isize;
 	#define SGFE_DEFINE_TYPE_SIZE
 #endif
@@ -70,6 +71,7 @@ typedef SGFE_ENUM(isize, SGFE_bufferFormat) {
 	/* ... */
 	#endif
 
+	SGFE_bufferFormatLast,
 	SGFE_bufferFormatCount,
 };
 
@@ -921,26 +923,13 @@ SGFE_systemLanguage SGFE_systemGetLanguage(void) {
  * Platform functions are backend-specific functions that do not fit anywhere in
  * the base SGFE API, but might be useful to the end user such as hardware-specific
  * features (e.g. 3D slider on the 3DS). The API also includes general functions
- * that are platform-dependent (e.g. getting time and CPU clock speed, initializing
- * terminal output, getting system model, etc). */
-
-i64 SGFE_platformGetTimeFromTicks(u64 ticks) {
-	/* NOTE(EimaMei): The return must be UNIX time with nanosecond precision. */
-	#warning "Warning to notify that this function hasn't been implemented yet."
-}
+ * that are platform-dependent (e.g. get current CPU tick). */
 
 u64 SGFE_platformGetTicks(void) {
 	#warning "Warning to notify that this function hasn't been implemented yet."
+	return 0;
 }
 
-u64 SGFE_platformGetClockSpeed(void) {
-	#warning "Warning to notify that this function hasn't been implemented yet."
-}
-
-
-void SGFE_platformWaitForVBlank(void) {
-	#warning "Warning to notify that this function hasn't been implemented yet."
-}
 
 SGFE_bool SGFE_platformInitTerminalOutputEx(SGFE_contextBuffer* b, isize x, isize y,
 		isize width, isize height) {

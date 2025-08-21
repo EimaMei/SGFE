@@ -1997,17 +1997,6 @@ SGFE_DEF SGFE_systemLanguage SGFE_systemGetLanguage(void);
 
 
 /**
- * Converts system ticks into UNIX time with nanosecond precision.
- *
- * Time representation range:
- * min: 1677-09-21 00:12:44.145224192 UTC+0
- * max: 2262-04-11 23:47:16.854775807 UTC+0
- *
- * \returns The converted time
- */
-SGFE_DEF i64 SGFE_platformGetTimeFromTicks(u64 ticks);
-
-/**
  * Returns the amount of ticks/the current time-stamp counter.
  *
  * This function is equivalent to RDTSC on x86. It is is specifically useful for
@@ -2016,12 +2005,6 @@ SGFE_DEF i64 SGFE_platformGetTimeFromTicks(u64 ticks);
  * \returns The amount of ticks/The time-stamp counter.
  */
 SGFE_DEF u64 SGFE_platformGetTicks(void);
-/**
- * Returns the system's clock speed in Hz.
- *
- * \returns The system's clock speed in Hz.
- */
-SGFE_DEF u64 SGFE_platformGetClockSpeed(void);
 
 
 /* TODO(EimaMei): new function. */
@@ -2268,6 +2251,9 @@ typedef SGFE_ENUM(isize, SGFE_errorPlatform) {
 	SGFE_errorPlatformInitKYGX,
 	SGFE_errorPlatformCreateGlassCtx,
 	SGFE_errorPlatformTextInput,
+	#elif SGFE_WII
+	SGFE_errorPlatformWPAD,
+	SGFE_errorPlatformPAD,
 	#endif
 	SGFE_errorPlatformCount
 };
@@ -5734,24 +5720,8 @@ SGFE_systemLanguage SGFE_systemGetLanguage(void) {
 
 
 
-i64 SGFE_platformGetTimeFromTicks(u64 ticks) {
-	osTimeRef_s ref = osGetTimeRef();
-
-	ticks -= ref.value_tick;
-	u64 clock_hz  = (u64)ref.sysclock_hz;
-	u64 seconds = (ticks / clock_hz + (u64)ref.drift_ms * 1000000) - ((u64)1000000000 * 60 * 60 * 24 * 25567);
-	u64 rem_cycles = ticks % clock_hz;
-
-	return (i64)(seconds * 1000000000 + (rem_cycles * 1000000000) / clock_hz);
-}
-
 u64 SGFE_platformGetTicks(void) {
 	return svcGetSystemTick();
-}
-
-u64 SGFE_platformGetClockSpeed(void) {
-	osTimeRef_s ref = osGetTimeRef();
-	return (u64)ref.sysclock_hz;
 }
 
 
@@ -6289,7 +6259,11 @@ SGFE_bool SGFE_windowMake_platform(SGFE_window* win) {
 	VIDEO_Init();
 
 	//PAD_Init();
-	WPAD_Init();
+	i32 res = WPAD_Init();
+	if (res < 0) {
+		SGFE_debugSendAPI(win, SGFE_debugTypeError, SGFE_errorPlatformWPAD);
+		return SGFE_FALSE;
+	}
 
 	#ifndef SGFE_WII_NO_WAIT_FOR_CONNECTION
 	SGFE_bool wpad_is_active = SGFE_FALSE;
@@ -6893,7 +6867,7 @@ u8* SGFE_bufferConvertFramebufferToNative(SGFE_contextBuffer* b) {
 		ptr += width / 2;
 	}
 
-	#warning "Alpha not implemnted yet."
+	#warning "Alpha not implemented yet."
 
 	return (void*)dst;
 }
@@ -6919,10 +6893,7 @@ void SGFE_windowSwapBuffersBuffer(SGFE_window* win) {
 
 SGFE_bool SGFE_textInputSetPlatformFlags(SGFE_textInputSettings* s) {
 	SGFE_ASSERT_NOT_NULL(s);
-	#warning "Warning to notify that this function hasn't been implemented yet."
-
-	/* If backend does not support text input, return false. */
-	/* s->platform_flags = ... */
+	s->platform_flags = 0;
 	return SGFE_TRUE;
 }
 
@@ -7053,19 +7024,11 @@ SGFE_systemLanguage SGFE_systemGetLanguage(void) {
 
 
 #if 1 /* === PLATFORM FUNCTIONS === */
+#include <ogc/lwp_watchdog.h>
 
-i64 SGFE_platformGetTimeFromTicks(u64 ticks) {
-	/* NOTE(EimaMei): The return must be UNIX time with nanosecond precision. */
-	#warning "Warning to notify that this function hasn't been implemented yet."
-}
 
 u64 SGFE_platformGetTicks(void) {
-	extern u32 gettick(void);
 	return gettick();
-}
-
-u64 SGFE_platformGetClockSpeed(void) {
-	return 729000000;
 }
 
 
@@ -7167,27 +7130,13 @@ const char* SGFE_debugSourcePlatformAPIGetName(SGFE_debugType type, isize code) 
 		(type == SGFE_debugTypeWarning && (code >= 0 && code < SGFE_warningPlatformCount)) ||
 		(type == SGFE_debugTypeInfo    && (code >= 0 && code < SGFE_infoPlatformCount))
 	);
-	#warning "Warning to notify that this function hasn't been implemented yet."
-	/* NOTE(EimaMei): If the custom backend does not contain any errors, warnings
-	 * or infos, these arrays can be removed. */
 
-	#if 0
 	static const char* ERROR_LUT[SGFE_errorPlatformCount] = {
-		/* ... */
+		"SGFE_errorPlatformWPAD",
+		"SGFE_errorPlatformPAD"
 	};
 
-	static const char* WARNING_LUT[SGFE_warningPlatformCount] = {
-		/* ... */
-
-	}
-
-	static const char* INFO_LUT[SGFE_infoPlatformCount] = {
-		/* ... */
-	}
-
-	static const char** ARR_LUT[] = {ERROR_LUT, WARNING_LUT, INFO_LUT};
-	return ARR_LUT[type][code];
-	#endif
+	return ERROR_LUT[code];
 }
 
 const char* SGFE_debugSourcePlatformAPIGetDesc(SGFE_debugType type, isize code) {
@@ -7196,51 +7145,32 @@ const char* SGFE_debugSourcePlatformAPIGetDesc(SGFE_debugType type, isize code) 
 		(type == SGFE_debugTypeWarning && (code >= 0 && code < SGFE_warningPlatformCount)) ||
 		(type == SGFE_debugTypeInfo    && (code >= 0 && code < SGFE_infoPlatformCount))
 	);
-	#warning "Warning to notify that this function hasn't been implemented yet."
-	/* NOTE(EimaMei): If the custom backend does not contain any errors, warnings
-	 * or infos, these arrays can be removed. */
 
-	#if 0
 	static const char* ERROR_LUT[SGFE_errorPlatformCount] = {
-		/* ... */
+		"WPAD_Init() failed. Wii controllers cannot be connected.",
+		"PAD_Init() failed. GameCube controllers cannot be connected."
 	};
 
-	static const char* WARNING_LUT[SGFE_warningPlatformCount] = {
-		/* ... */
-
-	};
-
-	static const char* INFO_LUT[SGFE_infoPlatformCount] = {
-		/* ... */
-	};
-
-	static const char** ARR_LUT[] = {ERROR_LUT, WARNING_LUT, INFO_LUT};
-	return ARR_LUT[type][code];
-	#endif
+	return ERROR_LUT[code];
 }
 
 
 const char* SGFE_debugCodeSystemGetName(SGFE_debugType type, isize code) {
-	#warning "Warning to notify that this function hasn't been implemented yet."
-	/* NOTE(EimaMei): Usually you can ignore the debug type for system errors. */
 	return "Unknown";
 	SGFE_UNUSED(type);
+	SGFE_UNUSED(code);
 }
 
 const char* SGFE_debugSourceSystemGetDesc(SGFE_debugType type, isize code) {
-	#warning "Warning to notify that this function hasn't been implemented yet."
-	/* NOTE(EimaMei): Usually you can ignore the debug type for system errors. */
 	return "Unknown";
 	SGFE_UNUSED(type);
+	SGFE_UNUSED(code);
 }
 
 
 SGFE_debugType SGFE_debugSystemGenerateType_platform(void* ctx_ptr, isize code) {
-	#warning "Warning to notify that this function hasn't been implemented yet."
-	/* NOTE(EimaMei): More often than not system APIs either provide no further
-	 * debug types than just 'errors' or have debug types that are incompatible
-	 * with SGFE's. In such cases this function has to return the closest
-	 * representation of what the code type could be in SGFE. */
+	return 0;
+	SGFE_UNUSED(ctx_ptr); SGFE_UNUSED(code);
 }
 
 #endif /* === DEBUG FUNCTIONS === */

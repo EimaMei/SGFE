@@ -2,7 +2,6 @@ Current TODOs:
 - compare template with wii backend 
 - add warnings for VIDEO_Init, WPAD
 - rework buffers so that you could change from native to non-native and back to native. this requires to have seperate buffers with consistent names.
-- allocate keyboard for wii instead of keeping it inside the struct. it's too mf large.
 - keyboard name through USB
 
 Features:
